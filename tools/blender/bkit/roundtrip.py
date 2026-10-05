@@ -33,6 +33,8 @@ def _build(revision):
         ops.apply_transforms(o)
     obj = ops.join([body, nose], ASSET)
     ops.set_origin_base_center(obj)
+    # Studio puts the imported model's pivot at the file origin, so the asset's origin must be there too.
+    obj.location = (0, 0, 0)
     ops.box_uv(obj)
     env.set_meta(obj, category="test", revision=revision, front="-Y", pivot_expected="base-centre")
     return obj
@@ -135,6 +137,7 @@ def run(out_dir):
                 {"name": f"{path.suffix}:geometry_tris", "pass": sig["tris"] == src_sig["tris"], "value": sig["tris"], "expected": src_sig["tris"]},
                 {"name": f"{path.suffix}:scale_dims", "pass": all(abs(a - b) < 0.02 for a, b in zip(sig["dims"], src_sig["dims"])), "value": sig["dims"], "expected": src_sig["dims"]},
                 {"name": f"{path.suffix}:pivot_base_centre", "pass": all(abs(o - b) < 0.02 for o, b in zip(info["origin"], info["base_centre"])), "value": info["origin"], "expected": info["base_centre"]},
+                {"name": f"{path.suffix}:origin_at_world_origin", "pass": all(abs(o) < 0.02 for o in info["origin"]), "value": info["origin"], "expected": [0, 0, 0]},
                 {"name": f"{path.suffix}:surface_offsets", "pass": all(abs(a - b) < 0.02 for a, b in zip(info["offsets"], src_offsets)), "value": info["offsets"], "expected": src_offsets},
                 {"name": f"{path.suffix}:orientation_front", "pass": info["front_centroid"] is not None and info["front_centroid"][1] < -0.5, "value": info["front_centroid"], "expected": "y < 0 (front -Y)"},
                 {"name": f"{path.suffix}:materials", "pass": all(any(m.startswith(n) for m in info["materials"]) for n in ("MAT_Body", "MAT_Front")), "value": info["materials"]},
