@@ -39,7 +39,23 @@ fixtures.modular_building = function()
 	SK.Building.column(scene, { pos = { x = -10, y = 0, z = -20 }, height = 12, round = true })
 	SK.Building.column(scene, { pos = { x = 10, y = 0, z = -20 }, height = 12, round = true })
 	SK.Building.arch(scene, { pos = { x = 0, y = 12, z = -20 }, span = 20, depth = 2 })
-	SK.Building.ramp(scene, { base = { x = 44, y = 0, z = 0 }, yaw = 180, rise = 1, run = 6 })
+	-- Entrance ramp: rises from the ground (+Z, yaw 270) to the Annex door sill, ending flush with
+	-- the foundation's front edge (footprint z - 0.5 outset) instead of being sunk inside it.
+	local annexDoor: any = nil
+	for _, record in scene.meta.doors do
+		if record.group == "Annex/Storey1" and record.kind == "door" then
+			annexDoor = record
+		end
+	end
+	assert(annexDoor, "Annex front door missing")
+	local sillY, foundationFront, run = annexDoor.pos.y, -10 - 0.5, 6
+	SK.Building.ramp(scene, {
+		base = { x = annexDoor.pos.x, y = 0, z = foundationFront - run },
+		yaw = 270,
+		rise = sillY,
+		run = run,
+		width = annexDoor.width,
+	})
 	SK.Paths.fence(scene, { { x = -30, y = 0, z = -30 }, { x = 50, y = 0, z = -30 } })
 	return scene, {}
 end

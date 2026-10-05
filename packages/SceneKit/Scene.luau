@@ -162,6 +162,10 @@ function Scene.transformed<T>(self: Scene, offset: V3, yaw: number, body: () -> 
 			local record = list[index]
 			if type(record) == "table" and record.pos then
 				record.pos = move(record.pos)
+				if record.dir then
+					-- Direction vectors (e.g. the wall axis of a door) turn with the yaw but do not translate.
+					record.dir = Vec.rotateY(record.dir, yaw)
+				end
 			end
 		end
 	end

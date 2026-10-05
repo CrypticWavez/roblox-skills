@@ -3,6 +3,7 @@
 -- railings, columns, arches, trim, foundations) and a composed Building.create that turns
 -- footprint + storey requirements into a validated, dressed-ready shell.
 local Rng = require("../ProcGen/Rng")
+local Measure = require("./Measure")
 local Scene = require("./Scene")
 local Vec = require("./Vec")
 
@@ -94,12 +95,16 @@ function Building.wall(
 				canCollide = true,
 			})
 		end
+		-- dir (wall axis) and thickness let Validate measure the clear width actually left at the
+		-- opening once other walls are taken into account.
 		local record = {
 			kind = opening.kind or "gap",
 			width = opening.width,
 			height = opening.height,
 			bottom = opening.bottom,
 			pos = { x = fx + dir.x * opening.at, y = options.y + opening.bottom, z = fz + dir.z * opening.at },
+			dir = { x = dir.x, y = 0, z = dir.z },
+			thickness = thickness,
 			group = scene:currentGroup(),
 		}
 		if record.kind == "door" or record.kind == "gap" then
@@ -479,13 +484,70 @@ function Building.windowRun(
 	return result
 end
 
--- BSP subdivision of an interior rectangle into rooms; returns rooms and partition walls.
+-- A doorway on the boundary of a subdivided rect, as a span along the wall's inner face in the
+-- rect's XZ coordinates, e.g. the front door: { from = { x0, innerZ }, to = { x1, innerZ } }.
+export type DoorSpan = { from: { number }, to: { number } }
+export type Partition = { from: { number }, to: { number }, door: { at: number, width: number }? }
+
+-- BSP subdivision of an interior rectangle into rooms; returns rooms and partition walls, each
+-- with the door it should carry (`door.at` measured from `from`; nil when no door fits).
+-- Doorways are never bisected: a cut may not end inside a reserved span (plus half the partition
+-- thickness and half a character width either side); when the drawn position would, the nearest
+-- free whole-stud position is used, then the other axis, else the rect stays one room. Partition
+-- doors are placed after all cuts, centred in the longest run between T-junctions and kept a
+-- character half-width clear of the walls that meet there.
 function Building.subdivide(
 	rect: Rect,
 	rng,
-	minRoom: number
-): ({ Rect }, { { from: { number }, to: { number } } })
-	local rooms, partitions = {}, {}
+	minRoom: number,
+	options: { reserved: { DoorSpan }?, doorWidth: number?, thickness: number? }?
+): ({ Rect }, { Partition })
+	local reserved = options and options.reserved or {}
+	local doorWidth = options and options.doorWidth or 5
+	local halfT = (options and options.thickness or 0.5) / 2
+	local clearance = halfT + Measure.GUIDE.characterWidth / 2
+	local rooms: { Rect }, partitions: { Partition } = {}, {}
+
+	-- Would a cut at `at` (x = at when cutX, else z = at) end inside a reserved doorway on one of
+	-- the rect edges e0/e1 it runs between?
+	local function blocked(cutX: boolean, at: number, e0: number, e1: number): boolean
+		local along, across = if cutX then 1 else 2, if cutX then 2 else 1
+		for _, span in reserved do
+			if math.abs(span.from[across] - span.to[across]) < 1e-6 then
+				local line = span.from[across]
+				local lo = math.min(span.from[along], span.to[along])
+				local hi = math.max(span.from[along], span.to[along])
+				if
+					(math.abs(line - e0) < 1e-6 or math.abs(line - e1) < 1e-6)
+					and at > lo - clearance
+					and at < hi + clearance
+				then
+					return true
+				end
+			end
+		end
+		return false
+	end
+
+	local function chooseCut(cutX: boolean, r: Rect): number?
+		local origin, size = if cutX then r.x else r.z, if cutX then r.w else r.d
+		local e0, e1 = if cutX then r.z else r.x, if cutX then r.z + r.d else r.x + r.w
+		local want = math.round(rng:range(minRoom, size - minRoom))
+		if not blocked(cutX, origin + want, e0, e1) then
+			return origin + want
+		end
+		local best: number? = nil
+		for offset = math.ceil(minRoom), math.floor(size - minRoom) do
+			if
+				not blocked(cutX, origin + offset, e0, e1)
+				and (best == nil or math.abs(offset - want) < math.abs(best - want))
+			then
+				best = offset
+			end
+		end
+		return if best then origin + best else nil
+	end
+
 	local function split(r: Rect, depth: number)
 		local canX, canZ = r.w >= minRoom * 2, r.d >= minRoom * 2
 		if depth > 3 or (not canX and not canZ) then
@@ -493,19 +555,66 @@ function Building.subdivide(
 			return
 		end
 		local cutX = if canX and canZ then r.w >= r.d else canX
-		if cutX then
-			local at = r.x + math.round(rng:range(minRoom, r.w - minRoom))
+		local at = chooseCut(cutX, r)
+		if at == nil and (if cutX then canZ else canX) then
+			cutX = not cutX
+			at = chooseCut(cutX, r)
+		end
+		if at == nil then
+			table.insert(rooms, r)
+		elseif cutX then
 			table.insert(partitions, { from = { at, r.z }, to = { at, r.z + r.d } })
 			split({ x = r.x, z = r.z, w = at - r.x, d = r.d }, depth + 1)
 			split({ x = at, z = r.z, w = r.x + r.w - at, d = r.d }, depth + 1)
 		else
-			local at = r.z + math.round(rng:range(minRoom, r.d - minRoom))
 			table.insert(partitions, { from = { r.x, at }, to = { r.x + r.w, at } })
 			split({ x = r.x, z = r.z, w = r.w, d = at - r.z }, depth + 1)
 			split({ x = r.x, z = at, w = r.w, d = r.z + r.d - at }, depth + 1)
 		end
 	end
 	split(rect, 0)
+
+	-- Doors: partition ends keep the 1-stud jamb they always had and a T-junction (another
+	-- partition ending on this one) keeps `clearance`; only when no run fits a minimum door that
+	-- way are both relaxed to the abutting wall face (clear width is still the full door width).
+	for _, p in partitions do
+		local along = if p.from[1] == p.to[1] then 2 else 1
+		local across = 3 - along
+		local length = p.to[along] - p.from[along]
+		local marks = { { u = 0, junction = false }, { u = length, junction = false } }
+		for _, q in partitions do
+			if q ~= p then
+				for _, e in { q.from, q.to } do
+					if
+						math.abs(e[across] - p.from[across]) < 1e-6
+						and e[along] > p.from[along] + 1e-6
+						and e[along] < p.to[along] - 1e-6
+					then
+						table.insert(marks, { u = e[along] - p.from[along], junction = true })
+					end
+				end
+			end
+		end
+		table.sort(marks, function(a, b)
+			return a.u < b.u
+		end)
+		for _, margins in { { 1, clearance }, { halfT, halfT } } do
+			local bestLo, bestHi = 0, -1
+			for index = 1, #marks - 1 do
+				local a, b = marks[index], marks[index + 1]
+				local lo = a.u + (if a.junction then margins[2] else margins[1])
+				local hi = b.u - (if b.junction then margins[2] else margins[1])
+				if hi - lo > bestHi - bestLo then
+					bestLo, bestHi = lo, hi
+				end
+			end
+			local width = math.min(doorWidth, bestHi - bestLo)
+			if width >= Measure.GUIDE.doorMin.width then
+				p.door = { at = (bestLo + bestHi) / 2, width = width }
+				break
+			end
+		end
+	end
 	return rooms, partitions
 end
 
@@ -540,6 +649,7 @@ function Building.create(scene: Scene, options: BuildingOptions)
 	local y0 = options.y or 0
 	local stairsWanted = storeys > 1 and options.stairs ~= false
 	local stairWidth, stairRun = 5, 1.5
+	local railDepth = 0.4 -- Building.railing post size
 	local summary = { name = options.name or "Building", storeys = storeys, rooms = {}, ridge = 0 }
 
 	return scene:group(options.name or "Building", function()
@@ -662,27 +772,38 @@ function Building.create(scene: Scene, options: BuildingOptions)
 				local roomArea: Rect = if stairHole
 					then { x = inner.x, z = inner.z, w = inner.w, d = stairHole.z - inner.z - 0.5 }
 					else inner
-				local rooms, partitions = { roomArea }, {}
+				local rooms: { Rect }, partitions: { Partition } = { roomArea }, {}
 				if options.interior ~= false then
 					local minRoom = (options.interior and (options.interior :: any).minRoom) or 10
-					rooms, partitions = Building.subdivide(roomArea, rng:fork("rooms" .. storey), minRoom)
+					-- The front door sits on the room area's front edge (the front wall's inner face).
+					local reserved: { DoorSpan } = if storey == 0
+						then {
+							{
+								from = { fp.x + doorAt - door.width / 2, inner.z },
+								to = { fp.x + doorAt + door.width / 2, inner.z },
+							},
+						}
+						else {}
+					rooms, partitions = Building.subdivide(
+						roomArea,
+						rng:fork("rooms" .. storey),
+						minRoom,
+						{ reserved = reserved, doorWidth = 5, thickness = 0.5 }
+					)
 				end
 				for _, partition in partitions do
-					local length = math.sqrt(
-						(partition.to[1] - partition.from[1]) ^ 2 + (partition.to[2] - partition.from[2]) ^ 2
-					)
-					local w = math.min(5, length - 2)
+					local partitionDoor = partition.door
 					Building.wall(scene, {
 						from = partition.from,
 						to = partition.to,
 						y = base,
 						height = clearHeight,
 						thickness = 0.5,
-						openings = if w >= 4
+						openings = if partitionDoor
 							then {
 								{
-									at = length / 2,
-									width = w,
+									at = partitionDoor.at,
+									width = partitionDoor.width,
 									bottom = 0,
 									height = math.min(8, clearHeight - 1),
 									kind = "door",
@@ -692,23 +813,29 @@ function Building.create(scene: Scene, options: BuildingOptions)
 					})
 				end
 				if stairHole then
-					-- Open the stair hall to the rooms with a wide gap wall line.
+					-- The stair hall stays open to the rooms (no wall line between them).
+					local hole = if storey > 0 then lanes[(storey - 1) % #lanes + 1] else nil
 					if storey < storeys - 1 then
 						local lane = lanes[storey % #lanes + 1]
+						-- A flight that starts directly in front of the hole this storey was reached
+						-- through shares its back edge with that hole's railing (3+ storeys): narrow
+						-- it by the railing depth so posts and rails stand on the slab, not in the steps.
+						local inset = if hole and hole ~= lane and lane.z < hole.z then railDepth else 0
+						local flightWidth = stairWidth - 0.2 - inset
 						Building.stairs(scene, {
-							base = { x = lane.x, y = base, z = lane.z + stairWidth / 2 },
+							base = { x = lane.x, y = base, z = lane.z + (stairWidth - inset) / 2 },
 							yaw = 0,
 							rise = storeyHeight,
-							width = stairWidth - 0.2,
+							width = flightWidth,
 							stepRise = storeyHeight / stepCount,
 							stepRun = stairRun,
 						})
 					end
-					if storey > 0 then
-						local hole = lanes[(storey - 1) % #lanes + 1]
+					if hole then
+						-- Railing along the hole's front edge, on the slab in front of it.
 						Building.railing(scene, {
-							from = { x = hole.x, y = base, z = hole.z - 0.2 },
-							to = { x = hole.x + hole.w - stairRun * 2, y = base, z = hole.z - 0.2 },
+							from = { x = hole.x, y = base, z = hole.z - railDepth / 2 },
+							to = { x = hole.x + hole.w - stairRun * 2, y = base, z = hole.z - railDepth / 2 },
 						})
 					end
 				end

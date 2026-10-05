@@ -36,6 +36,8 @@ local function folderFor(env: any, root: any, path: string, cache: { [string]: a
 	return model
 end
 
+-- Re-applying replaces the previous SceneKit model with the same name under `parent` unless
+-- options.replace == false (models without a SceneKitHash attribute are never touched).
 -- options.dryRun returns the summary without creating anything.
 function Apply.scene(scene: Scene, parent: any, options: { env: any?, dryRun: boolean?, replace: boolean? }?)
 	local manifest = scene:manifest()
@@ -51,6 +53,7 @@ function Apply.scene(scene: Scene, parent: any, options: { env: any?, dryRun: bo
 		return summary, nil
 	end
 	local env = options and options.env or defaultEnv()
+	local replace = not (options and options.replace == false)
 	local history, recording = nil, nil
 	local okHistory, service = pcall(function()
 		return (game :: any):GetService("ChangeHistoryService")
@@ -63,7 +66,7 @@ function Apply.scene(scene: Scene, parent: any, options: { env: any?, dryRun: bo
 		recording = if okRecord then id else nil
 	end
 	local ok, result = pcall(function()
-		if options and options.replace ~= false then
+		if replace then
 			local existing = parent:FindFirstChild(scene.name)
 			if existing and existing:GetAttribute("SceneKitHash") ~= nil then
 				existing:Destroy()
