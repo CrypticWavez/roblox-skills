@@ -6,7 +6,8 @@ Headless: `python3 tools/blender/factory.py <command>` with the `bpy` wheel (CI:
 |---|---|
 | `template <kind> <dir>` | `.blend`, `qa.json`, front/three-quarter PNGs; QA runs first and `.fbx`/`.glb` are written (then re-imported and compared) only when it has no errors, otherwise exit 1 and no FBX/GLB |
 | `templates <dir> [--no-previews]` | all 13 kinds + `templates-summary.json` |
-| `qa <file> [report]` | QA JSON only (no previews); exit 1 on errors. A `.blend` also probes its Export collections; the factory's own `.fbx`/`.glb` pass |
+| `qa <file> [report]` | QA JSON only (no previews) for a `.blend`, `.fbx`, `.glb` or `.gltf`; exit 1 on errors, 2 on another file type. A `.blend` also probes its Export collections; the factory's own `.fbx`/`.glb` pass |
+| `qa-selftest <dir>` | known-good and known-bad assets must get the same verdict from source, FBX and GLB QA; `qa-selftest-report.json`, exit 1 on any disagreement |
 | `render-manifest <manifest> <dir>` | Cycles previews (`<name>.three-quarter.png`, `<name>.top.png`) of a SceneKit manifest; cameras are framed from the part bounds when the manifest has none |
 | `roundtrip <dir>` | v1/v2 marker asset, FBX+GLB re-import checks, `roblox_expectation_v*.json`, `roundtrip-report.json` |
 

@@ -14,8 +14,8 @@ Studio: see the table in `.agents/skills/roblox-studio-testing/SKILL.md`. Rojo o
 
 ## Safety gates (enforced by `.claude/settings.json`, `tools/hooks/guard_bash.mjs` and `tools/hooks/guard_mcp.mjs`)
 - Allowed without prompt: read-only Studio tools, `execute_luau`, play/input tools.
-- Ask: `insert_asset`, `upload_image`, `store_image`, `generate_*`, `http_get`; Luau that writes DataStores.
-- Deny: Luau that publishes, uploads or creates assets/places (`SavePlaceAsync`, `PublishAsync`, `CreateAsset*Async`, `CreatePlace*Async`…) or prompts purchases; Bash publish/upload commands (`rojo upload`, deploy tools); Open Cloud writes through curl or `rbxcloud` (assets, DataStores, ordered DataStores, MessagingService); force-push to main/master whatever the argument order.
+- Ask: `insert_asset`, `upload_image`, `store_image`, `generate_*`, `http_get`; Luau that writes DataStores (`SetAsync`, `UpdateAsync`, `RemoveAsync`, `IncrementAsync`…) or prompts a purchase or Robux transfer (`Prompt*Purchase`, `PromptRobuxTransfer`…); approve those only for a Studio test session on the diagnostic place.
+- Deny: Luau that publishes, uploads or creates assets/places (`SavePlaceAsync`, `PublishAsync`, `CreateAsset*Async`, `CreatePlace*Async`…) or completes a purchase without a prompt (`Perform*Purchase`); Bash publish/upload commands (`rojo upload`, `mantle deploy`, `tarmac` uploads, `rbxcloud` except `get*`/`list*`/`help`); write requests to Roblox web APIs through curl, wget, httpie or PowerShell (Open Cloud assets, DataStores, ordered DataStores, MessagingService); force pushes or deletions of main/master whatever the argument order; writes into `weppy-project-sync/`.
 - `node tools/hooks/selftest.mjs` (part of the pre-commit gate) feeds known-good and known-bad events to the guards; the exact patterns live in the guard scripts.
 - Never expose MCP ports beyond loopback; never pass secrets through MCP arguments.
 

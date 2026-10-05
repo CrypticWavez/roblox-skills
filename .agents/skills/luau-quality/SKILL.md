@@ -26,7 +26,7 @@ The working tree, the tier to run, and whether a golden-hash change is intended.
 | PRE_RELEASE | before a PR is marked ready; CI job `blender` (bpy 5.1.2 and 5.2.2) | `python3 tools/check.py --tier pre-release` | pre-commit + Blender `templates`, `roundtrip` and `render-manifest` previews of modular_building, dungeon and settlement; minutes |
 
 - `--strict` counts every SKIPPED step (tool missing) as FAIL. CI runs `--tier pre-commit --strict` and the Blender job `--tier pre-release --strict`. Without it a missing tool shows as SKIPPED, never as PASS.
-- The secret scan reads every text file in the working tree (not the git index), so unstaged files count too.
+- The secret scan reads the working-tree copy of every file git would commit (tracked and untracked, not ignored), not the staged index, so unstaged edits count too.
 - `--update-golden` rewrites `tests/golden/fixture-hashes.json`; `--install-git-hook` makes `git commit` run PRE_COMMIT.
 
 ## Procedure

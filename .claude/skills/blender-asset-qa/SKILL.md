@@ -1,6 +1,6 @@
 ---
 name: blender-asset-qa
-description: Run the machine-readable Blender asset quality gate (transforms, scale, orientation, pivot, normals, non-manifold and degenerate geometry, loose verts, UVs, materials, texture paths, triangle limits and budgets, bone influences, unweighted verts, bone names, animation clips, FBX/GLB export re-import probe) on a .blend, .fbx or .glb. Use after editing an asset, before any export or hand-off, and on third-party meshes.
+description: Run the machine-readable Blender asset quality gate (transforms, scale, orientation, pivot, normals, non-manifold and degenerate geometry, loose verts, UVs, materials, texture paths, triangle limits and budgets, bone influences, unweighted verts, bone names, animation clips, FBX/GLB export re-import probe) on a .blend, .fbx, .glb or .gltf. Use after editing an asset, before any export or hand-off, and on third-party meshes.
 ---
 
 # Blender asset QA
@@ -12,13 +12,14 @@ Catch import-breaking and budget problems before Roblox import, as a JSON report
 "Check this model"; after editing an asset; before any export or hand-off; reviewing a downloaded or third-party `.fbx`/`.glb`.
 
 ## Inputs
-A `.blend`, `.fbx` or `.glb` path. Optional `rbx_*` metadata on objects: `category` (budget row), `budget` (`{tris, materials}`), `expected_dims` (`[x, y, z]` studs, Blender axes), `rigged`, `animated`, `bone_names`, `allow_open`, `pivot = "custom"`, `up_axis_longest`, `qa = "skip"`; `rbx_cutter` marks boolean cutters.
+A `.blend`, `.fbx`, `.glb` or `.gltf` path. Optional `rbx_*` metadata on objects: `category` (budget row), `budget` (`{tris, materials}`), `expected_dims` (`[x, y, z]` studs, Blender axes), `rigged`, `animated`, `bone_names`, `allow_open`, `pivot = "custom"`, `up_axis_longest`, `qa = "skip"`; `rbx_cutter` marks boolean cutters.
 
 ## Required context
 `tools/blender/bkit/qa.py` (`BUDGETS`, `run`, `gated_export`, check functions); `tools/blender/bkit/env.py` (`set_meta`, `get_meta`).
 
 ## Tools
-`python3 tools/blender/factory.py qa <file> [report.json]` (or `blender -b --python tools/blender/factory.py -- qa ...`); exit 1 on any error. `factory.py template` runs the same checks as its export gate.
+- `python3 tools/blender/factory.py qa <file> [report.json]` (or `blender -b --python tools/blender/factory.py -- qa ...`); exit 1 on any error, 2 on an unsupported file type. `factory.py template` runs the same checks as its export gate.
+- `factory.py qa-selftest <out_dir>` after changing `qa.py` or an importer setting: known-good and known-bad assets must get the same verdict from source, FBX and GLB QA (`qa-selftest-report.json`, exit 1 on any disagreement).
 
 ## Procedure
 1. Run QA. A `.blend` also gets the export probe: the `<Kind>/Export` collections (the whole scene if there are none) are exported to FBX and GLB in a temp folder, re-imported and compared in rest pose (triangles, bounds, mesh names, animation). An `.fbx`/`.glb` is checked as imported (GLB vertices welded at 1e-5, importer bone shapes skipped), so the factory's own exports can be re-checked.
