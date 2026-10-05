@@ -1,0 +1,19 @@
+{
+  "id": "analytics-release-commercial-review",
+  "type": "quality_criterion",
+  "title": "Release, earnings and policy review contract",
+  "summary": "Dated official reference set for per-game release and commercial review; dynamic prices and policy eligibility must be rechecked, with no frozen payout or ranking assumptions.",
+  "status": "researched_only",
+  "tags": ["release", "rollback", "creator-rewards", "devex", "regional-pricing", "paid-random-items", "human-review"],
+  "sources": [
+    {"url": "https://create.roblox.com/docs/creator-rewards", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/production/monetization/developer-exchange", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/production/monetization/regional-pricing", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/production/monetization/paid-random-items", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/production/publishing/publish-games-and-places", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/production/publishing/kids-and-select", "accessed_at": "2026-10-05"},
+    {"url": "https://create.roblox.com/docs/safety", "accessed_at": "2026-10-05"}
+  ],
+  "artifacts": ["docs/release-analytics.md"],
+  "limitations": ["Account and audience eligibility are not verified by a local checklist.", "No publication, subscription, purchase, payout, policy feature or production data operation performed.", "Human enjoyment, fairness and artistic review remain independent gates.", "Platform rules may change after this snapshot; refresh before each release."]
+}

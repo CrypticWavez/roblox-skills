@@ -1,0 +1,18 @@
+{
+  "name":"SETUP_ONLY_Creator_Tools_Diagnostic",
+  "tree":{
+    "$className":"DataModel",
+    "ReplicatedStorage":{"Workbench":{"$className":"Folder","Runtime":{"$path":"../packages/Runtime"},"Creator":{"$path":"../packages/Creator"}}},
+    "StarterPlayer":{"StarterPlayerScripts":{"WorkbenchCreatorDiagnostics":{
+      "$className":"Folder",
+      "UI":{"$path":"creator/UI.client.luau"},
+      "Effects":{"$path":"creator/Effects.client.luau","$properties":{"Enabled":false}},
+      "AudioMovement":{"$path":"creator/AudioMovement.client.luau","$properties":{"Enabled":false}},
+      "MediaPlayback":{"$path":"creator/MediaPlayback.client.luau","$properties":{"Enabled":false}},
+      "World":{"$path":"creator/World.client.luau","$properties":{"Enabled":false}},
+      "Observation":{"$path":"observation/Diagnostic.client.luau","$properties":{"Enabled":false}}
+    }}},
+    "Workspace":{"$properties":{"FilteringEnabled":true}},
+    "Lighting":{"$properties":{"Ambient":[0.5,0.5,0.5],"Brightness":2,"ClockTime":14}}
+  }
+}

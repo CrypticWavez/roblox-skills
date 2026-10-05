@@ -1,0 +1,16 @@
+{
+  "id": "analytics-offline-session-foundation",
+  "type": "workflow",
+  "title": "Privacy-bounded offline session analytics",
+  "summary": "Executable validation and cohort reporting for local JSONL, with explicit observation windows, traffic exclusion and source-specific denominators. No live telemetry.",
+  "status": "partially_verified",
+  "tags": ["analytics", "privacy", "funnel", "acquisition", "test-exclusion", "setup-only"],
+  "sources": [
+    {"url": "https://create.roblox.com/docs/production/analytics/funnel-events", "accessed_at": "2026-10-05", "claim": "Roblox funnels can fill earlier steps when later steps are logged; local ordered diagnostic deliberately does not."},
+    {"url": "https://create.roblox.com/docs/production/analytics/custom-events", "accessed_at": "2026-10-05", "claim": "Native event ingestion requires server-side published-game integration, not Studio fixture success."},
+    {"url": "https://create.roblox.com/docs/discovery", "accessed_at": "2026-10-05", "claim": "Source-specific recommendation metrics motivate separating Home and sponsored cohorts."}
+  ],
+  "artifacts": ["tools/analytics_report.py", "config/analytics.schema.json", "tests/test_analytics.py", "fixtures/analytics/neutral_events.jsonl", "docs/release-analytics.md"],
+  "verification_command": "py -m unittest discover -s tests -p test_analytics.py",
+  "limitations": ["Fixture data is synthetic.", "No persistent player identity, return retention, unique players, revenue or rank prediction.", "No actual Roblox AnalyticsService integration or platform dashboard ingestion exercised."]
+}

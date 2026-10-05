@@ -1,0 +1,42 @@
+{
+  "name": "SETUP_ONLY_Factory_Diagnostic",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Workbench": {
+        "$className": "Folder",
+        "SceneKit": {
+          "$path": "../packages/SceneKit"
+        },
+        "ProcGen": {
+          "$path": "../packages/ProcGen"
+        },
+        "Pipeline": {
+          "$path": "../packages/Pipeline"
+        },
+        "Runtime": {
+          "$path": "../packages/Runtime"
+        },
+        "Creator": {
+          "$path": "../packages/Creator"
+        },
+        "Diagnostics": {
+          "$path": "../packages/Diagnostics"
+        }
+      }
+    },
+    "ServerScriptService": {
+      "FactorySmoke": {
+        "$path": "factory/FactorySmoke.server.luau",
+        "$properties": {
+          "Enabled": false
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      }
+    }
+  }
+}

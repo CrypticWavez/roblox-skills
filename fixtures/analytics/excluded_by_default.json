@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "partially_verified",
+  "mode": "offline_report",
+  "window": {
+    "start_inclusive": "2026-10-05T12:00:00+00:00",
+    "end_exclusive": "2026-10-05T12:10:00+00:00"
+  },
+  "synthetic_opt_in": false,
+  "duplicate_events_ignored": 0,
+  "excluded_events": {
+    "synthetic_events": 14,
+    "test_or_staging_events": 1
+  },
+  "anomalies": {},
+  "cohorts": [],
+  "limitations": [
+    "Session metrics only; no persistent player identity, D1/D7 retention, revenue, or unique-player count is inferred.",
+    "The input must be a complete session event export through the declared end; this tool cannot detect silent telemetry loss.",
+    "Window-edge sessions lack follow-up and are excluded from fixed-horizon denominators.",
+    "Purchase metrics are observed session funnels, not durable purchase accounting or lifetime conversion; delayed receipts can arrive in other sessions.",
+    "No discovery ranking prediction, revenue estimate, causal effect, or human enjoyment claim.",
+    "Synthetic cohorts are separated and never treated as observed players."
+  ],
+  "input_sha256": "c9119beb7244a94d756f83900087e6ef2f67208c5d3100cfb7baa966a1c2a58a"
+}

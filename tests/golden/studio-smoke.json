@@ -1,0 +1,14 @@
+{
+  "building": {
+    "failed": {},
+    "hash": "778d1d9a",
+    "parts": 96,
+    "pass": true
+  },
+  "dungeon": {
+    "failed": {},
+    "hash": "8494d161",
+    "parts": 108,
+    "pass": true
+  }
+}

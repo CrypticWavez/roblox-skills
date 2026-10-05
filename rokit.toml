@@ -1,0 +1,7 @@
+# Toolchain pins (rokit 1.2). Versions match Ethan's local workbench as audited 2026-10-05.
+[tools]
+rojo = "rojo-rbx/rojo@7.7.0"
+lune = "lune-org/lune@0.10.5"
+stylua = "JohnnyMorganz/StyLua@2.5.2"
+selene = "Kampfkarren/selene@0.31.0"
+luau-lsp = "JohnnyMorganz/luau-lsp@1.68.1"

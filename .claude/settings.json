@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/hooks/fast_on_edit.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/hooks/guard_bash.mjs\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__Roblox_Studio__.*|mcp__blender.*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/tools/hooks/guard_mcp.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(lune run:*)",
+      "Bash(stylua:*)",
+      "Bash(selene:*)",
+      "Bash(python3 tools/check.py:*)",
+      "Bash(python3 tools/sync_skills.py:*)",
+      "Bash(python3 tools/blender/factory.py:*)",
+      "mcp__Roblox_Studio__list_roblox_studios",
+      "mcp__Roblox_Studio__get_studio_state",
+      "mcp__Roblox_Studio__search_game_tree",
+      "mcp__Roblox_Studio__inspect_instance",
+      "mcp__Roblox_Studio__script_read",
+      "mcp__Roblox_Studio__script_search",
+      "mcp__Roblox_Studio__script_grep",
+      "mcp__Roblox_Studio__get_console_output",
+      "mcp__Roblox_Studio__screen_capture",
+      "mcp__Roblox_Studio__execute_luau",
+      "mcp__Roblox_Studio__multi_edit",
+      "mcp__Roblox_Studio__start_stop_play",
+      "mcp__Roblox_Studio__user_keyboard_input",
+      "mcp__Roblox_Studio__user_mouse_input",
+      "mcp__Roblox_Studio__character_navigation"
+    ],
+    "ask": [
+      "mcp__Roblox_Studio__insert_asset",
+      "mcp__Roblox_Studio__upload_image",
+      "mcp__Roblox_Studio__store_image",
+      "mcp__Roblox_Studio__generate_mesh",
+      "mcp__Roblox_Studio__generate_material",
+      "mcp__Roblox_Studio__generate_procedural_model"
+    ],
+    "deny": [
+      "Bash(rojo upload:*)",
+      "Edit(weppy-project-sync/**)",
+      "Write(weppy-project-sync/**)"
+    ]
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "id": "tools-options",
+  "type": "tool_catalog",
+  "title": "Focused optional art and authoring tools",
+  "summary": "Figma, Aseprite, Moon Animator2, Krita, Audacity and native Studio alternatives. No optional tool purchased, installed or authenticated.",
+  "tags": [
+    "tools",
+    "pricing",
+    "license",
+    "ui",
+    "animation",
+    "audio",
+    "pixel-art"
+  ],
+  "sources": [
+    {
+      "url": "https://www.figma.com/pricing/",
+      "accessed_at": "2026-10-05"
+    },
+    {
+      "url": "https://www.aseprite.org/faq/",
+      "accessed_at": "2026-10-05"
+    },
+    {
+      "url": "https://krita.org/en/features/",
+      "accessed_at": "2026-10-05"
+    },
+    {
+      "url": "https://www.audacityteam.org/",
+      "accessed_at": "2026-10-05"
+    },
+    {
+      "url": "https://create.roblox.com/docs/animation/editor",
+      "accessed_at": "2026-10-05"
+    }
+  ],
+  "status": "researched_only",
+  "snapshot_date": "2026-10-05",
+  "selection_policy": "Add a tool only for a measured workflow gap. Paid tools are optional; no private transfers or purchases authorized.",
+  "options": [
+    {
+      "id": "figma",
+      "title": "Figma",
+      "publisher": "Figma",
+      "status": "researched_only",
+      "price": {
+        "starter_usd": 0,
+        "professional_full_seat_displayed_usd_per_month": 16,
+        "billing_toggle": "Annual/monthly selection not established from text capture; confirm before purchase",
+        "checked_at": "2026-10-05"
+      },
+      "license": "Proprietary hosted service; account/plan terms apply; community resources have separate licenses",
+      "benefit": "Collaborative component design and visual handoff when a team needs it",
+      "export_capability": "Official static export documentation supports PNG, JPG, SVG and PDF; Dev Mode and MCP are documented with plan limits",
+      "roblox_boundary": "Exports do not create functional ScreenGui interactions, safe areas or controller navigation",
+      "free_alternative": "Repository Luau UI components and native Studio inspection; Figma Starter for optional public/nonprivate design work",
+      "exact_blocked_capability": "Paid shared-library/team features and authenticated Figma MCP; no essential local Roblox UI capability blocked",
+      "network_and_privacy": "Cloud service; do not send private design files without explicit authorization",
+      "selected": false,
+      "sources": [
+        {
+          "url": "https://www.figma.com/pricing/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://help.figma.com/hc/en-us/articles/13402894554519-Export-formats-and-settings-for-static-designs",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "aseprite",
+      "title": "Aseprite",
+      "publisher": "Igara Studio",
+      "status": "researched_only",
+      "price": {
+        "amount": 19.99,
+        "currency": "USD",
+        "model": "Minimum purchase/pledge for prebuilt1.x binaries per official FAQ",
+        "checked_at": "2026-10-05"
+      },
+      "license": "Aseprite EULA; source-available is not unrestricted redistribution",
+      "benefit": "Dedicated pixel animation, tags, layers and repeatable atlas exports",
+      "export_capability": "Documented batch CLI exports PNG sheets plus JSON metadata, frame ranges and tags; scripting API also documented",
+      "roblox_boundary": "No installed/exercised Aseprite path here. Atlas upload and Roblox playback integration are separate",
+      "free_alternative": "Krita for authored raster/animation work; existing Pillow/FFmpeg for deterministic transforms",
+      "exact_blocked_capability": "Only the Aseprite editor and its specific CLI integration; image processing is already unblocked",
+      "network_and_privacy": "Offline editor after acquisition; obtain only official binaries; no third-party cracked builds",
+      "selected": false,
+      "sources": [
+        {
+          "url": "https://www.aseprite.org/faq/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://www.aseprite.org/docs/cli/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://github.com/aseprite/aseprite/blob/main/EULA.txt",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "moon-animator",
+      "title": "Moon Animator2",
+      "publisher": "xsixx",
+      "status": "researched_only",
+      "price": {
+        "amount": 19.99,
+        "currency": "USD",
+        "context": "Sale price shown in official Creator Store search snapshot; direct page has no readable body; checkout revalidation required",
+        "checked_at": "2026-10-05"
+      },
+      "license": "Creator Store purchase terms; per-seat/team/export terms not independently inspected",
+      "benefit": "Candidate specialized Studio animation workspace; benefit requires an actual timed workflow comparison",
+      "export_capability": "Not verified from accessible primary documentation or local execution; no automation claim",
+      "roblox_boundary": "Not purchased, installed, or executed. Do not use similarly named free reuploads",
+      "free_alternative": "Native Roblox Animation Editor plus tested Blender Python/MCP rig pipeline",
+      "exact_blocked_capability": "Only this proprietary plugin workflow; authoring/export can proceed with free tools",
+      "network_and_privacy": "Third-party Studio plugin needs source/permission inspection in disposable place before use",
+      "selected": false,
+      "sources": [
+        {
+          "url": "https://create.roblox.com/store/asset/4725618216/Moon-Animator-2",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://create.roblox.com/docs/animation/editor",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "krita",
+      "title": "Krita",
+      "publisher": "Krita Foundation / KDE",
+      "status": "researched_only",
+      "price": {
+        "amount": 0,
+        "currency": "USD",
+        "context": "Official direct download; optional store purchases not required",
+        "checked_at": "2026-10-05"
+      },
+      "license": "GPLv3 application; artwork and third-party brush rights assessed separately",
+      "benefit": "Local painting, tiling textures, layered originals and frame animation",
+      "export_capability": "Official manual lists native KRA and image formats; features document PNG/image/video animation export and Python API",
+      "roblox_boundary": "No installed/exercised Krita path; no claimed full GUI automation. Export images still need Roblox ingestion",
+      "free_alternative": "Existing Pillow processing and Blender texture baking handle current diagnostic needs",
+      "exact_blocked_capability": "No setup gate blocked; install only when an authored painting task requires it",
+      "network_and_privacy": "Local app; acquire direct official installer, inspect installer and optional extensions before execution",
+      "selected": false,
+      "sources": [
+        {
+          "url": "https://krita.org/en/features/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://krita.org/en/about/license/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://docs.krita.org/en/general_concepts/file_formats.html",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "audacity",
+      "title": "Audacity",
+      "publisher": "Audacity contributors / Muse Group",
+      "status": "researched_only",
+      "price": {
+        "amount": 0,
+        "currency": "USD",
+        "checked_at": "2026-10-05"
+      },
+      "license": "GPLv3 application per repository license; audio content has separate rights",
+      "benefit": "Manual listening, trimming and multitrack cleanup using editable local projects",
+      "export_capability": "Official support documents AUP3 projects and WAV/MP3/OGG export; some formats need FFmpeg",
+      "roblox_boundary": "Not installed/exercised by this task. Audio decoding is not hearing; ownership and moderation remain separate",
+      "free_alternative": "Existing FFmpeg/FFprobe for metadata and deterministic offline processing",
+      "exact_blocked_capability": "Optional multitrack editor workflow; local audio fixtures and analysis can proceed",
+      "network_and_privacy": "Use local save/export; cloud upload features are not authorized",
+      "selected": false,
+      "sources": [
+        {
+          "url": "https://www.audacityteam.org/",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://support.audacityteam.org/basics/saving-and-exporting-projects",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://github.com/audacity/audacity/blob/master/LICENSE.txt",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    },
+    {
+      "id": "roblox-native-authoring",
+      "title": "Native Studio UI and Animation Editor",
+      "publisher": "Roblox",
+      "status": "researched_only",
+      "price": {
+        "amount": 0,
+        "currency": "USD",
+        "checked_at": "2026-10-05"
+      },
+      "license": "Roblox software/platform terms; publish/upload actions retain owner-account requirements",
+      "benefit": "Inspect final UI and animation behavior in the actual engine",
+      "export_capability": "Native Animation Editor supports rig timelines and animation publication; publication was intentionally not exercised under setup-only no-upload boundary",
+      "roblox_boundary": "Native fixture execution evidence is in parent Studio reports; this catalog entry only establishes documented capability",
+      "free_alternative": "Selected free route alongside local Blender and repository UI modules",
+      "exact_blocked_capability": "Production asset publication/ownership tests require later explicit authorization",
+      "network_and_privacy": "Use separate unpublished diagnostic scene; never run unknown asset scripts in another game",
+      "selected": true,
+      "sources": [
+        {
+          "url": "https://create.roblox.com/docs/animation/editor",
+          "accessed_at": "2026-10-05"
+        },
+        {
+          "url": "https://create.roblox.com/docs/ui/overview",
+          "accessed_at": "2026-10-05"
+        }
+      ]
+    }
+  ]
+}
