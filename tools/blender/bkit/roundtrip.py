@@ -14,6 +14,7 @@ from mathutils import Vector
 from . import env, ops, qa
 
 ASSET = "SM_RoundTripMarker"
+REVISIONS = (1, 2)
 
 
 def _build(revision):
@@ -115,15 +116,19 @@ def _expectation(sig, revision, offsets):
 def run(out_dir):
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Start clean: a failing run must not leave an earlier run's exports, sources or
+    # expectations (for any revision) next to its report for Studio to pick up.
+    for revision in REVISIONS:
+        for name in (f"{ASSET}_v{revision}.fbx", f"{ASSET}_v{revision}.glb", f"{ASSET}_v{revision}.blend", f"{ASSET}_v{revision}.blend1", f"roblox_expectation_v{revision}.json"):
+            (out_dir / name).unlink(missing_ok=True)
+    (out_dir / "roundtrip-report.json").unlink(missing_ok=True)
     report = {"asset": ASSET, "revisions": [], "pass": True, "studio": "BLOCKED_EXTERNAL: run packages/Pipeline/ImportInspector in Studio"}
     previous = None
-    for revision in (1, 2):
+    for revision in REVISIONS:
         obj = _build(revision)
         source_qa = qa.run(export_probe=False)
         if not source_qa["summary"]["pass"]:
-            # QA errors block export: leave nothing for Studio to import.
-            for suffix in ("fbx", "glb"):
-                (out_dir / f"{ASSET}_v{revision}.{suffix}").unlink(missing_ok=True)
+            # QA errors block export: nothing is written for this or any later revision.
             report["pass"] = False
             report["revisions"].append({"revision": revision, "pass": False, "source_qa": source_qa["summary"], "export": "blocked by source QA errors"})
             print(f"roundtrip v{revision} FAIL source QA: {source_qa['summary']['errors']}")

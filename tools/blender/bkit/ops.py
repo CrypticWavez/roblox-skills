@@ -4,6 +4,7 @@ Every op returns the object it created or changed so builders can chain them. De
 steps (apply_modifiers, apply_transforms) are explicit; nothing is applied implicitly.
 """
 import math
+from contextlib import contextmanager
 
 import bmesh
 import bpy
@@ -364,34 +365,55 @@ def keyframe_clip(arm_obj, clip_name, keys, fps=30):
 
 # ---------- export ----------
 
+@contextmanager
+def _selection(objects):
+    """Select exactly `objects` for a use_selection export (None: no change, whole scene).
+    Hidden members cannot be selected and would silently drop out of the file, so they are
+    revealed for the export (env.revealed); visibility and selection are restored afterwards.
+    Objects outside the view layer (excluded collections) cannot be exported this way;
+    env.export_objects() leaves them out."""
+    if objects is None:
+        yield
+        return
+    layer = bpy.context.view_layer
+    wanted = set(objects)
+    with env.revealed(wanted):
+        previous = {o: o.select_get() for o in layer.objects}
+        for o in layer.objects:
+            o.select_set(o in wanted)
+        try:
+            yield
+        finally:
+            for o, selected in previous.items():
+                o.select_set(selected)
+
+
 def export_fbx(path, objects=None):
     """Roblox-oriented FBX: studs as units (scale 1, apply FBX_SCALE_UNITS), no leaf bones,
-    -Z forward / Y up, textures embedded, animation only when actions exist."""
-    if objects is not None:
-        for o in bpy.context.scene.objects:
-            o.select_set(o in objects)
+    -Z forward / Y up, textures embedded, animation only when actions exist. objects: export
+    exactly these (hidden ones included); None exports the whole scene."""
     has_anim = any(o.animation_data and o.animation_data.action for o in (bpy.context.scene.objects if objects is None else objects))
-    bpy.ops.export_scene.fbx(
-        filepath=str(path),
-        use_selection=objects is not None,
-        apply_scale_options="FBX_SCALE_UNITS",
-        axis_forward="-Z",
-        axis_up="Y",
-        add_leaf_bones=False,
-        bake_anim=has_anim,
-        bake_anim_use_all_actions=False,  # one clip per export (Roblox imports one track)
-        bake_anim_use_nla_strips=False,  # bake the active action over the scene range
-        path_mode="COPY",
-        embed_textures=True,
-        object_types={"MESH", "ARMATURE", "EMPTY"},
-        use_custom_props=True,
-    )
+    with _selection(objects):
+        bpy.ops.export_scene.fbx(
+            filepath=str(path),
+            use_selection=objects is not None,
+            apply_scale_options="FBX_SCALE_UNITS",
+            axis_forward="-Z",
+            axis_up="Y",
+            add_leaf_bones=False,
+            bake_anim=has_anim,
+            bake_anim_use_all_actions=False,  # one clip per export (Roblox imports one track)
+            bake_anim_use_nla_strips=False,  # bake the active action over the scene range
+            path_mode="COPY",
+            embed_textures=True,
+            object_types={"MESH", "ARMATURE", "EMPTY"},
+            use_custom_props=True,
+        )
     return path
 
 
 def export_glb(path, objects=None):
-    if objects is not None:
-        for o in bpy.context.scene.objects:
-            o.select_set(o in objects)
-    bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=objects is not None, export_yup=True, export_extras=True, export_apply=True)
+    """GLB, Y up, modifiers applied, custom properties as extras. objects: as export_fbx."""
+    with _selection(objects):
+        bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=objects is not None, export_yup=True, export_extras=True, export_apply=True)
     return path

@@ -9,19 +9,22 @@ import json
 import math
 import os
 import tempfile
+from collections import defaultdict
 from pathlib import Path
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Vector, kdtree
 
 from . import env
 
 ROBLOX_MAX_TRIS = 20000
 ROBLOX_MAX_INFLUENCES = 4
 # glTF stores one vertex per corner attribute set, so imported .glb meshes are split along UV and
-# normal seams. Welding exact duplicates restores the authored topology for the topology checks.
+# normal seams. `_weld_seams` joins those seams again (vertices closer than this) for the topology
+# checks without merging separate shells that merely touch.
 GLTF_WELD = 1e-5
+TAU = 2 * math.pi
 
 BUDGETS = {  # triangles, materials (per mesh) - workbench defaults, override with rbx_budget
     "prop": (2000, 2),
@@ -56,12 +59,21 @@ def _bone_shapes():
 
 
 def _world_scale(obj):
-    """World scale, so a scaled parent (Empty, armature) counts. Mirroring always reads negative."""
-    m = obj.matrix_world
-    scale = m.to_scale()
-    if m.to_3x3().determinant() < 0 and min(scale) > 0:  # mathutils may return magnitudes only
-        scale.x = -scale.x
-    return tuple(round(s, 4) for s in scale)
+    """World scale (column lengths of the world matrix), so a scaled parent (Empty, armature)
+    counts. A mirrored matrix (negative determinant) always reads negative on the axes whose
+    column points against its own axis (`(-1, 1, 1)` reads as such, not as `(-1, -1, -1)`, which
+    is what Matrix.to_scale reports); a rotated mirror blames its least-aligned axis. A positive
+    determinant is a pure rotation and reads positive (the rotation check reports it)."""
+    m = obj.matrix_world.to_3x3()
+    cols = [m.col[i] for i in range(3)]
+    mags = [c.length for c in cols]
+    signs = [1, 1, 1]
+    if m.determinant() < 0:
+        signs = [-1 if cols[i][i] < 0 else 1 for i in range(3)]
+        if math.prod(signs) > 0:
+            worst = min(range(3), key=lambda i: cols[i][i] / (mags[i] or 1))
+            signs = [-1 if i == worst else 1 for i in range(3)]
+    return tuple(round(s * g, 4) for s, g in zip(signs, mags))
 
 
 def _world_rotation(obj):
@@ -81,9 +93,119 @@ def transform_checks(obj, prefix="transform", rotation_level="warning"):
     ]
 
 
+class _Sets:
+    """Union-find over integer ids."""
+
+    def __init__(self, n):
+        self.parent = list(range(n))
+
+    def find(self, i):
+        while self.parent[i] != i:
+            self.parent[i] = self.parent[self.parent[i]]
+            i = self.parent[i]
+        return i
+
+    def union(self, a, b):
+        a, b = self.find(a), self.find(b)
+        if a != b:
+            self.parent[max(a, b)] = min(a, b)
+
+
+def _radial_pairs(edges, a, b, cls, origin):
+    """Pair coincident boundary edges (all spanning position classes a -> b) around their common
+    line the way closed shells close: sorted by the angle at which each face leaves the edge, a
+    face with solid on its counter-clockwise side pairs with the next face counter-clockwise.
+    Faces at the same angle (shells touching face to face) order closing-before-opening, so the
+    zero-thickness gap is void, not solid. Returns None when the faces do not alternate (odd
+    count, inconsistent winding or interpenetration): the caller then welds them all."""
+    v0, v1 = edges[0].verts
+    d = ((v1.co - v0.co) if cls[v0.index] == a else (v0.co - v1.co)).normalized()
+    e1 = d.orthogonal().normalized()
+    e2 = d.cross(e1)
+    items = []
+    for e in edges:
+        loop = e.link_loops[0]
+        sign = 1 if cls[loop.vert.index] == a else -1  # winding along a -> b
+        w = loop.face.calc_center_median() - origin
+        u = w - d * w.dot(d)  # direction from the edge into the face
+        if u.length < 1e-9:
+            return None
+        items.append((math.atan2(u.dot(e2), u.dot(e1)) % TAU, sign, e))
+    items.sort(key=lambda t: t[0])
+    n = len(items)
+    # Start after the widest angular gap so faces at the same angle never straddle the 0/TAU wrap.
+    widest = max(range(n), key=lambda i: ((items[(i + 1) % n][0] - items[i][0]) % TAU, -i))
+    seq = items[widest + 1 :] + items[: widest + 1]
+    ordered, group = [], [seq[0]]
+    for item in seq[1:]:
+        if (item[0] - group[-1][0]) % TAU < 1e-4:
+            group.append(item)
+        else:
+            ordered += sorted(group, key=lambda t: -t[1])
+            group = [item]
+    ordered += sorted(group, key=lambda t: -t[1])
+    signs = [t[1] for t in ordered]
+    if n % 2 or any(signs[i] == signs[(i + 1) % n] for i in range(n)):
+        return None
+    first = 0 if signs[0] == -1 else 1
+    return [(ordered[i][2], ordered[(i + 1) % n][2]) for i in range(first, n + first, 2)]
+
+
+def _weld_seams(bm, dist):
+    """Undo glTF's per-corner vertex split for the topology checks without merging separate
+    shells. A plain distance weld also fuses closed shells that share an edge or face (stacked
+    or abutting boxes in one mesh) into false non-manifold edges and flipped normals. Instead,
+    coincident boundary edges are paired: two always pair (a seam; if their windings agree the
+    normals check reports the flip), more than two pair radially (`_radial_pairs`), anything
+    that does not pair cleanly is welded together. Only paired edges merge their endpoints.
+    Returns the number of vertices merged away."""
+    bm.verts.index_update()
+    verts = list(bm.verts)
+    tree = kdtree.KDTree(len(verts))
+    for v in verts:
+        tree.insert(v.co, v.index)
+    tree.balance()
+    near = _Sets(len(verts))
+    for v in verts:
+        for _co, j, _dist in tree.find_range(v.co, dist):
+            near.union(v.index, j)
+    cls = [near.find(i) for i in range(len(verts))]
+    lines = defaultdict(list)
+    for e in bm.edges:
+        if len(e.link_faces) == 1:
+            a, b = cls[e.verts[0].index], cls[e.verts[1].index]
+            if a != b:
+                lines[(min(a, b), max(a, b))].append(e)
+    merge = _Sets(len(verts))
+
+    def join(e1, e2):
+        for v in e1.verts:
+            for w in e2.verts:
+                if cls[w.index] == cls[v.index]:
+                    merge.union(v.index, w.index)
+
+    for (a, b), edges in lines.items():
+        if len(edges) < 2:
+            continue  # a real open boundary
+        origin = next(v.co for v in edges[0].verts if cls[v.index] == a)
+        pairs = [tuple(edges)] if len(edges) == 2 else _radial_pairs(edges, a, b, cls, origin)
+        if pairs is None:
+            for other in edges[1:]:
+                join(edges[0], other)
+            continue
+        for e1, e2 in pairs:
+            if e1.link_faces[0] is not e2.link_faces[0]:  # never collapse a face onto itself
+                join(e1, e2)
+    targetmap = {verts[i]: verts[merge.find(i)] for i in range(len(verts)) if merge.find(i) != i}
+    if targetmap:
+        bmesh.ops.weld_verts(bm, targetmap=targetmap)
+    return len(targetmap)
+
+
 def mesh_checks(obj, meta, weld=0.0):
-    """weld > 0 merges vertices closer than `weld` on a copy before the topology and normals
-    checks (use GLTF_WELD for glTF input); triangle counts always use the mesh as stored."""
+    """weld > 0 joins glTF seams (`_weld_seams`, vertices closer than `weld`) on a copy before
+    the edge and normals checks (use GLTF_WELD for glTF input); triangle counts, degenerate faces
+    and loose vertices always use the mesh as stored."""
     checks = []
     mesh = obj.data
     category = meta.get("category", "test")
@@ -96,25 +218,31 @@ def mesh_checks(obj, meta, weld=0.0):
     checks += transform_checks(obj)
 
     bm = bmesh.new()
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    bm.from_object(obj, depsgraph)
+    evaluated = "modifiers applied"
+    try:
+        bm.from_object(obj, bpy.context.evaluated_depsgraph_get())
+    except ValueError:  # not in the evaluated depsgraph (collection excluded or disabled)
+        bm.from_mesh(mesh)
+        evaluated = "base mesh, modifiers not applied: not evaluated (collection excluded or disabled)"
     bm.verts.ensure_lookup_table()
     tris = sum(len(f.verts) - 2 for f in bm.faces)
-    checks.append(_check("triangles_roblox_limit", tris <= ROBLOX_MAX_TRIS, tris, ROBLOX_MAX_TRIS))
+    checks.append(_check("triangles_roblox_limit", tris <= ROBLOX_MAX_TRIS, tris, ROBLOX_MAX_TRIS, detail=evaluated))
     checks.append(_check("triangles_budget", tris <= tri_budget, tris, tri_budget, level="warning", detail=category))
 
+    # Degenerate faces and loose vertices are properties of the stored mesh: check before welding.
+    degenerate = sum(1 for f in bm.faces if f.calc_area() < 1e-6)
+    loose = sum(1 for v in bm.verts if not v.link_edges)
+    welded = None
     if weld:
-        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=weld)
+        merged = _weld_seams(bm, weld)
         bm.normal_update()
-    welded = f"welded at {weld}" if weld else None
+        welded = f"glTF seams welded at {weld} ({merged} vertices merged)"
     non_manifold = sum(1 for e in bm.edges if not e.is_manifold and not e.is_boundary)
     boundary = sum(1 for e in bm.edges if e.is_boundary)
     checks.append(_check("non_manifold_edges", non_manifold == 0, non_manifold, 0, detail=welded))
     checks.append(_check("open_boundary_edges", boundary == 0 or meta.get("allow_open", False), boundary, 0, level="warning", detail="watertight preferred for Roblox collision"))
-    degenerate = sum(1 for f in bm.faces if f.calc_area() < 1e-6)
-    checks.append(_check("degenerate_faces", degenerate == 0, degenerate, 0, detail=welded))
-    loose = sum(1 for v in bm.verts if not v.link_edges)
-    checks.append(_check("loose_vertices", loose == 0, loose, 0, detail=welded))
+    checks.append(_check("degenerate_faces", degenerate == 0, degenerate, 0, detail="mesh as stored"))
+    checks.append(_check("loose_vertices", loose == 0, loose, 0, detail="mesh as stored"))
 
     # Normals: compare against a recalculated copy; flipped faces count.
     copy = bm.copy()
@@ -225,50 +353,78 @@ def summarize(report):
 
 def run(export_probe=True, objects=None, weld=0.0):
     """Check every scene mesh, armature and empty except cutters, `rbx_qa = "skip"` objects and
-    bone display shapes. export_probe: export `objects` (default: the whole scene) to a temp dir
-    with the factory exporters, re-import and compare. weld: see mesh_checks."""
+    bone display shapes. export_probe: export `objects` (default: every scene object except
+    cutters) to a temp dir with the factory exporters, re-import and compare. weld: see
+    mesh_checks; QA of an imported .glb/.gltf needs GLTF_WELD, which `check_file` sets."""
     bpy.context.view_layer.update()  # world matrices are stale after scripted transform edits
     report = {"file": bpy.data.filepath or None, "blender": bpy.app.version_string, "objects": []}
     shapes = _bone_shapes()
-    for obj in sorted(bpy.context.scene.objects, key=lambda o: o.name):
-        meta = env.get_meta(obj)
-        if obj.get("rbx_cutter") or meta.get("qa") == "skip" or obj in shapes:
-            continue
-        if obj.type == "MESH":
-            checks = mesh_checks(obj, meta, weld)
-        elif obj.type == "ARMATURE":
-            checks = armature_checks(obj, meta)
-        elif obj.type == "EMPTY":
-            checks = empty_checks(obj, meta)
-        else:
-            continue
-        report["objects"].append({"name": obj.name, "type": obj.type, "category": meta.get("category"), "checks": checks})
+    with env.revealed(bpy.context.scene.objects):  # hidden objects still ship: evaluate them too
+        for obj in sorted(bpy.context.scene.objects, key=lambda o: o.name):
+            meta = env.get_meta(obj)
+            if obj.get("rbx_cutter") or meta.get("qa") == "skip" or obj in shapes:
+                continue
+            if obj.type == "MESH":
+                checks = mesh_checks(obj, meta, weld)
+            elif obj.type == "ARMATURE":
+                checks = armature_checks(obj, meta)
+            elif obj.type == "EMPTY":
+                checks = empty_checks(obj, meta)
+            else:
+                continue
+            report["objects"].append({"name": obj.name, "type": obj.type, "category": meta.get("category"), "checks": checks})
     if export_probe:
         report["export"] = export_roundtrip_probe(objects)
     return summarize(report)
 
 
+ASSET_SUFFIXES = (".blend", ".fbx", ".glb", ".gltf")
+
+
+def check_file(path):
+    """QA an asset file (the library form of `factory.py qa`). .blend: open it, check the scene
+    and probe the set build_template ships (its Export collections, else every object except
+    cutters). .fbx/.glb/.gltf: import into a clean scene and check what was imported, with glTF
+    seams welded for the topology checks. Raises ValueError for other file types."""
+    path = Path(path)
+    suffix = path.suffix.lower()
+    if suffix not in ASSET_SUFFIXES:
+        raise ValueError(f"unsupported asset file {path.name}: expected one of {', '.join(ASSET_SUFFIXES)}")
+    if suffix == ".blend":
+        bpy.ops.wm.open_mainfile(filepath=str(path))
+        return run(export_probe=True, objects=env.export_objects() or None)
+    env.reset()
+    if suffix == ".fbx":
+        bpy.ops.import_scene.fbx(filepath=str(path))
+    else:
+        bpy.ops.import_scene.gltf(filepath=str(path))
+    report = run(export_probe=False, weld=0.0 if suffix == ".fbx" else GLTF_WELD)
+    report["file"] = str(path)
+    return report
+
+
 def scene_signature(objects=None):
-    """Triangle count, world bounds and mesh names of exportable meshes (for export/reimport
-    diffing). objects: restrict to this set (the shipped export set); default every scene mesh."""
+    """Triangle count, world bounds and mesh names of exported meshes (for export/reimport
+    diffing). objects: the export set, signed as the exporters write it (hidden members ship
+    too); default every scene mesh except cutters."""
     tris, pts = 0, []
     # Importers add display-only meshes (e.g. glTF bone shapes); they are not exported geometry.
     shapes = _bone_shapes()
     pool = bpy.context.scene.objects if objects is None else objects
-    meshes = [o for o in pool if o.type == "MESH" and o not in shapes and not o.get("rbx_cutter") and not o.hide_render]
+    meshes = [o for o in pool if o.type == "MESH" and o not in shapes and not o.get("rbx_cutter")]
     # Compare geometry in rest pose: animated exports are sampled at different frames.
     armatures = [o for o in bpy.context.scene.objects if o.type == "ARMATURE"]
     previous = {a.name: a.data.pose_position for a in armatures}
     for a in armatures:
         a.data.pose_position = "REST"
-    bpy.context.view_layer.update()
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    for obj in meshes:
-        ev = obj.evaluated_get(depsgraph)
-        mesh = ev.to_mesh()
-        tris += sum(len(p.vertices) - 2 for p in mesh.polygons)
-        pts += [obj.matrix_world @ v.co for v in mesh.vertices]
-        ev.to_mesh_clear()
+    with env.revealed(meshes):  # evaluate hidden members (modifiers) as the exporters write them
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+        for obj in meshes:
+            ev = obj.evaluated_get(depsgraph)
+            mesh = ev.to_mesh()
+            tris += sum(len(p.vertices) - 2 for p in mesh.polygons)
+            pts += [obj.matrix_world @ v.co for v in mesh.vertices]
+            ev.to_mesh_clear()
     for a in armatures:
         a.data.pose_position = previous[a.name]
     names = sorted(o.name for o in meshes)
@@ -279,9 +435,17 @@ def scene_signature(objects=None):
     return {"tris": tris, "dims": [round(mx[i] - mn[i], 3) for i in range(3)], "min": [round(v, 3) for v in mn], "meshes": names}
 
 
+def _export_set(objects=None):
+    """`objects`, or by default every scene object the exporters can select, except cutters."""
+    if objects is not None:
+        return list(objects)
+    layer = bpy.context.view_layer
+    layer.update()
+    return [o for o in bpy.context.scene.objects if layer.objects.get(o.name) is o and not o.get("rbx_cutter")]
+
+
 def _source(objects):
-    pool = bpy.context.scene.objects if objects is None else objects
-    return {"signature": scene_signature(objects), "animated": any(o.animation_data and o.animation_data.action for o in pool)}
+    return {"signature": scene_signature(objects), "animated": any(o.animation_data and o.animation_data.action for o in objects)}
 
 
 def _reimport(paths, source):
@@ -311,20 +475,29 @@ def _reimport(paths, source):
                 "tris_match": sig["tris"] == expected["tris"],
                 "dims_match": all(abs(a - b) <= max(0.01, b * 0.01) for a, b in zip(sig["dims"], expected["dims"])),
                 "meshes_match": sig["meshes"] == expected["meshes"],
+                "missing_meshes": sorted(set(expected["meshes"]) - set(sig["meshes"])),
+                "extra_meshes": sorted(set(sig["meshes"]) - set(expected["meshes"])),
                 "actions": len(bpy.data.actions),
                 "animation_kept": not source["animated"] or len(bpy.data.actions) > 0,
             }
     finally:
         bpy.ops.wm.open_mainfile(filepath=str(saved))
-    failed = {fmt: [k for k in keys if not r[k]] for fmt, r in results.items() if not all(r[k] for k in keys)}
+    failed = {}
+    for fmt, r in results.items():
+        problems = [k for k in keys if not r[k]]
+        if problems:
+            names = {k: r[k] for k in ("missing_meshes", "extra_meshes", "import_error") if r.get(k)}
+            failed[fmt] = problems + ([names] if names else [])
     return {"pass": not failed and len(results) == len(paths), "source": expected, "formats": results, "detail": json.dumps(failed) if failed else ""}
 
 
 def export_roundtrip_probe(objects=None):
-    """Export `objects` (default: the whole scene) as FBX + GLB to a temp dir with the factory
-    exporters, re-import each into a clean file and compare with the source signature."""
+    """Export `objects` (default: every scene object except cutters) as FBX + GLB to a temp dir
+    with the factory exporters, re-import each into a clean file and compare with the source
+    signature over the same set."""
     from . import ops
 
+    objects = _export_set(objects)
     source = _source(objects)
     tmp = Path(tempfile.mkdtemp(prefix="rbxqa_"))
     paths = {"fbx": ops.export_fbx(tmp / "probe.fbx", objects), "glb": ops.export_glb(tmp / "probe.glb", objects)}
@@ -344,15 +517,17 @@ def gated_export(objects, fbx_path, glb_path):
     objects = list(objects)
     report = run(export_probe=False)
     if not objects:
-        report["export"] = {"pass": False, "files": {}, "detail": "nothing to export: no objects in a <Kind>/Export collection"}
+        report["export"] = {"pass": False, "files": {}, "detail": "nothing to export: no objects in a <Kind>/Export collection (in the view layer)"}
         return summarize(report)
     if not report["summary"]["pass"]:
         report["export"] = {"pass": False, "files": {}, "detail": "blocked by QA errors; no FBX/GLB written"}
         return summarize(report)
+    names = [o.name for o in objects]
     source = _source(objects)
     ops.export_fbx(paths["fbx"], objects)
     ops.export_glb(paths["glb"], objects)
     report["export"] = _reimport(paths, source)
+    report["export"]["objects"] = names
     report["export"]["files"] = {fmt: str(path) for fmt, path in paths.items()}
     if not report["export"]["pass"]:
         for path in paths.values():

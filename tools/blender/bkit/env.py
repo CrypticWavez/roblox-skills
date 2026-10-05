@@ -1,5 +1,7 @@
 """Scene reset, collections, metadata and deterministic settings."""
 import json
+from contextlib import contextmanager
+
 import bpy
 
 ROBLOX_META_PREFIX = "rbx_"
@@ -24,14 +26,47 @@ def collection(name, parent=None):
 
 def export_objects(scene=None):
     """The shipped set: objects in every `<Kind>/Export` collection, including its sub-collections,
-    minus boolean cutters. Sorted by name so exports are deterministic."""
+    minus boolean cutters and objects in collections excluded from the view layer (Blender's
+    exporters cannot see those). Objects hidden in the viewport or from renders still ship.
+    Sorted by name so exports are deterministic."""
     scene = scene or bpy.context.scene
+    layer = bpy.context.view_layer if scene == bpy.context.scene else scene.view_layers[0]
+    layer.update()  # membership is stale after collection exclude toggles
     in_scene = set(scene.objects)
     found = set()
     for coll in bpy.data.collections:
         if coll.name.endswith("/Export"):
-            found.update(o for o in coll.all_objects if o in in_scene and not o.get("rbx_cutter"))
+            found.update(o for o in coll.all_objects if o in in_scene and layer.objects.get(o.name) is o and not o.get("rbx_cutter"))
     return sorted(found, key=lambda o: o.name)
+
+
+@contextmanager
+def revealed(objects):
+    """Temporarily enable `objects` that are disabled in viewports (hide_viewport) or hidden
+    (eye), so the depsgraph evaluates them (modifiers) and they can be selected for export.
+    Restores both flags afterwards. Objects in collections excluded from the view layer stay
+    unevaluated."""
+    layer = bpy.context.view_layer
+    layer.update()
+    changed = []
+    for o in objects:
+        hidden = o.hide_get() if layer.objects.get(o.name) is o else False
+        if o.hide_viewport or hidden:
+            changed.append((o, o.hide_viewport, hidden))
+            o.hide_viewport = False
+            if hidden:
+                o.hide_set(False)
+    if changed:
+        layer.update()
+    try:
+        yield
+    finally:
+        for o, hide_viewport, hidden in changed:
+            o.hide_viewport = hide_viewport
+            if hidden:
+                o.hide_set(True)
+        if changed:
+            layer.update()
 
 
 def link(obj, coll):

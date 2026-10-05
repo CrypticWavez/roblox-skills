@@ -7,9 +7,10 @@ Commands:
   template <kind> <out_dir>          build a template, save .blend, QA, export FBX+GLB only if QA
                                      has no errors (re-imported and checked), qa.json, previews
   templates <out_dir>                every template
-  qa <file.blend|.fbx|.glb> [out]    QA report (JSON) for an existing asset
+  qa <file> [out]                    QA report (JSON) for a .blend/.fbx/.glb/.gltf; exit 1 on errors
   render-manifest <manifest> <dir>   render a SceneKit manifest (Cycles CPU)
   roundtrip <out_dir>                Blender-side round-trip: create, modify, export, reimport, diff
+  qa-selftest <out_dir>              known-good/known-bad assets: source, FBX and GLB QA must agree
 """
 import json
 import sys
@@ -55,16 +56,8 @@ def build_template(kind, out_dir, previews=True):
 
 
 def qa_file(path, out=None):
-    path = Path(path)
-    if path.suffix == ".blend":
-        bpy.ops.wm.open_mainfile(filepath=str(path))
-        # Probe the set build_template ships (the Export collections); whole scene if there are none.
-        report = qa.run(export_probe=True, objects=env.export_objects() or None)
-    else:
-        env.reset()
-        (bpy.ops.import_scene.fbx if path.suffix == ".fbx" else bpy.ops.import_scene.gltf)(filepath=str(path))
-        # glTF splits vertices along UV/normal seams; weld them back before the topology checks.
-        report = qa.run(export_probe=False, weld=0.0 if path.suffix == ".fbx" else qa.GLTF_WELD)
+    # .blend: probe the set build_template ships; .fbx/.glb/.gltf: check the import (glTF seams welded).
+    report = qa.check_file(path)
     if out:
         write_json(out, report)
     print(json.dumps(report["summary"], indent=2))
@@ -84,6 +77,9 @@ def main():
         write_json(Path(args[1]) / "templates-summary.json", results)
         return 0 if all(r["pass"] for r in results.values()) else 1
     if cmd == "qa":
+        if Path(args[1]).suffix.lower() not in qa.ASSET_SUFFIXES:
+            print(f"qa: unsupported file {args[1]} (expected {', '.join(qa.ASSET_SUFFIXES)})")
+            return 2
         return 0 if qa_file(args[1], args[2] if len(args) > 2 else None)["summary"]["pass"] else 1
     if cmd == "render-manifest":
         manifest = json.loads(Path(args[1]).read_text())
@@ -94,6 +90,9 @@ def main():
         from bkit import roundtrip
         result = roundtrip.run(Path(args[1]))
         return 0 if result["pass"] else 1
+    if cmd == "qa-selftest":
+        from bkit import selftest
+        return 0 if selftest.run(Path(args[1]))["pass"] else 1
     print(__doc__)
     return 2
 
