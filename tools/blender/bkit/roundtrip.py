@@ -44,6 +44,29 @@ def _front_centroid(obj, material_name):
     return sum(pts, Vector()) / len(pts) if pts else None
 
 
+def _bounds(obj):
+    pts = [obj.matrix_world @ v.co for v in obj.data.vertices]
+    return [min(p[i] for p in pts) for i in range(3)], [max(p[i] for p in pts) for i in range(3)]
+
+
+def _surface_offsets(obj):
+    """Area-weighted surface centroid minus bounds centre, along the declared front (-Y) and up (+Z).
+    Intrinsic to the shape, so the Studio inspector compares it without assuming an axis mapping."""
+    bpy.context.view_layer.update()
+    mesh = obj.data
+    mesh.calc_loop_triangles()
+    pts = [obj.matrix_world @ v.co for v in mesh.vertices]
+    mn, mx = _bounds(obj)
+    total, acc = 0.0, Vector()
+    for tri in mesh.loop_triangles:
+        a, b, c = (pts[i] for i in tri.vertices)
+        area = (b - a).cross(c - a).length / 2
+        total += area
+        acc += area * (a + b + c) / 3
+    centroid = acc / total
+    return round((mn[1] + mx[1]) / 2 - centroid.y, 3), round(centroid.z - (mn[2] + mx[2]) / 2, 3)
+
+
 def _inspect_import(path):
     env.reset()
     if path.suffix == ".fbx":
@@ -52,18 +75,22 @@ def _inspect_import(path):
         bpy.ops.import_scene.gltf(filepath=str(path))
     meshes = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     obj = meshes[0]
+    bpy.context.view_layer.update()
     sig = qa.scene_signature()
     front = _front_centroid(obj, "MAT_Front")
+    mn, mx = _bounds(obj)
     return {
         "names": sorted(o.name for o in meshes),
         "materials": sorted(m.name for m in obj.data.materials if m),
         "signature": sig,
         "front_centroid": [round(v, 3) for v in front] if front else None,
         "origin": [round(v, 3) for v in obj.matrix_world.translation],
+        "base_centre": [round((mn[0] + mx[0]) / 2, 3), round((mn[1] + mx[1]) / 2, 3), round(mn[2], 3)],
+        "offsets": _surface_offsets(obj),
     }
 
 
-def _expectation(sig, revision):
+def _expectation(sig, revision, offsets):
     dx, dy, dz = sig["dims"]
     return {
         "asset": ASSET,
@@ -72,6 +99,9 @@ def _expectation(sig, revision):
         # Roblox axes: X = Blender X, Y(up) = Blender Z, Z(back) = -Blender Y
         "size": [dx, dz, dy],
         "front": "-Z",
+        # Surface centroid minus bounds centre along front (-Y here, -Z in Roblox) and up, in studs.
+        "front_offset": offsets[0],
+        "up_offset": offsets[1],
         "pivot": "base-centre",
         "materials": ["MAT_Body", "MAT_Front"],
         "triangles": sig["tris"],
@@ -90,6 +120,7 @@ def run(out_dir):
         source_qa = qa.run(export_probe=False)
         src_sig = qa.scene_signature()
         src_front = _front_centroid(obj, "MAT_Front")
+        src_offsets = _surface_offsets(obj)
         blend = out_dir / f"{ASSET}_v{revision}.blend"
         bpy.ops.wm.save_as_mainfile(filepath=str(blend))
         fbx = ops.export_fbx(out_dir / f"{ASSET}_v{revision}.fbx")
@@ -103,14 +134,16 @@ def run(out_dir):
             checks += [
                 {"name": f"{path.suffix}:geometry_tris", "pass": sig["tris"] == src_sig["tris"], "value": sig["tris"], "expected": src_sig["tris"]},
                 {"name": f"{path.suffix}:scale_dims", "pass": all(abs(a - b) < 0.02 for a, b in zip(sig["dims"], src_sig["dims"])), "value": sig["dims"], "expected": src_sig["dims"]},
-                {"name": f"{path.suffix}:pivot_base", "pass": abs(sig["min"][2]) < 0.02, "value": sig["min"][2], "expected": 0},
+                {"name": f"{path.suffix}:pivot_base_centre", "pass": all(abs(o - b) < 0.02 for o, b in zip(info["origin"], info["base_centre"])), "value": info["origin"], "expected": info["base_centre"]},
+                {"name": f"{path.suffix}:surface_offsets", "pass": all(abs(a - b) < 0.02 for a, b in zip(info["offsets"], src_offsets)), "value": info["offsets"], "expected": src_offsets},
                 {"name": f"{path.suffix}:orientation_front", "pass": info["front_centroid"] is not None and info["front_centroid"][1] < -0.5, "value": info["front_centroid"], "expected": "y < 0 (front -Y)"},
                 {"name": f"{path.suffix}:materials", "pass": all(any(m.startswith(n) for m in info["materials"]) for n in ("MAT_Body", "MAT_Front")), "value": info["materials"]},
                 {"name": f"{path.suffix}:stable_name", "pass": ASSET in info["names"][0], "value": info["names"]},
             ]
+        checks.append({"name": "front_asymmetric", "pass": abs(src_offsets[0]) >= 0.1, "value": src_offsets[0], "expected": ">= 0.1 so Studio can tell front from back"})
         if previous:
             checks.append({"name": "revision_detected", "pass": previous["tris"] != src_sig["tris"] or previous["dims"] != src_sig["dims"], "value": [previous, src_sig]})
-        expectation = _expectation(src_sig, revision)
+        expectation = _expectation(src_sig, revision, src_offsets)
         (out_dir / f"roblox_expectation_v{revision}.json").write_text(json.dumps(expectation, indent=2))
         ok = source_qa["summary"]["pass"] and all(c["pass"] for c in checks)
         report["pass"] = report["pass"] and ok

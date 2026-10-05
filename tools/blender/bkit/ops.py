@@ -221,7 +221,8 @@ def set_origin_base_center(obj):
     mx = Vector((max(c.x for c in coords), max(c.y for c in coords), max(c.z for c in coords)))
     pivot = Vector(((mn.x + mx.x) / 2, (mn.y + mx.y) / 2, mn.z))
     obj.data.transform(Matrix.Translation(-pivot))
-    obj.location = obj.matrix_world @ pivot
+    # matrix_basis is computed from loc/rot/scale now; matrix_world can be stale until a depsgraph update.
+    obj.location = obj.matrix_basis @ pivot
     return obj
 
 

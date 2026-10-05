@@ -10,7 +10,7 @@ description: Prove the Blender to Roblox import path for an asset and its update
 **Inputs.** Asset (default: the asymmetric `SM_RoundTripMarker`), output folder.
 
 ## Procedure
-1. Blender half (headless, verified in CI): `python3 tools/blender/factory.py roundtrip build/roundtrip`. It builds v1, exports FBX+GLB, re-imports both, checks tris, dims, pivot, front (-Y), materials and stable name; then revises to v2 and proves the change is detected. Writes `roblox_expectation_v1.json` / `_v2.json` (Roblox axes, studs).
+1. Blender half (headless, verified in CI): `python3 tools/blender/factory.py roundtrip build/roundtrip`. It builds v1, exports FBX+GLB, re-imports both, checks tris, dims, origin at the base centre, front (-Y), surface offsets, materials and stable name; then revises to v2 and proves the change is detected. Writes `roblox_expectation_v1.json` / `_v2.json` (Roblox axes, studs) including `front_offset`/`up_offset`: where the area-weighted surface centroid sits relative to the bounds centre along front and up.
 2. Studio half (Ethan's machine; Studio MCP or by hand):
    - Open an unpublished diagnostic place. Import `SM_RoundTripMarker_v1.fbx` with 3D Importer, **Scale Unit = Studs**, default rig settings.
    - Run in the command bar or via `execute_luau`: `local I = require(game.ReplicatedStorage.Workbench.Pipeline.ImportInspector); print(game:GetService("HttpService"):JSONEncode(I.inspect(workspace.SM_RoundTripMarker, <expectation table>)))`.
@@ -20,7 +20,7 @@ description: Prove the Blender to Roblox import path for an asset and its update
 
 **Acceptance.** Blender report `pass`; Studio inspection passes for v1 and v2; revision detected; visual front correct.
 
-**Failure handling.** `ImportInspector` names the cause: metre/stud mismatch (Scale Unit), Y/Z swap (axis settings), cm scale (FBX unit scale), rotation on import, precise collision.
+**Failure handling.** `ImportInspector` names the cause: metre/stud mismatch (Scale Unit), Y/Z swap (axis settings), cm scale (FBX unit scale), rotation on import, asset facing +Z or upside down (measured from the mesh triangles via EditableMesh and compared with `front_offset`), precise collision. If it cannot read the mesh it reports the front as undetermined and fails; confirm facing with `screen_capture`.
 
 **Status.** Blender half VERIFIED in cloud CI; Studio half BLOCKED_EXTERNAL until run on Ethan's machine.
 
