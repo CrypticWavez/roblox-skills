@@ -1,6 +1,9 @@
 --!strict
 -- Mirror-symmetric competitive arena: cover blocks, two team spawns, a centre objective.
--- Symmetry gives spawn fairness by construction; Validate still measures it.
+-- The objective sits on the symmetry centre ((width + 1) / 2, (height + 1) / 2) in cell
+-- coordinates. On an even side that is a cell boundary (x.5): the objective then covers the
+-- two (or 2x2) centre cells, so it maps onto itself and both spawns are equally far from
+-- it by construction. Validate.arena still measures it.
 local Grid = require("./Grid")
 local Rng = require("./Rng")
 
@@ -28,7 +31,7 @@ function Arena.generate(params: Params)
 	if symmetry == "mirror" then
 		spawnB = { width - 3, height // 2 }
 	end
-	local objective = { width // 2, height // 2 }
+	local objective = { (width + 1) / 2, (height + 1) / 2 }
 	local shield = params.spawnShield or 4
 
 	local function mirror(x: number, y: number): (number, number)
@@ -39,8 +42,9 @@ function Arena.generate(params: Params)
 	end
 	local function protected(x: number, y: number): boolean
 		local ax, ay = math.abs(x - spawnA[1]), math.abs(y - spawnA[2])
+		-- One cell of clearance around every cell the objective covers.
 		local ox, oy = math.abs(x - objective[1]), math.abs(y - objective[2])
-		return (ax <= shield + 2 and ay <= shield + 2) or (ox <= 1 and oy <= 1)
+		return (ax <= shield + 2 and ay <= shield + 2) or (ox <= 1.5 and oy <= 1.5)
 	end
 
 	-- Cover pieces (2x1/1x2/2x2) on the A half, mirrored onto the B half.
@@ -92,7 +96,9 @@ function Arena.generate(params: Params)
 
 	grid:label(spawnA[1], spawnA[2], "A")
 	grid:label(spawnB[1], spawnB[2], "B")
-	grid:label(objective[1], objective[2], "O")
+	for _, cell in Grid.cellsCovering(objective) do
+		grid:label(cell[1], cell[2], "O")
+	end
 	return {
 		kind = "arena",
 		params = {

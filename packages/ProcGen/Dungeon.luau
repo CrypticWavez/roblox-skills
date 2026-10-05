@@ -1,9 +1,12 @@
 --!strict
 -- BSP room layout with MST corridors and a controlled number of extra loops.
 -- Output is a Grid plus a room Graph, ready for Placement and Validate.
+-- Loop links are kept only when their carve raises the walkable loop count measured on the
+-- grid (RoomGraph), so every loop edge in the room Graph is a route a player can walk.
 local Graph = require("./Graph")
 local Grid = require("./Grid")
 local Rng = require("./Rng")
+local RoomGraph = require("./RoomGraph")
 
 local Dungeon = {}
 
@@ -18,7 +21,7 @@ export type Params = {
 	corridorWidth: number?, -- cells
 	loopChance: number?, -- fraction of non-tree neighbour links kept as loops
 	maxDepth: number?,
-	minLoops: number?, -- guarantee at least this many alternate routes (default 1)
+	minLoops: number?, -- guarantee at least this many walkable loops on the grid (default 1)
 }
 
 local function split(rng, rect, depth, maxDepth, minLeaf, out)
@@ -56,17 +59,28 @@ local function split(rng, rect, depth, maxDepth, minLeaf, out)
 	end
 end
 
-local function carveCorridor(grid, a: Room, b: Room, width: number, horizontalFirst: boolean)
+-- Cell keys an L-shaped corridor between room centres covers (in bounds; may repeat).
+local function corridorCells(grid, a: Room, b: Room, width: number, horizontalFirst: boolean): { number }
 	local x1, y1, x2, y2 = a.cx, a.cy, b.cx, b.cy
 	local half = math.floor((width - 1) / 2)
+	local keys = {}
+	local function add(x, y)
+		if grid:inBounds(x, y) then
+			table.insert(keys, (y - 1) * grid.width + x)
+		end
+	end
 	local function hline(xa, xb, y)
 		for x = math.min(xa, xb), math.max(xa, xb) do
-			grid:fillRect(x, y - half, 1, width, 1)
+			for offset = 0, width - 1 do
+				add(x, y - half + offset)
+			end
 		end
 	end
 	local function vline(ya, yb, x)
 		for y = math.min(ya, yb), math.max(ya, yb) do
-			grid:fillRect(x - half, y, width, 1, 1)
+			for offset = 0, width - 1 do
+				add(x - half + offset, y)
+			end
 		end
 	end
 	if horizontalFirst then
@@ -75,6 +89,13 @@ local function carveCorridor(grid, a: Room, b: Room, width: number, horizontalFi
 	else
 		vline(y1, y2, x1)
 		hline(x1, x2, y2)
+	end
+	return keys
+end
+
+local function carveCorridor(grid, a: Room, b: Room, width: number, horizontalFirst: boolean)
+	for _, key in corridorCells(grid, a, b, width, horizontalFirst) do
+		grid.cells[key] = 1
 	end
 end
 
@@ -135,6 +156,40 @@ function Dungeon.generate(params: Params)
 	for _, room in rooms do
 		graph:addNode(room.id, "room", { area = room.w * room.h })
 	end
+	local owner = RoomGraph.roomCells(grid, rooms)
+	local function walkableLoops(): number
+		return RoomGraph.loops(grid, rooms, owner)
+	end
+	-- A loop link must add a walkable alternate route. Try the preferred bend, then the
+	-- other; keep a carve only if it adds floor, crosses no third room and raises the grid's
+	-- loop count. Otherwise restore the grid and report failure (no graph edge is added).
+	local function carveLoop(a: Room, b: Room, horizontalFirst: boolean): boolean
+		local before = walkableLoops()
+		for _, bend in { horizontalFirst, not horizontalFirst } do
+			local keys = corridorCells(grid, a, b, corridorWidth, bend)
+			local fresh, crossesRoom = 0, false
+			for _, key in keys do
+				local inside = owner[key]
+				if inside ~= nil and inside ~= a.id and inside ~= b.id then
+					crossesRoom = true
+				elseif grid.cells[key] == 0 then
+					fresh += 1
+				end
+			end
+			if fresh > 0 and not crossesRoom then
+				local saved = table.clone(grid.cells)
+				for _, key in keys do
+					grid.cells[key] = 1
+				end
+				if walkableLoops() > before then
+					return true
+				end
+				grid.cells = saved
+			end
+		end
+		return false
+	end
+
 	local corridorRng = rng:fork("corridors")
 	local loopRng = rng:fork("loops")
 	local loopChance = params.loopChance or 0.15
@@ -144,34 +199,30 @@ function Dungeon.generate(params: Params)
 	for _, link in candidates do
 		local a, b = rooms[link.i], rooms[link.j]
 		local ra, rb = find(link.i), find(link.j)
-		local isTree = ra ~= rb
-		if isTree or (link.d <= nearLimit and loopRng:chance(loopChance)) then
-			if isTree then
-				parent[ra] = rb
-			end
+		if ra ~= rb then
+			parent[ra] = rb
 			carveCorridor(grid, a, b, corridorWidth, corridorRng:chance(0.5))
 			graph:addEdge(a.id, b.id)
-			table.insert(corridors, { from = a.id, to = b.id, loop = not isTree })
+			table.insert(corridors, { from = a.id, to = b.id, loop = false })
+		elseif link.d <= nearLimit and loopRng:chance(loopChance) then
+			if carveLoop(a, b, corridorRng:chance(0.5)) then
+				graph:addEdge(a.id, b.id)
+				table.insert(corridors, { from = a.id, to = b.id, loop = true })
+			end
 		end
 	end
 
-	-- Guarantee redundancy: add the shortest remaining links until minLoops alternates exist.
-	local loops = 0
-	for _, corridor in corridors do
-		if corridor.loop then
-			loops += 1
-		end
-	end
+	-- Guarantee redundancy on the grid: try the shortest remaining links until minLoops
+	-- walkable loops exist (Validate.rooms measures the same thing).
+	local minLoops = params.minLoops or 1
 	for _, link in candidates do
-		if loops >= (params.minLoops or 1) then
+		if walkableLoops() >= minLoops then
 			break
 		end
 		local a, b = rooms[link.i], rooms[link.j]
-		if not graph:hasEdge(a.id, b.id) then
-			carveCorridor(grid, a, b, corridorWidth, corridorRng:chance(0.5))
+		if not graph:hasEdge(a.id, b.id) and carveLoop(a, b, corridorRng:chance(0.5)) then
 			graph:addEdge(a.id, b.id)
 			table.insert(corridors, { from = a.id, to = b.id, loop = true })
-			loops += 1
 		end
 	end
 

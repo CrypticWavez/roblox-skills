@@ -106,11 +106,9 @@ test("dungeons validate across 25 seeds", function(t)
 		local layout = Dungeon.generate({ seed = seed })
 		local placement = Placement.assign(layout, { encounters = 2, landmarks = 1 })
 		local checks = Validate.rooms(layout, placement)
-		-- encounter_space depends on seed geometry; everything structural must hold.
+		-- Every validator, encounter_space included: Placement only picks rooms that fit.
 		for _, c in checks do
-			if c.name ~= "encounter_space" then
-				t.ok(c.pass, string.format("seed %d failed %s (%s)", seed, c.name, failedNames(checks)))
-			end
+			t.ok(c.pass, string.format("seed %d failed %s (%s)", seed, c.name, failedNames(checks)))
 		end
 		t.eq(placement.roles[placement.spawn], "spawn")
 		t.eq(placement.roles[placement.goal], "goal")

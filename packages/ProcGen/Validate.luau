@@ -1,6 +1,9 @@
 --!strict
 -- Layout validators. Each check returns { name, pass, value, limit, detail } so reports
 -- are machine-readable and comparable across seeds.
+local Grid = require("./Grid")
+local RoomGraph = require("./RoomGraph")
+
 local Validate = {}
 
 export type Check = { name: string, pass: boolean, value: any, limit: any?, detail: string? }
@@ -123,7 +126,9 @@ function Validate.rooms(layout, placement, rules: Rules?): { Check }
 		checks,
 		check("reachability", #unreachable == 0, #unreachable, 0, table.concat(unreachable, ","))
 	)
-	local loops = graph:cycleRank()
+	-- Loops are counted on the carved grid (rooms + corridor components), not on the layout
+	-- graph: a loop link whose corridor reuses existing cells is not an alternate route.
+	local loops = RoomGraph.loops(grid, layout.rooms)
 	table.insert(
 		checks,
 		check(
@@ -131,7 +136,7 @@ function Validate.rooms(layout, placement, rules: Rules?): { Check }
 			loops >= rule(rules, "minLoops"),
 			loops,
 			rule(rules, "minLoops"),
-			#graph:bridges() .. " single-route links"
+			string.format("walkable loops on the grid; layout graph claims %d", graph:cycleRank())
 		)
 	)
 	local deadEnds = graph:deadEnds()
@@ -198,14 +203,34 @@ function Validate.arena(layout, rules: Rules?): { Check }
 	local checks = Validate.grid(grid, rules)
 	local spread, worst = 0, ""
 	for _, objective in layout.objectives do
-		local distances = {}
+		local distances, labels, unreachable = {}, {}, 0
 		for _, spawn in layout.spawns do
-			table.insert(distances, grid:walkDistance(spawn, objective) or math.huge)
+			-- Distance to the nearest cell the objective covers (2 or 4 cells on a .5 centre).
+			local best: number? = nil
+			for _, cell in Grid.cellsCovering(objective) do
+				local d = grid:walkDistance(spawn, cell)
+				if d ~= nil and (best == nil or d < best) then
+					best = d
+				end
+			end
+			if best == nil then
+				unreachable += 1
+				table.insert(labels, "unreachable")
+			else
+				table.insert(distances, best)
+				table.insert(labels, tostring(best))
+			end
 		end
-		local lo, hi = math.min(table.unpack(distances)), math.max(table.unpack(distances))
-		local s = if lo == math.huge then math.huge elseif hi == 0 then 0 else (hi - lo) / hi
-		if s > spread then
-			spread, worst = s, table.concat(distances, "/")
+		-- Any spawn that cannot reach the objective is maximally unfair (never NaN).
+		local s = 0
+		if unreachable > 0 then
+			s = math.huge
+		elseif #distances > 0 then
+			local lo, hi = math.min(table.unpack(distances)), math.max(table.unpack(distances))
+			s = if hi == 0 then 0 else (hi - lo) / hi
+		end
+		if s > spread or worst == "" then
+			spread, worst = math.max(s, spread), table.concat(labels, "/")
 		end
 	end
 	table.insert(

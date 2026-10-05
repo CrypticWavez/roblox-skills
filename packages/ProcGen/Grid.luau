@@ -63,6 +63,26 @@ end
 local OFFSETS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
 Grid.OFFSETS = OFFSETS
 
+-- Cells a point in cell coordinates covers: its own cell, or, when a coordinate is a .5
+-- cell boundary (the true centre of an even-sized grid), the 2 or 2x2 cells around it.
+function Grid.cellsCovering(point: { number }): { { number } }
+	local cells = {}
+	local xs = { math.floor(point[1]) }
+	if math.ceil(point[1]) ~= xs[1] then
+		table.insert(xs, math.ceil(point[1]))
+	end
+	local ys = { math.floor(point[2]) }
+	if math.ceil(point[2]) ~= ys[1] then
+		table.insert(ys, math.ceil(point[2]))
+	end
+	for _, y in ys do
+		for _, x in xs do
+			table.insert(cells, { x, y })
+		end
+	end
+	return cells
+end
+
 -- 4-connected floor regions, largest first.
 function Grid.regions(self: Grid): { { { number } } }
 	local seen: { [number]: boolean } = {}

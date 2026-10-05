@@ -1,6 +1,7 @@
 --!strict
--- Cellular-automata caves. Keeps the largest region and tunnels orphan regions back in,
--- so the result is always one connected walkable space.
+-- Cellular-automata caves. Fills pockets smaller than minRegion, then tunnels every other
+-- region into the largest and re-measures until exactly one walkable region remains (it
+-- errors rather than return a disconnected cave).
 local Grid = require("./Grid")
 local Rng = require("./Rng")
 
@@ -54,17 +55,27 @@ function Cave.generate(params: Params)
 
 	local regions = grid:regions()
 	local minRegion = params.minRegion or 12
-	local main = regions[1]
-	local tunnels = 0
+	-- Fill every pocket first: filling one after a tunnel has crossed it would cut the tunnel.
 	for index = 2, #regions do
-		local region = regions[index]
-		if #region < minRegion then
-			for _, cell in region do
+		if #regions[index] < minRegion then
+			for _, cell in regions[index] do
 				grid:set(cell[1], cell[2], 0)
 			end
-		elseif main then
-			-- Straight two-wide tunnel from region's first cell to nearest main-region cell.
-			local from = region[1]
+		end
+	end
+	local tunnels = 0
+	-- Each pass tunnels every orphan into the largest region, then re-measures. One pass
+	-- normally suffices; the bound turns a join bug into an error instead of a split cave.
+	for _ = 1, #regions do
+		regions = grid:regions()
+		if #regions <= 1 then
+			break
+		end
+		local main = regions[1]
+		for index = 2, #regions do
+			-- Straight two-wide tunnel from the region's first cell to the nearest main cell,
+			-- kept off the border ring so the map edge stays solid.
+			local from = regions[index][1]
 			local best, bestD = main[1], math.huge
 			for _, cell in main do
 				local d = math.abs(cell[1] - from[1]) + math.abs(cell[2] - from[2])
@@ -79,10 +90,20 @@ function Cave.generate(params: Params)
 				else
 					y += if best[2] > y then 1 else -1
 				end
-				grid:fillRect(x, y, 2, 2, 1)
+				grid:fillRect(math.min(x, width - 2), math.min(y, height - 2), 2, 2, 1)
 			end
 			tunnels += 1
 		end
+	end
+	local remaining = #grid:regions()
+	if remaining > 1 then
+		error(
+			string.format(
+				"Cave.generate: %d regions left after joining (seed %s)",
+				remaining,
+				tostring(params.seed)
+			)
+		)
 	end
 	return {
 		kind = "cave",
