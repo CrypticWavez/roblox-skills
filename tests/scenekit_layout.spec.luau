@@ -1,5 +1,6 @@
 -- Regression specs for SceneKit review findings: Apply replace default, doorways bisected by
--- partitions, stair-hole railings cutting the next flight, and the buried fixture ramp.
+-- partitions, stair-hole railings cutting the next flight, the buried fixture ramp, and stair
+-- checks that must not depend on the yaw a scene is built at.
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
@@ -7,6 +8,10 @@ local serde = require("@lune/serde")
 local SK = require("../packages/SceneKit/SceneKit")
 local Rng = require("../packages/ProcGen/Rng")
 local Settlement = require("../packages/ProcGen/Settlement")
+
+-- Repo root from this spec's own path (debug.info gives ".../tests/scenekit_layout.spec"), so
+-- the fixture build below does not depend on the working directory the runner was started in.
+local ROOT = string.match(debug.info(1, "s"), "^(.*)[/\\]tests[/\\][^/\\]*$") or "."
 
 local cases = {}
 local function test(name, fn)
@@ -296,12 +301,151 @@ test("stair-hole railings never cut the next flight (3+ storeys)", function(t)
 	t.ok(table.find(failedChecks(bad), "stair_obstruction"), "Validate fails a railing through a flight")
 end)
 
+local function box(pos, size, rot)
+	return { id = "box", role = "wall", size = size, pos = pos, rot = rot or { x = 0, y = 0, z = 0 } }
+end
+
+test("Validate.penetration measures oriented boxes, not world AABBs", function(t)
+	-- Two unit blocks at yaw 30 touching face to face: their world AABBs overlap, the parts do not.
+	local yaw = { x = 0, y = 30, z = 0 }
+	local step = SK.Vec.rotate({ x = 1, y = 0, z = 0 }, yaw)
+	local a = box({ x = 0, y = 0, z = 0 }, { x = 1, y = 1, z = 1 }, yaw)
+	local b = box(step, { x = 1, y = 1, z = 1 }, yaw)
+	t.ok(overlap(a, b) > 0.05, "world AABBs of touching rotated blocks overlap")
+	t.near(SK.Validate.penetration(a, b), 0, 1e-9, "touching rotated blocks")
+	-- Failure case: pushed 0.25 into each other along their own axis.
+	local c = box(SK.Vec.scale(step, 0.75), { x = 1, y = 1, z = 1 }, yaw)
+	t.near(SK.Validate.penetration(a, c), 0.25, 1e-9, "0.25 overlap along the rotated axis")
+	t.near(SK.Validate.penetration(c, a), 0.25, 1e-9, "symmetric")
+	-- Axis-aligned blocks: penetration is the smallest per-axis overlap.
+	local d = box({ x = 0.7, y = 0.2, z = 0 }, { x = 1, y = 1, z = 1 })
+	t.near(SK.Validate.penetration(box({ x = 0, y = 0, z = 0 }, { x = 1, y = 1, z = 1 }), d), 0.3, 1e-9)
+	-- Edge against edge: two square bars rolled 45 degrees crossing at right angles are only
+	-- separated along the cross product of their edges (world Y), not along any face normal.
+	local bar1 = box({ x = 0, y = 0, z = 0 }, { x = 4, y = 1, z = 1 }, { x = 45, y = 0, z = 0 })
+	local reach = math.sqrt(2)
+	local apart = box({ x = 0, y = reach + 0.1, z = 0 }, { x = 1, y = 1, z = 4 }, { x = 0, y = 0, z = 45 })
+	t.near(SK.Validate.penetration(bar1, apart), 0, 1e-9, "crossed bars 0.1 apart")
+	local into = box({ x = 0, y = reach - 0.2, z = 0 }, { x = 1, y = 1, z = 4 }, { x = 0, y = 0, z = 45 })
+	t.near(SK.Validate.penetration(bar1, into), 0.2, 1e-9, "crossed bars 0.2 into each other")
+end)
+
+-- Railing parts penetrating stair parts, measured on oriented boxes (valid at any yaw).
+local function railingStairCuts(scene): number
+	local hits = 0
+	for _, a in scene.specs do
+		if a.role == "trim" then
+			for _, b in scene.specs do
+				if b.role == "stair" and SK.Validate.penetration(a, b) > 1e-3 then
+					hits += 1
+				end
+			end
+		end
+	end
+	return hits
+end
+
+local function checkByName(scene, name: string): any
+	for _, c in SK.Validate.scene(scene) do
+		if c.name == name then
+			return c
+		end
+	end
+	return nil
+end
+
+test("stair checks give the same answer at any yaw (scene:transformed)", function(t)
+	local function building(yaw: number, storeys: number)
+		local scene = SK.Scene.new({ name = "Y", seed = 1, style = "neutral-stone" })
+		scene:transformed({ x = 5, y = 0, z = 5 }, yaw, function()
+			SK.Building.create(scene, { footprint = { x = 0, z = 0, w = 40, d = 30 }, storeys = storeys })
+		end)
+		return scene
+	end
+	local reference = {}
+	for _, storeys in { 2, 3 } do
+		reference[storeys] = checkByName(building(0, storeys), "stair_headroom").value
+		t.eq(type(reference[storeys]), "number", "yaw 0 building has a measured headroom")
+	end
+	for _, yaw in { 15, 30, 45, 135, 200, 330 } do
+		-- The review repro: a lone ramp plus a flight, which passed before the oriented-box check.
+		local lone = SK.Scene.new({ name = "F" })
+		lone:transformed({ x = 0, y = 0, z = 0 }, yaw, function()
+			SK.Building.ramp(lone, { base = { x = 0, y = 0, z = 0 }, rise = 1, run = 6 })
+			SK.Building.stairs(lone, { base = { x = 20, y = 0, z = 0 }, rise = 6, width = 4.8 })
+		end)
+		t.eq(#failedChecks(lone), 0, string.format("lone ramp + flight at yaw %d", yaw))
+		for _, storeys in { 2, 3 } do
+			local scene = building(yaw, storeys)
+			local label = string.format("40x30 x%d at yaw %d", storeys, yaw)
+			t.eq(table.concat(failedChecks(scene), ","), "", label .. " validation")
+			t.near(
+				checkByName(scene, "stair_headroom").value,
+				reference[storeys],
+				0.011,
+				label .. " headroom"
+			)
+			t.eq(railingStairCuts(scene), 0, label .. " railing/stair cuts")
+		end
+
+		-- Failure cases at the same yaw: a railing through the flight, a ramp sunk into a
+		-- foundation, and a flight stacked under another.
+		local railed = SK.Scene.new({ name = "R" })
+		railed:transformed({ x = 3, y = 0, z = -2 }, yaw, function()
+			SK.Building.stairs(railed, { base = { x = 0, y = 0, z = 0 }, rise = 6, width = 4.8 })
+			SK.Building.railing(railed, { from = { x = 0, y = 3, z = 2.2 }, to = { x = 9, y = 3, z = 2.2 } })
+		end)
+		t.ok(railingStairCuts(railed) > 0, "measurement sees the railing at yaw " .. yaw)
+		t.ok(table.find(failedChecks(railed), "stair_obstruction"), "railing through a flight at yaw " .. yaw)
+		local buried = SK.Scene.new({ name = "B" })
+		buried:transformed({ x = 3, y = 0, z = -2 }, yaw, function()
+			SK.Building.foundation(buried, { rect = { x = 0, z = 0, w = 10, d = 10 }, y = 0, height = 1 })
+			SK.Building.ramp(buried, { base = { x = 8, y = 0, z = 5 }, rise = 1, run = 6 })
+		end)
+		t.ok(table.find(failedChecks(buried), "stair_obstruction"), "buried ramp at yaw " .. yaw)
+		local stacked = SK.Scene.new({ name = "S" })
+		stacked:transformed({ x = 3, y = 0, z = -2 }, yaw, function()
+			SK.Building.stairs(stacked, { base = { x = 0, y = 0, z = 0 }, rise = 12 })
+			SK.Building.stairs(stacked, { base = { x = 0, y = 12, z = 0 }, rise = 12 })
+		end)
+		t.ok(table.find(failedChecks(stacked), "stair_headroom"), "stacked flights at yaw " .. yaw)
+	end
+end)
+
+-- Build one fixture with the real tools/lune/build_fixtures.luau into a fresh directory under the
+-- system temp dir (absolute paths, cwd = repo root) and return its manifest and report. The
+-- directory is removed again whether or not the build succeeded.
+local function buildFixture(name: string): (any, any)
+	local tmp = process.env.TMPDIR or process.env.TEMP or process.env.TMP or "/tmp"
+	local outDir = string.format(
+		"%s/scenekit-spec-fixtures-%d-%d",
+		string.gsub(tmp, "[/\\]+$", ""),
+		os.time(),
+		math.floor((os.clock() % 1) * 1e6)
+	)
+	local ok, result = pcall(function()
+		local run = process.exec(
+			"lune",
+			{ "run", ROOT .. "/tools/lune/build_fixtures.luau", outDir, name },
+			{ cwd = ROOT }
+		)
+		assert(run.ok, "build_fixtures " .. name .. ": " .. run.stdout .. run.stderr)
+		return {
+			manifest = serde.decode("json", fs.readFile(outDir .. "/" .. name .. ".manifest.json")),
+			report = serde.decode("json", fs.readFile(outDir .. "/report.json")),
+		}
+	end)
+	if fs.isDir(outDir) then
+		fs.removeDir(outDir)
+	end
+	if not ok then
+		error(result, 0)
+	end
+	return result.manifest, result.report
+end
+
 test("modular_building fixture ramp is clear and walkable", function(t)
-	local outDir = "build/spec-fixtures"
-	local run = process.exec("lune", { "run", "tools/lune/build_fixtures.luau", outDir, "modular_building" })
-	t.ok(run.ok, "build_fixtures modular_building: " .. run.stdout .. run.stderr)
-	local manifest = serde.decode("json", fs.readFile(outDir .. "/modular_building.manifest.json"))
-	local report = serde.decode("json", fs.readFile(outDir .. "/report.json"))
+	local manifest, report = buildFixture("modular_building")
 	t.ok(report.fixtures.modular_building.pass, "fixture validation")
 	local function spec(part)
 		return {

@@ -24,6 +24,96 @@ end
 
 local STRUCTURE = { wall = true, floor = true, roof = true, stair = true, foundation = true, trim = true }
 
+-- Oriented box of a spec in world space: centre, unit local axes and half extents. Wedges and
+-- cylinders are represented by their box, which contains them, so tests built on it are
+-- conservative for those shapes and exact for blocks at any rotation.
+type Box = { c: Vec.V3, axes: { Vec.V3 }, half: { number } }
+
+local function orientedBox(spec: Scene.PartSpec): Box
+	return {
+		c = spec.pos,
+		axes = {
+			Vec.rotate({ x = 1, y = 0, z = 0 }, spec.rot),
+			Vec.rotate({ x = 0, y = 1, z = 0 }, spec.rot),
+			Vec.rotate({ x = 0, y = 0, z = 1 }, spec.rot),
+		},
+		half = { spec.size.x / 2, spec.size.y / 2, spec.size.z / 2 },
+	}
+end
+
+local function cross(a: Vec.V3, b: Vec.V3): Vec.V3
+	return { x = a.y * b.z - a.z * b.y, y = a.z * b.x - a.x * b.z, z = a.x * b.y - a.y * b.x }
+end
+
+-- Half length of a box's projection onto a unit axis.
+local function projectedRadius(box: Box, axis: Vec.V3): number
+	local r = 0
+	for i, a in box.axes do
+		r += box.half[i] * math.abs(Vec.dot(a, axis))
+	end
+	return r
+end
+
+-- Penetration depth of two parts' oriented boxes: the smallest overlap of their projections over
+-- the 15 separating-axis candidates (both boxes' face normals and the cross products of their
+-- edges), i.e. how far one must move to stop intersecting. 0 when they are apart or only touch.
+-- Unlike a world AABB this does not grow with yaw, so touching steps of a flight built at
+-- 30 degrees stay at 0 instead of reporting their inflated bounding boxes as an overlap.
+function Validate.penetration(a: Scene.PartSpec, b: Scene.PartSpec): number
+	local ba, bb = orientedBox(a), orientedBox(b)
+	local d = Vec.sub(bb.c, ba.c)
+	local candidates = {}
+	for i = 1, 3 do
+		table.insert(candidates, ba.axes[i])
+		table.insert(candidates, bb.axes[i])
+	end
+	for i = 1, 3 do
+		for j = 1, 3 do
+			local c = cross(ba.axes[i], bb.axes[j])
+			local length = Vec.length(c)
+			-- Parallel edges give no new axis; the face normals already cover that case.
+			if length > 1e-6 then
+				table.insert(candidates, Vec.scale(c, 1 / length))
+			end
+		end
+	end
+	local depth = math.huge
+	for _, axis in candidates do
+		local overlap = projectedRadius(ba, axis) + projectedRadius(bb, axis) - math.abs(Vec.dot(d, axis))
+		if overlap <= 0 then
+			return 0
+		end
+		depth = math.min(depth, overlap)
+	end
+	return depth
+end
+
+-- Lowest height at which the vertical line through (x, z) enters a part's oriented box, or nil
+-- when the line misses it (touching an edge counts as a miss). Exact for blocks at any rotation.
+local function verticalEntry(box: Box, x: number, z: number): number?
+	local lo, hi = -math.huge, math.huge
+	for i, axis in box.axes do
+		local h = box.half[i]
+		-- Projection of (x, y, z) - centre onto this axis is k + axis.y * y.
+		local k = axis.x * (x - box.c.x) + axis.z * (z - box.c.z) - axis.y * box.c.y
+		if math.abs(axis.y) < 1e-9 then
+			if math.abs(k) >= h then
+				return nil
+			end
+		else
+			local y0, y1 = (-h - k) / axis.y, (h - k) / axis.y
+			if y0 > y1 then
+				y0, y1 = y1, y0
+			end
+			lo, hi = math.max(lo, y0), math.min(hi, y1)
+		end
+	end
+	return if lo < hi then lo else nil
+end
+
+-- A stair/ramp part sunk deeper than this (1/1000 stud) into other structure is cut, not touching.
+local STAIR_CUT_DEPTH = EPS
+
 -- Widest run of a door opening that stays clear once every other collidable part intruding into
 -- its passage is subtracted. The passage is the opening rectangle extruded through the wall plus
 -- half a character width on each side, so a partition that starts at the wall face inside the
@@ -154,16 +244,23 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 
 	-- Stairs and ramps buried in or cut by other structure (railings across a flight, a ramp
 	-- sunk into a foundation). Steps of one flight only touch, so any real overlap is a defect.
+	-- Measured on oriented boxes, so the result does not depend on the yaw a scene is built at;
+	-- world AABBs only serve as a quick reject (an AABB overlap bounds the box penetration).
 	local cutStairs = {}
 	for i, spec in scene.specs do
 		if spec.role == "stair" and spec.canCollide ~= false then
+			local amin, amax = bounds[i][1], bounds[i][2]
 			for j, other in scene.specs do
+				local bmin, bmax = bounds[j][1], bounds[j][2]
 				if
 					j ~= i
 					and STRUCTURE[other.role]
 					and other.canCollide ~= false
 					and (other.role ~= "stair" or j > i)
-					and overlapVolume(bounds[i][1], bounds[i][2], bounds[j][1], bounds[j][2]) > 0.01
+					and math.min(amax.x, bmax.x) - math.max(amin.x, bmin.x) > STAIR_CUT_DEPTH
+					and math.min(amax.y, bmax.y) - math.max(amin.y, bmin.y) > STAIR_CUT_DEPTH
+					and math.min(amax.z, bmax.z) - math.max(amin.z, bmin.z) > STAIR_CUT_DEPTH
+					and Validate.penetration(spec, other) > STAIR_CUT_DEPTH
 				then
 					table.insert(cutStairs, spec.id .. " x " .. other.id)
 				end
@@ -178,11 +275,14 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 		detail = table.concat(cutStairs, ",", 1, math.min(#cutStairs, 5)),
 	})
 
-	-- Headroom: vertical clearance above each step's walking surface to the nearest solid part.
+	-- Headroom: vertical clearance above each step's walking surface to the nearest solid part,
+	-- found by casting the vertical line through the step centre into each part's oriented box
+	-- (world AABBs only pre-filter). For parts square to the world this is the AABB bottom, as
+	-- before; for parts built at another yaw the AABB would spread over neighbouring steps.
 	local minHeadroom = math.huge
-	for _, spec in scene.specs do
+	for s, spec in scene.specs do
 		if spec.role == "stair" and spec.shape == "Block" then
-			local _, top = Scene.specBounds(spec)
+			local top = bounds[s][2]
 			local cx, cz = spec.pos.x, spec.pos.z
 			for i, other in scene.specs do
 				local b = bounds[i]
@@ -190,13 +290,16 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 					other ~= spec
 					and (other.transparency or 0) < 0.5
 					and other.canCollide ~= false
-					and b[1].y > top.y + 0.01
+					and b[2].y > top.y + 0.01
 					and cx > b[1].x
 					and cx < b[2].x
 					and cz > b[1].z
 					and cz < b[2].z
 				then
-					minHeadroom = math.min(minHeadroom, b[1].y - top.y)
+					local entry = verticalEntry(orientedBox(other), cx, cz)
+					if entry and entry > top.y + 0.01 then
+						minHeadroom = math.min(minHeadroom, entry - top.y)
+					end
 				end
 			end
 		end
