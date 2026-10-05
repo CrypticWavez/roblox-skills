@@ -370,7 +370,7 @@ def export_fbx(path, objects=None):
     if objects is not None:
         for o in bpy.context.scene.objects:
             o.select_set(o in objects)
-    has_anim = any(o.animation_data and o.animation_data.action for o in (objects or bpy.context.scene.objects))
+    has_anim = any(o.animation_data and o.animation_data.action for o in (bpy.context.scene.objects if objects is None else objects))
     bpy.ops.export_scene.fbx(
         filepath=str(path),
         use_selection=objects is not None,

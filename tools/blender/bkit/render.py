@@ -96,13 +96,54 @@ def render_views(views, out_dir, prefix, resolution=(640, 400), samples=12):
     return out
 
 
+# Port of packages/SceneKit/Camera.luau (ANGLES, frame, captureSet) in Roblox axes; keep in sync.
+CAPTURE_ANGLES = {"front": (0, 15), "three-quarter": (35, 30), "side": (90, 15), "top": (0, 89)}  # yaw, pitch
+
+
+def manifest_bounds(manifest):
+    """Rotated-corner world AABB of every manifest part in Roblox axes, as Scene.bounds computes it."""
+    mn, mx = [math.inf] * 3, [-math.inf] * 3
+    for part in manifest["parts"]:
+        half = Vector(part["size"]) / 2
+        rot = coords.rbx_rotation_matrix(*part.get("rot", (0, 0, 0)))  # = Vec.rotate (Ry * Rx * Rz)
+        pos = Vector(part["pos"])
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                for sz in (-1, 1):
+                    corner = pos + rot @ Vector((sx * half.x, sy * half.y, sz * half.z))
+                    mn = [min(a, b) for a, b in zip(mn, corner)]
+                    mx = [max(a, b) for a, b in zip(mx, corner)]
+    if not manifest["parts"]:
+        raise ValueError("manifest has no parts and no cameras: nothing to frame")
+    return mn, mx
+
+
+def capture_set(mn, mx, fov=70, margin=1.1):
+    """Camera.captureSet: per angle, an eye/focus (Roblox axes) whose view fits the bounding sphere."""
+    focus = [(a + b) / 2 for a, b in zip(mn, mx)]
+    radius = math.dist(mn, mx) / 2 * margin
+    distance = radius / math.sin(math.radians(fov) / 2)
+    cameras = {}
+    for name, (yaw_deg, pitch_deg) in CAPTURE_ANGLES.items():
+        yaw, pitch = math.radians(yaw_deg), math.radians(pitch_deg)
+        # SceneKit fronts face -Z, so the "front" camera (yaw 0) sits on -Z looking toward +Z.
+        offset = (math.sin(yaw) * math.cos(pitch) * distance, math.sin(pitch) * distance, -math.cos(yaw) * math.cos(pitch) * distance)
+        eye = [f + o for f, o in zip(focus, offset)]
+        cameras[name] = {"eye": dict(zip("xyz", eye)), "focus": dict(zip("xyz", focus)), "fov": fov, "distance": distance}
+    return cameras
+
+
 def render_manifest(manifest, out_dir, angles=("three-quarter", "top"), **kwargs):
+    # scene:manifest() carries no cameras (build_fixtures adds them); frame the parts the same way.
+    cameras = manifest.get("cameras") or {}
+    if any(name not in cameras for name in angles):
+        cameras = {**capture_set(*manifest_bounds(manifest)), **cameras}
     env.reset()
     build_manifest(manifest)
     setup_stage()
     views = {}
     for name in angles:
-        cam = manifest["cameras"][name]
+        cam = cameras[name]
         views[name] = {
             "eye": coords.rbx_to_blender_vec(cam["eye"]["x"], cam["eye"]["y"], cam["eye"]["z"]),
             "focus": coords.rbx_to_blender_vec(cam["focus"]["x"], cam["focus"]["y"], cam["focus"]["z"]),

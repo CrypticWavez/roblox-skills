@@ -120,6 +120,14 @@ def run(out_dir):
     for revision in (1, 2):
         obj = _build(revision)
         source_qa = qa.run(export_probe=False)
+        if not source_qa["summary"]["pass"]:
+            # QA errors block export: leave nothing for Studio to import.
+            for suffix in ("fbx", "glb"):
+                (out_dir / f"{ASSET}_v{revision}.{suffix}").unlink(missing_ok=True)
+            report["pass"] = False
+            report["revisions"].append({"revision": revision, "pass": False, "source_qa": source_qa["summary"], "export": "blocked by source QA errors"})
+            print(f"roundtrip v{revision} FAIL source QA: {source_qa['summary']['errors']}")
+            break
         src_sig = qa.scene_signature()
         src_front = _front_centroid(obj, "MAT_Front")
         src_offsets = _surface_offsets(obj)

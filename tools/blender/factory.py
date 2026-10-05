@@ -4,7 +4,8 @@
   blender -b --python tools/blender/factory.py -- <command> ... (installed Blender)
 
 Commands:
-  template <kind> <out_dir>          build a template, save .blend, export FBX+GLB, QA report, previews
+  template <kind> <out_dir>          build a template, save .blend, QA, export FBX+GLB only if QA
+                                     has no errors (re-imported and checked), qa.json, previews
   templates <out_dir>                every template
   qa <file.blend|.fbx|.glb> [out]    QA report (JSON) for an existing asset
   render-manifest <manifest> <dir>   render a SceneKit manifest (Cycles CPU)
@@ -18,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import bpy  # noqa: E402
 
-from bkit import env, ops, qa, render, templates  # noqa: E402
+from bkit import env, qa, render, templates  # noqa: E402
 
 
 def _args():
@@ -34,19 +35,18 @@ def write_json(path, data):
 def build_template(kind, out_dir, previews=True):
     out = Path(out_dir) / kind
     out.mkdir(parents=True, exist_ok=True)
-    objs = templates.build(kind)
+    templates.build(kind)
     blend = out / f"{kind}.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
-    export_objs = [o for o in bpy.context.scene.objects if o.users_collection and o.users_collection[0].name.endswith("/Export")]
-    ops.export_fbx(out / f"{kind}.fbx", export_objs)
-    ops.export_glb(out / f"{kind}.glb", export_objs)
-    report = qa.run(export_probe=True)
+    # QA gates the export: FBX/GLB are written only when the checks have no errors, and the probe
+    # re-imports exactly those files. On failure only the .blend, qa.json and previews remain.
+    report = qa.gated_export(env.export_objects(), out / f"{kind}.fbx", out / f"{kind}.glb")
     report["template"] = kind
     write_json(out / "qa.json", report)
     if previews:
         bpy.ops.wm.open_mainfile(filepath=str(blend))
         render.setup_stage(ground=True, size=200)
-        meshes = [o for o in bpy.context.scene.objects if o.type == "MESH" and o.users_collection[0].name.endswith("/Export")]
+        meshes = [o for o in env.export_objects() if o.type == "MESH"]
         report["previews"] = render.render_objects(meshes, out, kind, angles=("front", "three-quarter"), resolution=(480, 360), samples=8)
         write_json(out / "qa.json", report)
     s = report["summary"]
@@ -58,10 +58,13 @@ def qa_file(path, out=None):
     path = Path(path)
     if path.suffix == ".blend":
         bpy.ops.wm.open_mainfile(filepath=str(path))
+        # Probe the set build_template ships (the Export collections); whole scene if there are none.
+        report = qa.run(export_probe=True, objects=env.export_objects() or None)
     else:
         env.reset()
         (bpy.ops.import_scene.fbx if path.suffix == ".fbx" else bpy.ops.import_scene.gltf)(filepath=str(path))
-    report = qa.run(export_probe=path.suffix == ".blend")
+        # glTF splits vertices along UV/normal seams; weld them back before the topology checks.
+        report = qa.run(export_probe=False, weld=0.0 if path.suffix == ".fbx" else qa.GLTF_WELD)
     if out:
         write_json(out, report)
     print(json.dumps(report["summary"], indent=2))

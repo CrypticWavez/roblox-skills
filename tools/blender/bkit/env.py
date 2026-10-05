@@ -22,6 +22,18 @@ def collection(name, parent=None):
     return coll
 
 
+def export_objects(scene=None):
+    """The shipped set: objects in every `<Kind>/Export` collection, including its sub-collections,
+    minus boolean cutters. Sorted by name so exports are deterministic."""
+    scene = scene or bpy.context.scene
+    in_scene = set(scene.objects)
+    found = set()
+    for coll in bpy.data.collections:
+        if coll.name.endswith("/Export"):
+            found.update(o for o in coll.all_objects if o in in_scene and not o.get("rbx_cutter"))
+    return sorted(found, key=lambda o: o.name)
+
+
 def link(obj, coll):
     for c in list(obj.users_collection):
         c.objects.unlink(obj)
