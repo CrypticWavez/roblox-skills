@@ -12,7 +12,7 @@
 
 ## Context budget
 - Permanent instructions: `AGENTS.md` (~50 lines) + `CLAUDE.md` (~10 lines).
-- Task context: one skill (each < 80 lines) plus the module header it names.
+- Task context: one skill (each < 80 lines) plus the module header it names. Every SKILL.md has the same ten `##` sections (Purpose, Triggers, Inputs, Required context, Tools, Procedure, Outputs, Acceptance, Failure, Related); `tools/sync_skills.py --check` enforces them with the frontmatter rules.
 - Everything else is retrieved on demand (`rg`, JSON reports). Large legacy checklists live in skill `references/` and load only for that task.
 - Deterministic tools (generators, validators, QA) produce compact JSON so agents read summaries, not raw scenes.
 

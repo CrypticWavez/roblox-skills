@@ -3,7 +3,7 @@
 Reusable, game-neutral tooling for building Roblox experiences with Claude Code and Codex: a scene-authoring API, seeded procedural layouts with validators, a headless Blender asset factory with QA and a Blender-to-Roblox round trip, Studio MCP guidance, skills, hooks and gates. **SETUP_ONLY**: nothing here starts a game, publishes, uploads or spends.
 
 - Agents start at [AGENTS.md](AGENTS.md) (Claude also reads [CLAUDE.md](CLAUDE.md)).
-- What works, what doesn't and what needs Ethan's PC: [docs/gap-matrix.md](docs/gap-matrix.md).
+- What works, what doesn't and what needs Ethan's PC: [docs/gap-matrix.md](docs/gap-matrix.md), generated from `reports/gap-matrix.json` (edit the JSON, then run `python3 tools/gap_matrix.py`).
 
 ## Quick start
 

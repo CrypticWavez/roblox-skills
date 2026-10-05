@@ -19,7 +19,7 @@ This repo builds reusable tools, neutral fixtures and research. It does not star
 | Studio control and testing modes | skill `roblox-studio-testing`, `docs/mcp.md` |
 | Seeing results | skill `visual-qa` |
 | Gates and hooks | skill `luau-quality`, `tools/check.py` |
-| Capability status and open gaps | `docs/gap-matrix.md` (canonical), `reports/gap-matrix.json` |
+| Capability status and open gaps | `reports/gap-matrix.json` (canonical: edit this, then `python3 tools/gap_matrix.py`); `docs/gap-matrix.md` is generated, never hand-edited |
 | Inherited first-pass runtime/creator/diagnostic modules | `packages/Runtime`, `packages/Creator`, `packages/Diagnostics`, `fixtures/` |
 | Research | `docs/research/`, `knowledge/records/` |
 

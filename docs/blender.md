@@ -4,11 +4,13 @@ Headless: `python3 tools/blender/factory.py <command>` with the `bpy` wheel (CI:
 
 | Command | Output |
 |---|---|
-| `template <kind> <dir>` | `.blend`, `.fbx`, `.glb`, `qa.json` (incl. export re-import probe), front/three-quarter PNGs |
-| `templates <dir>` | all 13 kinds + `templates-summary.json` |
-| `qa <file> [report]` | QA JSON; exit 1 on errors |
-| `render-manifest <manifest> <dir>` | Cycles previews of a SceneKit manifest |
+| `template <kind> <dir>` | `.blend`, `qa.json`, front/three-quarter PNGs; QA runs first and `.fbx`/`.glb` are written (then re-imported and compared) only when it has no errors, otherwise exit 1 and no FBX/GLB |
+| `templates <dir> [--no-previews]` | all 13 kinds + `templates-summary.json` |
+| `qa <file> [report]` | QA JSON only (no previews); exit 1 on errors. A `.blend` also probes its Export collections; the factory's own `.fbx`/`.glb` pass |
+| `render-manifest <manifest> <dir>` | Cycles previews (`<name>.three-quarter.png`, `<name>.top.png`) of a SceneKit manifest; cameras are framed from the part bounds when the manifest has none |
 | `roundtrip <dir>` | v1/v2 marker asset, FBX+GLB re-import checks, `roblox_expectation_v*.json`, `roundtrip-report.json` |
+
+Reproducible work goes through these scripts; Blender MCP is for interactive inspection, one client per Blender instance (`docs/mcp.md`, Operation ownership). Workflows: skills `blender-asset-factory`, `blender-asset-qa`, `blender-roblox-roundtrip`.
 
 Kinds: humanoid, npc, enemy (R15-named rigs, rigid skinning), creature (quadruped rig), weapon (grip pivot), prop, vehicle (boolean cut), building (solidify + boolean openings), modular (4-stud grid kit), environment (rock, tree), material_test, rig_test, animation_test.
 

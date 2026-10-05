@@ -5,18 +5,39 @@ description: Source, vet and register third-party or Creator Store/Toolbox asset
 
 # Asset intake and security review
 
-**Purpose.** Better visuals without importing someone else's backdoor or licence problem.
+## Purpose
+Better visuals without importing someone else's backdoor or licence problem. Nothing enters a project without a provenance record and a clean script review.
 
-**Inputs.** Candidate asset ids/links/files, intended use, the game's style profile.
+## Triggers
+"Find assets", "use this free model", Toolbox/Creator Store inspection, a plugin or mesh from outside, replacing SceneKit placeholders with real assets.
+
+## Inputs
+Candidate asset ids, links or files; intended use; the game's style profile.
+
+## Required context
+`docs/mcp.md` (safety gates: `insert_asset` asks first), `references/legacy-creator-store.md`, existing records in `knowledge/records/`.
+
+## Tools
+Studio MCP `search_asset`, `insert_asset` (gated), `execute_luau` (inspection), `search_game_tree`; `python3 tools/blender/factory.py qa <file>` for downloaded meshes; Lune `@lune/roblox` (`serializeModel`) to hash an inserted model.
 
 ## Procedure
-1. **Search** with `search_asset` (Studio MCP) or the Creator Store website; prefer Roblox-verified creators and assets without scripts. Do not buy anything.
-2. **Insert only into the diagnostic place** (`insert_asset` is gated: ask Ethan once per batch). Never insert into a game place for review.
-3. **Inspect** with `execute_luau`: list every `Script/LocalScript/ModuleScript`, `require(<number>)`, `getfenv`/`setfenv`, `loadstring`, `HttpService`, `MarketplaceService`, `TeleportService`, obfuscated strings, `InsertService:LoadAsset`, hidden parts with zero transparency tricks, unexpected welds/constraints, `Sound` ids, `Decal`/`Texture` ids, part count and triangle counts.
-4. **Decide**: reject on any remote require/loadstring/obfuscation; strip scripts from purely visual models; run blender-asset-qa on downloaded meshes where possible.
-5. **Record** provenance: asset id, creator, URL, licence/terms, date, hash of the inserted model (serialize via Rojo/Lune), modifications, decision and reviewer. Research media never becomes a production asset.
-6. Replace SceneKit placeholders (`asset` attribute) only with approved entries.
+1. **Search** with `search_asset` or the Creator Store website; prefer Roblox-verified creators and assets without scripts. Do not buy anything.
+2. **Insert only into the diagnostic place** (`insert_asset` asks Ethan once per batch). Never insert into a game place for review.
+3. **Inspect** with `execute_luau`: list every Script/LocalScript/ModuleScript, `require(<number>)`, `getfenv`/`setfenv`, `loadstring`, `HttpService`, `MarketplaceService`, `TeleportService`, `InsertService:LoadAsset`, obfuscated strings, invisible or hidden parts, unexpected welds/constraints, Sound/Decal/Texture ids, part and triangle counts.
+4. **Decide**: reject on any remote require, loadstring or obfuscation; strip scripts from purely visual models; run blender-asset-qa on downloaded meshes where possible.
+5. **Record** provenance: asset id, creator, URL, licence/terms, date, model hash, modifications, decision and reviewer. Research media never becomes a production asset.
+6. Replace SceneKit placeholders (the part `asset` attribute) only with approved entries.
 
-**Acceptance.** Every approved asset has a provenance record and a clean script review; rejected ones list the reason.
+## Outputs
+A provenance record per candidate (approved or rejected with reason) and the script-review findings.
 
-**Related.** visual-qa, blender-asset-qa, roblox-research.
+## Acceptance
+Every approved asset has a provenance record and a clean script review; every rejected one lists the reason.
+
+## Failure
+- Any script whose purpose you cannot explain: reject, or strip it and record that.
+- Licence unclear: reject; never assume Creator Store items are free to reuse.
+- A hook asked or denied: insertion and uploads are gated on purpose; do not work around it.
+
+## Related
+roblox-research, blender-asset-qa, visual-qa.

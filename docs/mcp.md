@@ -12,10 +12,11 @@ Rejected: `Roblox/studio-rust-mcp-server` (archived 2026-04-03, superseded by th
 ## Operation ownership
 Studio: see the table in `.agents/skills/roblox-studio-testing/SKILL.md`. Rojo owns synced source; Studio MCP never edits Rojo-managed scripts. Blender: bpy scripts (`tools/blender/factory.py`) for reproducible work; MCP for interactive inspection. One client per Blender instance.
 
-## Safety gates (enforced by `.claude/settings.json` + `tools/hooks/guard_mcp.mjs`)
+## Safety gates (enforced by `.claude/settings.json`, `tools/hooks/guard_bash.mjs` and `tools/hooks/guard_mcp.mjs`)
 - Allowed without prompt: read-only Studio tools, `execute_luau`, play/input tools.
-- Ask: `insert_asset`, `upload_image`, `store_image`, `generate_*`, `http_get`, Luau that writes DataStores or prompts purchases.
-- Deny: Luau that publishes/uploads (`SavePlaceAsync`, `CreatePlaceAsync`, `CreateAssetAsync`, `PublishAsync`…), Bash publish/upload commands, Open Cloud write calls, force-push to main.
+- Ask: `insert_asset`, `upload_image`, `store_image`, `generate_*`, `http_get`; Luau that writes DataStores.
+- Deny: Luau that publishes, uploads or creates assets/places (`SavePlaceAsync`, `PublishAsync`, `CreateAsset*Async`, `CreatePlace*Async`…) or prompts purchases; Bash publish/upload commands (`rojo upload`, deploy tools); Open Cloud writes through curl or `rbxcloud` (assets, DataStores, ordered DataStores, MessagingService); force-push to main/master whatever the argument order.
+- `node tools/hooks/selftest.mjs` (part of the pre-commit gate) feeds known-good and known-bad events to the guards; the exact patterns live in the guard scripts.
 - Never expose MCP ports beyond loopback; never pass secrets through MCP arguments.
 
 ## Local machine notes (audit 2026-10-05)

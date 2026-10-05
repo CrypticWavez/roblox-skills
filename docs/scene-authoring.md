@@ -15,6 +15,8 @@ Conceptual operation -> implementation (all deterministic; seeds where randomnes
 | scene.capture / compare / validate | Blender `render-manifest`, Studio `screen_capture`; `Scene.compare`; `Validate.scene` |
 | layouts | `ProcGen.Dungeon/Cave/Arena/Settlement` -> `Placement.assign` -> `Validate.*` -> `SceneKit.Layout.toScene` |
 
-Reversibility: `Apply.scene` replaces the previous model of the same name (only if it carries `SceneKitHash`) inside one ChangeHistory recording; `dryRun = true` returns counts and hash without creating anything. Provenance: model attributes `SceneKitHash`, `SceneKitSeed`, `SceneKitStyle`, `Provenance`; parts carry `SceneKitId`, `Role` and `asset` placeholders for approved-asset swaps.
+Reversibility: `Apply.scene(scene, parent)` replaces the previous model of the same name by default (only if it carries `SceneKitHash`) inside one ChangeHistory recording; `{ replace = false }` keeps it; `{ dryRun = true }` returns counts and hash without creating anything.
 
-Player-scale constants: `Measure.ENGINE` (Roblox defaults) and `Measure.GUIDE` (level-design guidelines; override per game).
+Previews: `factory.py render-manifest` takes `scene:manifest()` JSON directly; when the manifest has no `cameras` (only `tools/lune/build_fixtures.luau` adds them) it frames the part bounds as `Camera.captureSet` does. In Studio, `Camera.captureSet` returns plain `{x, y, z}` tables: wrap them in `Vector3.new` before `CFrame.lookAt` (skill `visual-qa`). Provenance: model attributes `SceneKitHash`, `SceneKitSeed`, `SceneKitStyle`, `Provenance`; parts carry `SceneKitId`, `Role` and `asset` placeholders for approved-asset swaps.
+
+Player-scale constants: `Measure.ENGINE` (Roblox defaults) and `Measure.GUIDE` (level-design guidelines; override per game). `Measure.sightline` and `Measure.cameraClearance` read a Scene's `specs`, not a manifest's `parts` (skill `roblox-level-design-review` shows how to export Studio parts in that shape).

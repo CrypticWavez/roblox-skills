@@ -5,19 +5,37 @@ description: Audit and polish Roblox UI and front-end flow - HUD, menus, title/l
 
 # UI / UX pass
 
-**Gate.** Production skill: it acts on a game repository only after an explicit game-build request (see `FUTURE_GAME_BUILD_PROMPT.md` in the workbench). In this factory repo, run it only against fixtures. Never publish, spend Robux, create live products or touch production data without fresh approval.
+## Purpose
+Every screen works on every target input and size, with one source of truth per screen state, before any visual polish. **Gate:** production skill. It acts on a game repository only after an explicit game-build request (AGENTS.md, Boundary); in this factory repo run it only against fixtures.
 
-**Required context.** `packages/Runtime/NativeUI.luau`, `packages/Creator/UI.luau` (inherited UI helpers), the game's style profile.
+## Triggers
+"UI looks cheap", broken or overlapping panels, title screen or lobby polish, mobile or controller usability, text that does not fit after localization.
+
+## Inputs
+The screens and their states, target devices and input types, the game's style profile, localization targets.
+
+## Required context
+`packages/Runtime/NativeUI.luau`, `packages/Creator/UI.luau` (inherited UI helpers: string/item/settings validation, localization, shop display), `packages/Runtime/Motion.luau` (transitions, reduced motion); `references/legacy-ui-polish.md` (its original top was truncated), `references/legacy-title-lobby.md`, `references/legacy-mobile-controller.md`.
+
+## Tools
+Studio device emulator; Studio MCP `screen_capture`, `user_mouse_input`, `user_keyboard_input`, `execute_luau`, `get_console_output`; visual-qa for before/after captures.
 
 ## Procedure
-1. Inventory screens and states (open/closed/loading/empty/error); find dead buttons, overlapping panels, stale state, duplicated logic.
-2. Check layout at phone portrait/landscape, tablet, desktop and console safe areas in the device emulator; GuiInset and notch safe areas; minimum touch target ~44px; text scaling.
+1. Inventory screens and states (open, closed, loading, empty, error); find dead buttons, overlapping panels, stale state and duplicated logic.
+2. Check layout at phone portrait/landscape, tablet, desktop and console in the device emulator: GuiInset and notch safe areas, touch targets of about 44 px or more, text scaling.
 3. Input: every action reachable by touch, mouse/keyboard and gamepad; `GuiService.SelectedObject` focus paths; no focus traps.
-4. Fix structure first (one source of truth per screen state), then visuals (hierarchy, spacing, contrast, motion via `Runtime/Motion.luau`).
-5. Capture before/after per device (visual-qa).
+4. Fix structure first (one source of truth per screen state), then visuals (hierarchy, spacing, contrast, motion via `Motion.transition`).
+5. Capture before/after per device size (visual-qa).
 
-**Acceptance.** All primary flows complete on each input type; captures at every target size show no clipping/overlap.
+## Outputs
+Screen/state inventory with issues, the fixes, and before/after captures per device size.
 
-**References.** `references/legacy-ui-polish.md` (original was truncated at the top), `legacy-title-lobby.md`, `legacy-mobile-controller.md`.
+## Acceptance
+All primary flows complete with each input type; captures at every target size show no clipping or overlap.
 
-**Related.** visual-qa, roblox-release-pass.
+## Failure
+- Emulator-only evidence: record physical-device checks as still needed.
+- A visual fix breaks a state: revert to the structural fix first, then restyle.
+
+## Related
+visual-qa, roblox-release-pass, roblox-studio-testing.
