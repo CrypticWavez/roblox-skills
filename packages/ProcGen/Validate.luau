@@ -10,6 +10,7 @@ export type Check = { name: string, pass: boolean, value: any, limit: any?, deta
 export type Rules = {
 	minCorridorStuds: number?, -- default 6 (two players abreast at 2 studs each, with margin)
 	minLoops: number?, -- redundant routes required
+	minLoopWallStuds: number?, -- square studs of wall a loop must wrap (smaller pockets are pillars)
 	maxDeadEndRatio: number?,
 	minEncounterAreaStuds: number?, -- square studs for an encounter room
 	maxSpawnDistanceSpread: number?, -- fairness ratio tolerance (0.1 = 10%)
@@ -20,6 +21,7 @@ export type Rules = {
 local DEFAULTS = {
 	minCorridorStuds = 6,
 	minLoops = 1,
+	minLoopWallStuds = RoomGraph.MIN_LOOP_WALL_STUDS, -- 144: one 12 x 12 minimum room footprint
 	maxDeadEndRatio = 0.5,
 	minEncounterAreaStuds = 576, -- 24 x 24
 	maxSpawnDistanceSpread = 0.1,
@@ -127,8 +129,14 @@ function Validate.rooms(layout, placement, rules: Rules?): { Check }
 		check("reachability", #unreachable == 0, #unreachable, 0, table.concat(unreachable, ","))
 	)
 	-- Loops are counted on the carved grid (rooms + corridor components), not on the layout
-	-- graph: a loop link whose corridor reuses existing cells is not an alternate route.
-	local loops = RoomGraph.loops(grid, layout.rooms)
+	-- graph: a loop link whose corridor reuses existing cells is not an alternate route, and
+	-- neither is a pillar splitting one wide passage (a wall pocket under minLoopWallStuds).
+	local loops = RoomGraph.loops(
+		grid,
+		layout.rooms,
+		nil,
+		RoomGraph.minWallCells(grid, rule(rules, "minLoopWallStuds"))
+	)
 	table.insert(
 		checks,
 		check(
@@ -136,7 +144,11 @@ function Validate.rooms(layout, placement, rules: Rules?): { Check }
 			loops >= rule(rules, "minLoops"),
 			loops,
 			rule(rules, "minLoops"),
-			string.format("walkable loops on the grid; layout graph claims %d", graph:cycleRank())
+			string.format(
+				"walkable loops around >= %d sq studs of wall; layout graph claims %d",
+				rule(rules, "minLoopWallStuds"),
+				graph:cycleRank()
+			)
 		)
 	)
 	local deadEnds = graph:deadEnds()
@@ -173,6 +185,25 @@ function Validate.rooms(layout, placement, rules: Rules?): { Check }
 		end
 	end
 	table.insert(checks, check("encounter_space", #cramped == 0, #cramped, 0, table.concat(cramped, ",")))
+	-- Requirement shortfall: Placement leaves an encounter unplaced rather than squeezing it
+	-- into a cramped room or off the critical path, so a short count must fail here, not vanish.
+	local placed = 0
+	for _, role in placement.roles do
+		if role == "encounter" then
+			placed += 1
+		end
+	end
+	local requested = placement.requestedEncounters or (placed + (placement.unplacedEncounters or 0))
+	table.insert(
+		checks,
+		check(
+			"encounters_placed",
+			placed >= requested,
+			placed,
+			requested,
+			"critical-path encounters placed in rooms that fit / requested"
+		)
+	)
 	table.insert(
 		checks,
 		check(

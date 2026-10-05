@@ -2,7 +2,8 @@
 -- BSP room layout with MST corridors and a controlled number of extra loops.
 -- Output is a Grid plus a room Graph, ready for Placement and Validate.
 -- Loop links are kept only when their carve raises the walkable loop count measured on the
--- grid (RoomGraph), so every loop edge in the room Graph is a route a player can walk.
+-- grid (RoomGraph), so every loop edge in the room Graph is a route a player can walk around
+-- a real wall, not a pillar inside one wide passage.
 local Graph = require("./Graph")
 local Grid = require("./Grid")
 local Rng = require("./Rng")
@@ -22,6 +23,7 @@ export type Params = {
 	loopChance: number?, -- fraction of non-tree neighbour links kept as loops
 	maxDepth: number?,
 	minLoops: number?, -- guarantee at least this many walkable loops on the grid (default 1)
+	minLoopWallStuds: number?, -- wall a loop must wrap, square studs (default RoomGraph's 144)
 }
 
 local function split(rng, rect, depth, maxDepth, minLeaf, out)
@@ -157,8 +159,9 @@ function Dungeon.generate(params: Params)
 		graph:addNode(room.id, "room", { area = room.w * room.h })
 	end
 	local owner = RoomGraph.roomCells(grid, rooms)
+	local minWallCells = RoomGraph.minWallCells(grid, params.minLoopWallStuds)
 	local function walkableLoops(): number
-		return RoomGraph.loops(grid, rooms, owner)
+		return RoomGraph.loops(grid, rooms, owner, minWallCells)
 	end
 	-- A loop link must add a walkable alternate route. Try the preferred bend, then the
 	-- other; keep a carve only if it adds floor, crosses no third room and raises the grid's
@@ -237,6 +240,9 @@ function Dungeon.generate(params: Params)
 			maxRoom = maxRoom,
 			corridorWidth = corridorWidth,
 			loopChance = loopChance,
+			-- Recorded only when set (nil keeps default manifests unchanged).
+			minLoops = params.minLoops,
+			minLoopWallStuds = params.minLoopWallStuds,
 		},
 		grid = grid,
 		rooms = rooms,

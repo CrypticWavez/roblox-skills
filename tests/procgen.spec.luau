@@ -106,7 +106,8 @@ test("dungeons validate across 25 seeds", function(t)
 		local layout = Dungeon.generate({ seed = seed })
 		local placement = Placement.assign(layout, { encounters = 2, landmarks = 1 })
 		local checks = Validate.rooms(layout, placement)
-		-- Every validator, encounter_space included: Placement only picks rooms that fit.
+		-- Every validator, encounter_space and encounters_placed included: Placement only picks
+		-- rooms that fit, and these seeds have room for both requested encounters.
 		for _, c in checks do
 			t.ok(c.pass, string.format("seed %d failed %s (%s)", seed, c.name, failedNames(checks)))
 		end
