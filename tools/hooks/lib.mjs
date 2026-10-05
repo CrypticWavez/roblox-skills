@@ -9,20 +9,18 @@ export function readEvent() {
 	}
 }
 
-// Credentials that must never land in the repo, logs or records.
-export const SECRET_PATTERNS = [
-	[/_\|WARNING:-DO-NOT-SHARE-THIS/, "Roblox .ROBLOSECURITY cookie"],
-	[/-----BEGIN [A-Z ]*PRIVATE KEY-----/, "private key"],
-	[/\bghp_[A-Za-z0-9]{36}\b|\bgithub_pat_[A-Za-z0-9_]{60,}/, "GitHub token"],
-	[/\bsk-ant-[A-Za-z0-9_-]{20,}/, "Anthropic API key"],
-	[/\bsk-(proj-)?[A-Za-z0-9_-]{32,}/, "OpenAI-style API key"],
-	[/\bAKIA[0-9A-Z]{16}\b/, "AWS access key"],
-	[/\bxox[baprs]-[A-Za-z0-9-]{10,}/, "Slack token"],
-	[/x-api-key["']?\s*[:=]\s*["'][A-Za-z0-9+/=_-]{40,}["']/i, "Roblox Open Cloud API key"],
-];
+// Credentials that must never land in the repo, logs or records. The list lives in
+// secret-patterns.json so tools/check.py scans for exactly the same set. It is loaded lazily:
+// the PreToolUse guards import this module and must not depend on that file.
+export const SECRET_PATTERNS_FILE = new URL("./secret-patterns.json", import.meta.url);
+let patterns;
+export function secretPatterns() {
+	patterns ??= JSON.parse(readFileSync(SECRET_PATTERNS_FILE, "utf8")).patterns.map((p) => [new RegExp(p.pattern, p.flags || ""), p.label]);
+	return patterns;
+}
 
 export function findSecrets(text) {
-	return SECRET_PATTERNS.filter(([re]) => re.test(text)).map(([, label]) => label);
+	return [...new Set(secretPatterns().filter(([re]) => re.test(text)).map(([, label]) => label))];
 }
 
 // PreToolUse decision helper: "deny" blocks, "ask" forces a confirmation prompt.

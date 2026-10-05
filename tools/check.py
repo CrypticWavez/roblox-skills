@@ -3,9 +3,12 @@
   pre-commit  fast + skills sync + gap matrix + hook self-test + selene + Lune specs + fixture hashes (~10 s)
   pre-release pre-commit + Blender templates/QA + round trip + previews       (minutes)
 
-  python3 tools/check.py [--tier fast|pre-commit|pre-release] [--update-golden] [--install-git-hook]
+  python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden] [--install-git-hook]
 
 Missing optional tools (stylua, selene, lune, bpy) are reported as SKIPPED, never as passes.
+--strict counts every SKIPPED step as a failure; CI runs with it, so a missing tool cannot keep CI green.
+The secret scan uses tools/hooks/secret-patterns.json, the same list as the Claude edit hook, over every
+file git would commit (tracked plus untracked, not ignored), dotfiles and scripts included.
 Writes build/check-report.json. Opens no Studio session; publishes, uploads and buys nothing.
 """
 import argparse
@@ -32,13 +35,18 @@ INHERITED_SPECS = [
     "tests/creator/world.luau",
     "tests/diagnostics/network.luau",
 ]
-SECRET_RE = [
-    re.compile(r"_\|WARNING:-DO-NOT-SHARE-THIS"),
-    re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
-    re.compile(r"\bghp_[A-Za-z0-9]{36}\b"),
-    re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}"),
-    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
-]
+SECRET_PATTERNS_FILE = ROOT / "tools" / "hooks" / "secret-patterns.json"
+SECRET_SCAN_MAX_BYTES = 5_000_000
+
+
+def load_secret_patterns(path=SECRET_PATTERNS_FILE):
+    """(compiled regex, label) pairs from the pattern file shared with tools/hooks/lib.mjs."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return [(re.compile(p["pattern"], re.IGNORECASE if "i" in p.get("flags", "") else 0), p["label"]) for p in data["patterns"]]
+
+
+def find_secrets(text, patterns):
+    return sorted({label for regex, label in patterns if regex.search(text)})
 
 
 def files(suffixes=TEXT_SUFFIXES):
@@ -50,10 +58,10 @@ def files(suffixes=TEXT_SUFFIXES):
                 yield p
 
 
-def run(cmd, timeout=600):
+def run(cmd, timeout=600, env=None):
     start = time.time()
     try:
-        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+        proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout, env=env)
     except subprocess.TimeoutExpired:
         return 124, f"timed out after {timeout}s", round(time.time() - start, 1)
     tail = (proc.stdout + proc.stderr).strip().splitlines()[-15:]
@@ -70,11 +78,11 @@ class Gate:
         last = detail.splitlines()[-1] if detail and status != "PASS" else ""
         print(f"[{mark}] {name} ({seconds}s){': ' + last if last else ''}")
 
-    def cmd(self, name, cmd, needs=None, timeout=600):
+    def cmd(self, name, cmd, needs=None, timeout=600, env=None):
         if needs and shutil.which(needs) is None:
             self.add(name, "SKIPPED", f"{needs} not installed")
             return False
-        code, tail, secs = run(cmd, timeout)
+        code, tail, secs = run(cmd, timeout, env)
         self.add(name, "PASS" if code == 0 else "FAIL", tail, secs)
         return code == 0
 
@@ -89,14 +97,38 @@ def check_json(gate):
     gate.add("json-valid", "FAIL" if bad else "PASS", "\n".join(bad))
 
 
+def committable_files():
+    """Every file git would commit: tracked plus untracked-but-not-ignored. Falls back to a walk."""
+    try:
+        out = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=ROOT, capture_output=True, timeout=60, check=True,
+        ).stdout
+        paths = [ROOT / name for name in out.decode("utf-8", "surrogateescape").split("\0") if name]
+    except (OSError, subprocess.SubprocessError):
+        paths = []
+        for dirpath, dirnames, filenames in os.walk(ROOT):
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+            paths.extend(Path(dirpath) / name for name in filenames)
+    return sorted({p for p in paths if p.is_file()})
+
+
 def check_secrets(gate):
+    try:
+        patterns = load_secret_patterns()
+    except (OSError, ValueError, KeyError, re.error) as err:
+        gate.add("secret-scan", "FAIL", f"{SECRET_PATTERNS_FILE.relative_to(ROOT)} could not be loaded: {err}")
+        return
     hits = []
-    for p in files():
-        if p.name == "check.py" or p.parent.name == "hooks":
-            continue  # these files contain the patterns themselves
-        text = p.read_text(encoding="utf-8", errors="ignore")
-        if any(r.search(text) for r in SECRET_RE):
-            hits.append(str(p.relative_to(ROOT)))
+    for p in committable_files():
+        if p.stat().st_size > SECRET_SCAN_MAX_BYTES:
+            continue
+        data = p.read_bytes()
+        if b"\0" in data[:8192]:
+            continue  # binary
+        labels = find_secrets(data.decode("utf-8", errors="ignore"), patterns)
+        if labels:
+            hits.append(f"{p.relative_to(ROOT).as_posix()}: {', '.join(labels)}")
     gate.add("secret-scan", "FAIL" if hits else "PASS", "\n".join(hits))
 
 
@@ -126,9 +158,15 @@ def check_fixtures(gate, update):
         gate.add("fixture-hashes", "PASS", "golden updated")
         return
     golden = json.loads(GOLDEN.read_text())
-    changed = [k for k in golden if golden[k] != hashes.get(k)]
-    detail = f"changed: {', '.join(changed)} (intended? rerun with --update-golden)" if changed else ""
-    gate.add("fixture-hashes", "FAIL" if changed else "PASS", detail)
+    drift = {
+        "added": sorted(set(hashes) - set(golden)),
+        "removed": sorted(set(golden) - set(hashes)),
+        "changed": sorted(k for k in set(golden) & set(hashes) if golden[k] != hashes[k]),
+    }
+    detail = "; ".join(f"{kind}: {', '.join(names)}" for kind, names in drift.items() if names)
+    if detail:
+        detail += " (intended? rerun with --update-golden)"
+    gate.add("fixture-hashes", "FAIL" if detail else "PASS", detail)
 
 
 def blender_cmd():
@@ -142,6 +180,7 @@ def blender_cmd():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", default="pre-commit", choices=["fast", "pre-commit", "pre-release"])
+    ap.add_argument("--strict", action="store_true", help="count SKIPPED steps as failures (CI)")
     ap.add_argument("--update-golden", action="store_true")
     ap.add_argument("--install-git-hook", action="store_true")
     args = ap.parse_args()
@@ -159,7 +198,8 @@ def main():
     if args.tier in ("pre-commit", "pre-release"):
         gate.cmd("skills-sync", [sys.executable, "tools/sync_skills.py", "--check"])
         gate.cmd("gap-matrix", [sys.executable, "tools/gap_matrix.py", "--check"])
-        gate.cmd("hooks-selftest", ["node", "tools/hooks/selftest.mjs"], needs="node")
+        selftest_env = {**os.environ, "FACTORY_PYTHON": sys.executable}  # secret-pattern parity check
+        gate.cmd("hooks-selftest", ["node", "tools/hooks/selftest.mjs"], needs="node", env=selftest_env)
         check_selene(gate)
         gate.cmd("lune-specs", ["lune", "run", "tests/run.luau"], needs="lune")
         for script in INHERITED_SPECS:  # the first pass's own Lune suites, re-run here
@@ -178,11 +218,13 @@ def main():
 
     failed = [r["name"] for r in gate.results if r["status"] == "FAIL"]
     skipped = [r["name"] for r in gate.results if r["status"] == "SKIPPED"]
+    passed = not failed and not (args.strict and skipped)
     (ROOT / "build").mkdir(exist_ok=True)
-    report = {"tier": args.tier, "pass": not failed, "failed": failed, "skipped": skipped, "results": gate.results}
+    report = {"tier": args.tier, "strict": args.strict, "pass": passed, "failed": failed, "skipped": skipped, "results": gate.results}
     (ROOT / "build" / "check-report.json").write_text(json.dumps(report, indent=2))
-    print(f"\n{args.tier}: {'PASS' if not failed else 'FAIL'}; failed={failed} skipped={skipped}")
-    return 1 if failed else 0
+    strict = " (strict: skipped steps count as failures)" if args.strict and skipped else ""
+    print(f"\n{args.tier}: {'PASS' if passed else 'FAIL'}{strict}; failed={failed} skipped={skipped}")
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":

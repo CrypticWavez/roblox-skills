@@ -1,5 +1,6 @@
 // FAST_ON_EDIT tier (PostToolUse on Edit/Write/MultiEdit). Checks only the touched file and
-// finishes in well under a second: secret scan, JSON validity, StyLua check for Luau,
+// finishes in well under a second: secret scan (tools/hooks/secret-patterns.json, shared with
+// tools/check.py), JSON validity, StyLua check for Luau,
 // SKILL.md frontmatter, and a reminder when a skill is edited outside .agents/skills.
 // Exit 2 sends the message back to Claude; it never blocks or rewrites anything.
 import { existsSync, readFileSync } from "node:fs";
@@ -20,8 +21,12 @@ try {
 	process.exit(0);
 }
 
-const secrets = findSecrets(text);
-if (secrets.length) problems.push(`possible secret (${secrets.join(", ")}) in ${rel}: remove it and rotate the credential`);
+try {
+	const secrets = findSecrets(text); // same patterns as tools/check.py: tools/hooks/secret-patterns.json
+	if (secrets.length) problems.push(`possible secret (${secrets.join(", ")}) in ${rel}: remove it and rotate the credential`);
+} catch (err) {
+	problems.push(`secret scan unavailable: tools/hooks/secret-patterns.json could not be loaded (${err.message})`);
+}
 
 if (file.endsWith(".json")) {
 	try {

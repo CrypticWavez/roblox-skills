@@ -4,6 +4,8 @@ on:
     branches: [main]
   pull_request:
 
+# Both gates run with --strict: a SKIPPED step (missing tool, Selene std not generated, no bpy)
+# fails the job, so CI can only be green when every step actually ran.
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
@@ -22,14 +24,17 @@ jobs:
           echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
       - name: Install pinned tools
         run: rokit install --no-trust-check
+      - name: Generate the Selene Roblox std
+        # roblox.yml is gitignored. Generating it before the gate makes Selene run instead of SKIPPED.
+        run: selene generate-roblox-std
       - name: Rojo builds the diagnostic projects
         # network.project.json needs artifacts/network/SourceManifest.luau, which only the local
         # workbench generates (see docs/gap-matrix.md), so it is not built from a clean clone.
         run: |
           mkdir -p build
           for p in creator diagnostic factory; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
-      - name: Pre-commit gate
-        run: python3 tools/check.py --tier pre-commit
+      - name: Pre-commit gate (strict)
+        run: python3 tools/check.py --tier pre-commit --strict
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -39,6 +44,8 @@ jobs:
   blender:
     # 5.1.2 matches the Blender installed on the workbench PC; 5.2.2 is the selected LTS.
     # Both are run because 5.2 changed boolean material slots (see tools/blender/bkit/ops.py).
+    # The full pre-release tier runs here: pre-commit steps, Blender templates with Cycles CPU
+    # previews, the round trip and the fixture previews (which need the Lune-built manifests).
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -47,20 +54,31 @@ jobs:
         bpy: ["5.1.2", "5.2.2"]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: Install rokit toolchain (rokit.toml)
+        run: |
+          curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
+          echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
+      - name: Install pinned tools
+        run: rokit install --no-trust-check
+      - name: Generate the Selene Roblox std
+        run: selene generate-roblox-std
       - name: Install bpy
         run: python3 -m pip install "bpy==${{ matrix.bpy }}"
-      - name: Templates, QA and round trip
-        run: |
-          python3 tools/blender/factory.py templates build/blender --no-previews
-          python3 tools/blender/factory.py roundtrip build/roundtrip
+      - name: Pre-release gate (strict)
+        run: python3 tools/check.py --tier pre-release --strict
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: blender-${{ matrix.bpy }}
           path: |
+            build/check-report.json
             build/blender/**/qa.json
             build/blender/templates-summary.json
             build/roundtrip/*.json
+            build/previews/*.png
