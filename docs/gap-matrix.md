@@ -9,14 +9,14 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | Status | Count |
 |---|---|
 | VERIFIED_STRONG | 8 |
-| VERIFIED_ACCEPTABLE | 7 |
+| VERIFIED_ACCEPTABLE | 8 |
 | WEAK | 4 |
-| PARTIAL | 6 |
+| PARTIAL | 7 |
 | BROKEN | 1 |
-| MISSING | 2 |
+| MISSING | 3 |
 | OUTDATED | 1 |
 | REDUNDANT | 1 |
-| BLOCKED_EXTERNAL | 7 |
+| BLOCKED_EXTERNAL | 5 |
 | INTENTIONALLY_EXCLUDED | 2 |
 
 ## Summary
@@ -43,7 +43,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [M05](#m05) | MCP and Studio | WEPPY bridge | REDUNDANT | P2 | Setting off, or a documented unique function. |
 | [M06](#m06) | MCP and Studio | Codex global configuration | WEAK | P1 | Owner review. |
 | [S01](#s01) | MCP and Studio | Studio testing modes (Test, Test Here, Run, Server & Clients) | BLOCKED_EXTERNAL | P1 | Console output and captures saved under `reports/studio/`. |
-| [S02](#s02) | Scene authoring | SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune) | BLOCKED_EXTERNAL | P0 | Hashes and part counts equal the golden; two Ctrl+Z presses (one undo waypoint per scene) remove the generated scenes. |
+| [S02](#s02) | Scene authoring | SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune) | VERIFIED_ACCEPTABLE | P0 | Observed in Studio: hashes and part counts equal the golden, and two undos removed both scenes (search_game_tree). |
 | [S03](#s03) | Scene authoring | Scene-authoring API as data (buildings, props, paths, roads, fences, vegetation, terrain plans, lighting, cameras, seeds, dry-run, bounds, compare, style profiles, provenance) | VERIFIED_STRONG | P0 | Specs, fixture hashes, previews. |
 | [S04](#s04) | Scene authoring | Measurement and player-scale helpers | VERIFIED_ACCEPTABLE | P2 | Specs. |
 | [S05](#s05) | Scene authoring | Terrain and lighting applied in Studio | PARTIAL | P2 | Screen captures per lighting profile. |
@@ -54,7 +54,8 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [B02](#b02) | Blender | Blender built-ins in the factory (Geometry Nodes, Asset Browser catalogs, texture baking, Rigify) | MISSING | P2 | n/a |
 | [B03](#b03) | Blender | Preview renders for visual QA | VERIFIED_ACCEPTABLE | P2 | Renders reviewed in this pass. |
 | [B04](#b04) | Blender | Round trip, Blender half (create, revise, export, reimport, diff, expectation) | VERIFIED_STRONG | P0 | Runs in pre-release gate and CI. |
-| [B05](#b05) | Blender | Round trip, Studio half (3D Importer, then ImportInspector against the expectation) | BLOCKED_EXTERNAL | P0 | ImportInspector report passes for v1 and v2 and flags the revision diff. |
+| [B05](#b05) | Blender | Round trip, Studio half (3D Importer, then ImportInspector against the expectation) | PARTIAL | P0 | ImportInspector in Studio: 6 of 7 checks pass for v1 and v2 and the revision is detected; pivot pending the fixed file. |
+| [B06](#b06) | Blender | Material colour survives the Studio import | MISSING | P1 | A Studio import shows the baked colours, and the inspector's appearance_bound reports a texture. |
 | [R01](#r01) | Inherited modules | Inherited pure-Luau modules (ReceiptLedger, CommerceCatalog, Lifetime, Motion, AudioMixer, AudioDirector, EffectsPool, MovementProfile, AnimationInspector and WorldInspector maths, UI logic, FaultQueue) | VERIFIED_ACCEPTABLE | P2 | Inherited suites and new specs pass in the gate. |
 | [R02](#r02) | Inherited modules | Studio-bound inherited modules (NativeUI, NativeAudio, NativeEffects, RobloxReceiptAdapter, Effects, Observation, engine queries in WorldInspector) | WEAK | P2 | Fresh receipts with today's Studio version. |
 | [D01](#d01) | Research | Fresh tooling research with select/reject decisions | VERIFIED_ACCEPTABLE | P3 | Decisions applied: built-in Studio MCP, Rokit over Aftman, mcp-for-blender 2.1.8, bpy 5.2 LTS in CI. |
@@ -109,21 +110,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 1. Covered by S02 (Run mode). For multi-client: open the unpublished network diagnostic place, Test > Clients and Servers > 2 players > Start, then `get_console_output`.
 
-**S02 SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune)** (BLOCKED_EXTERNAL)
+**S02 SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune)** (VERIFIED_ACCEPTABLE)
 
-1. In the clone: `rokit install`, then `rojo build fixtures/factory.project.json -o SETUP_ONLY_Factory_Diagnostic.rbxl`; open that file in Studio (unpublished).
-2. From Claude Code in the repo: `list_roblox_studios`, then `execute_luau` with `return game:GetService("HttpService"):JSONEncode(require(game.ReplicatedStorage.Workbench.Pipeline.FactorySmoke).run(workspace))`.
-3. Compare `building` and `dungeon` hash and part counts with `tests/golden/studio-smoke.json`.
-4. Press Ctrl+Z twice in Studio (one waypoint per scene); `search_game_tree` should no longer find `SETUP_ONLY_SmokeBuilding` or `SETUP_ONLY_SmokeDungeon`.
-5. Set `ServerScriptService.FactorySmoke.Enabled = true`, `start_stop_play` in Run mode, read `FACTORY_SMOKE` from `get_console_output`, stop play.
-6. `screen_capture` from the manifest cameras for visual QA; save outputs under `reports/studio/`.
+1. Pull the PR branch, `rojo build fixtures/factory.project.json -o SETUP_ONLY_Factory_Diagnostic.rbxl` with Rokit's rojo, open it in Studio (unpublished).
+2. `execute_luau`: `return game:GetService("HttpService"):JSONEncode(require(game.ReplicatedStorage.Workbench.Pipeline.FactorySmoke).run(workspace))`; compare with `tests/golden/studio-smoke.json`, then undo twice.
+3. Set `ServerScriptService.FactorySmoke.Enabled = true`, `start_stop_play` in Run mode, approve the console read, check `FACTORY_SMOKE` in `get_console_output`, stop play and set Enabled back to false.
 
-**B05 Round trip, Studio half (3D Importer, then ImportInspector against the expectation)** (BLOCKED_EXTERNAL)
+**B05 Round trip, Studio half (3D Importer, then ImportInspector against the expectation)** (PARTIAL)
 
-1. Authorise importing `SM_RoundTripMarker_v1.fbx` (neutral marker, no game content) in the unpublished diagnostic place.
-2. In Studio use Import 3D with Scale Unit = Studs on the FBX and leave the model at the origin.
-3. `execute_luau`: run `ImportInspector.inspect` on the imported model with `build/roundtrip/roblox_expectation_v1.json`; save the JSON to `reports/studio/`.
-4. Repeat with v2 and run `ImportInspector.compareRevisions`.
+1. In SETUP_ONLY_Factory_Diagnostic, Import 3D `build/roundtrip-1eee84a/SM_RoundTripMarker_v2.fbx` (Scale Unit Stud, Insert In Workspace and Insert Using Scene Position on). This is one more private mesh upload.
+2. `execute_luau`: `ImportInspector.inspect` on the new model with `build/roundtrip-1eee84a/roblox_expectation_v2.json`; pivot_base_centre should pass.
 
 **D03 In-engine test runner in CI (Jest Lua via Open Cloud Luau Execution)** (BLOCKED_EXTERNAL)
 
@@ -394,16 +390,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### S02
 
-**SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune)** · Scene authoring · BLOCKED_EXTERNAL · P0
+**SceneKit and ProcGen running inside Studio (string requires, ChangeHistoryService undo, Instance output identical to Lune)** · Scene authoring · VERIFIED_ACCEPTABLE · P0
 
 - **PREVIOUS CLAIM:** WorldInspector queries and metadata-only content graphs; "no setup game world".
-- **ACTUAL STATE:** `Apply.scene` records undo with ChangeHistoryService and creates Parts; it is executed in Lune against `@lune/roblox` instances. `FactorySmoke` builds the same two scenes in Studio and prints hashes to compare with `tests/golden/studio-smoke.json` (building 778d1d9a / 96 parts, dungeon 8494d161 / 108 parts).
-- **EVIDENCE:** Lune specs and golden file. Studio half not run.
-- **DEFECT:** Real-engine parity, undo and string `require` in Studio are unproven.
-- **ROOT CAUSE:** Studio only on the PC.
-- **IMPACT:** Core claim of the scene API in Studio is unproven.
-- **FIX:** Run the steps on the PC.
-- **VERIFICATION:** Hashes and part counts equal the golden; two Ctrl+Z presses (one undo waypoint per scene) remove the generated scenes.
+- **ACTUAL STATE:** `FactorySmoke` was run in real Studio (0.741.19) on Ethan's PC through Studio MCP `execute_luau`, in the unpublished SETUP_ONLY_Factory_Diagnostic place that Rojo built from `fixtures/factory.project.json`. It built both scenes with string requires across SceneKit and ProcGen, and the hashes and part counts equal the Lune golden: building 778d1d9a / 96 parts, dungeon 8494d161 / 108 parts. Two ChangeHistoryService undos removed both scenes.
+- **EVIDENCE:** `reports/studio/smoke-2026-10-05.json` (commit 9c12091); `tests/golden/studio-smoke.json`.
+- **DEFECT:** Run mode is unproven: the PC's permission prompt blocked reading the FACTORY_SMOKE console line. The generators changed after 9c12091 (review fixes), so the new goldens have not yet been reproduced in Studio.
+- **ROOT CAUSE:** Console read needs Ethan's approval on his machine; later commits change hashes on purpose.
+- **IMPACT:** Edit-time parity and undo are proven. Play-time parity is not, and the parity proof applies to 9c12091's hashes.
+- **FIX:** Re-run steps 1 to 3 after pulling, and approve the console read once for the Run-mode line.
+- **VERIFICATION:** Observed in Studio: hashes and part counts equal the golden, and two undos removed both scenes (search_game_tree).
 
 ### S03
 
@@ -537,16 +533,29 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### B05
 
-**Round trip, Studio half (3D Importer, then ImportInspector against the expectation)** · Blender · BLOCKED_EXTERNAL · P0
+**Round trip, Studio half (3D Importer, then ImportInspector against the expectation)** · Blender · PARTIAL · P0
 
 - **PREVIOUS CLAIM:** Blocked: no documented zero-upload import route.
-- **ACTUAL STATE:** `packages/Pipeline/ImportInspector` checks mesh presence, scale (diagnoses metre/stud, Y/Z swap, cm), orientation, base pivot, front direction, collision fidelity and appearance, and compares revisions. Tested on mocks. Studio's 3D Importer can upload the mesh as an asset under Ethan's account (the first pass found no documented zero-upload route), which this setup may not do without his explicit go-ahead.
-- **EVIDENCE:** Mock specs.
-- **DEFECT:** The pipeline stops at the FBX until the import is authorised.
-- **ROOT CAUSE:** Asset upload boundary plus Studio-only importer.
-- **IMPACT:** The full Blender to Roblox loop is not proven.
-- **FIX:** Ethan authorises one import of the neutral SM_RoundTripMarker into the unpublished diagnostic place.
-- **VERIFICATION:** ImportInspector report passes for v1 and v2 and flags the revision diff.
+- **ACTUAL STATE:** Ethan imported the neutral SM_RoundTripMarker v1 and v2 with Import 3D (Scale Unit = Stud) into the unpublished diagnostic place, and `ImportInspector` ran in Studio with its default EditableMesh reader. Both revisions matched Blender on scale (4 x 7 x 3.5 and 4 x 8 x 4.5 studs), rotation, facing (surface-centroid offset -0.620 vs -0.62 and -1.026 vs -1.026, plus a screen_capture from -Z) and collision. `compareRevisions` detected the update. The pivot failed: Studio puts the model pivot at the FBX file origin, and the marker's origin sat off Blender's world origin. Each import uploaded a private mesh asset to Ethan's account (there is no local-only import).
+- **EVIDENCE:** `reports/studio/roundtrip-2026-10-05.json` (inspector at 9c024fb; v2 was the pre-fix export, which matches its +1.25 stud pivot error exactly).
+- **DEFECT:** The pivot is off by the object's offset from the world origin. Fixed in 1eee84a, where the marker exports at the world origin and the Blender reimport checks require it, but Studio has not yet seen the fixed file. Material colours are lost (see B06).
+- **ROOT CAUSE:** Studio's importer anchors the pivot at the file origin, not at the object origin.
+- **IMPACT:** Every asset exported off the world origin arrives with a misplaced pivot.
+- **FIX:** Export at the world origin (done for the marker; the QA pivot check covers origin vs bounds). Confirm by importing the fixed v2.
+- **VERIFICATION:** ImportInspector in Studio: 6 of 7 checks pass for v1 and v2 and the revision is detected; pivot pending the fixed file.
+
+### B06
+
+**Material colour survives the Studio import** · Blender · MISSING · P1
+
+- **PREVIOUS CLAIM:** None (first pass never imported into Studio).
+- **ACTUAL STATE:** Both imported MeshParts are plain grey (Color 0.639, 0.635, 0.647, empty TextureID, no SurfaceAppearance). The marker's per-material Principled base colours (MAT_Body grey, MAT_Front orange) do not carry through Import 3D.
+- **EVIDENCE:** `reports/studio/roundtrip-2026-10-05.json`.
+- **DEFECT:** Untextured multi-material assets lose all colour in Roblox.
+- **ROOT CAUSE:** A MeshPart takes one texture or SurfaceAppearance; material base colours without image textures are not converted.
+- **IMPACT:** Factory assets would arrive colourless unless their colours are baked.
+- **FIX:** Bake base colour into one texture per asset in Blender (UV atlas), export it with the FBX, then confirm the import binds it (that import uploads a mesh and an image).
+- **VERIFICATION:** A Studio import shows the baked colours, and the inspector's appearance_bound reports a texture.
 
 ### R01
 
