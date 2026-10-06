@@ -12,7 +12,7 @@
 --   lanes          lane_connectivity, lanes_disjoint, lane_balance, slot_balance, slot_access,
 --                  lane_width
 --   micro_arena    spawn_fairness, spawn_symmetry, spawn_separation, spawn_edge_clearance,
---                  area_per_player, spawn_clear, spawn_on_floor
+--                  area_per_player, spawn_clear, spawn_on_floor, piece_overlap
 -- Every kind also gets course_hash (the manifest still hashes to its hash). Limits marked
 -- "convention" are level-design choices with a reason, not Roblox numbers.
 local Course = require("./Course")
