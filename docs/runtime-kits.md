@@ -86,7 +86,7 @@ Every kit module starts:
 | T3 | Needs Studio on the unpublished diagnostic place | a named probe run on the owner's PC (pending until its output exists) |
 | T4 | Needs a published place or live services (DataStores, MemoryStore, ConfigService, real text filtering, teleports, AnalyticsService delivery, purchases, BanAsync) | never claimed as verified in this factory; BLOCKED_EXTERNAL |
 
-A module carries the tier of its least provable part. T3 modules must name a probe (`-- probe: <name>`); T4 modules may. The header block is the comment lines right after `--!strict`. [tests/kits_load.spec.luau](../tests/kits_load.spec.luau) enforces the header, the probe name and its registration, the require allowlist, no `GetService` in cores, no `init.luau`, and that every core loads in Lune; adapters are checked for header and requires only.
+A module carries the tier of its least provable part. T3 modules name one or more probes, one `-- probe: <name>` line each, and count as proven only when every one passes; T4 modules may. The header block is the comment lines right after `--!strict`. [tests/kits_load.spec.luau](../tests/kits_load.spec.luau) enforces the header, the probe name and its registration, the require allowlist, no `GetService` in cores, no `init.luau`, and that every core loads in Lune; adapters are checked for header and requires only.
 
 ## 6. Server Authority rules
 
@@ -113,7 +113,7 @@ A T3 module is proven by a probe that runs in Studio, in a play session on the u
   ENGINE_DONE {"checks":10,"errors":0,"failed":0,"ok":true,"passed":10,"probes":["foundation_env_studio"]}
   ```
 
-  `ENGINE_CHECK` fields: `probe`, `check`, `ok`, `detail` (omitted when nil). `ENGINE_DONE` fields: `probes` (names run, sorted), `checks`, `passed`, `failed`, `errors` (probes that raised; their `error` check also counts as failed), `ok` (at least one check, none failed, none raised). A run without `ENGINE_DONE` failed.
+  `ENGINE_CHECK` fields: `probe`, `check`, `ok`, `detail` (omitted when nil). `ENGINE_DONE` fields: `probes` (names run, sorted), `checks`, `passed`, `failed`, `errors` (probes that raised; their `error` check also counts as failed), `ok` (at least one check, none failed, none raised), and `runtime` only when the Lune harness ran the registry over fakes (`"lune"`; `tools/studio_run.py` refuses such output, so it never becomes engine evidence). A run without `ENGINE_DONE` failed.
 - **Runners.** `tests/engine/<probe>.luau` is a Studio RunScript entry that loads the registry and calls `Probe.runAll(registry, { env = EnvRoblox.studio(), kit = loader, only = { name } })`; [tests/engine/foundation_env_studio.luau](../tests/engine/foundation_env_studio.luau) is the template. G9b owns `tools/studio_run.py` (Studio CLI, refuses `--placeId`, BLOCKED_EXTERNAL where Studio is absent) and `Pipeline/KitSmoke` (discovers every `*_probes` registry and runs them in one place).
 - **Staging.** A probe that needs a world builds it at a high y offset (G2 uses 800, a convention), cleans up even when it raises, and refuses a published place (`Env.check`). Level probes (G7) get Workspace through `ctx.env`; in Lune their specs pass a stand-in table `{ instance = <Lune Workspace>, Gravity, Raycast }` plus a RaycastParams shim, because Lune has neither, and the registry's `stage()` accepts either form.
 - **Play-session fixtures.** Probes that need Play run from the kits place when the Workspace attribute `SETUP_ONLY_KitFixture` names a fixture key (`kitsmoke`, `authority`, `ui-gallery`, ...; list in [fixtures/kits/README.md](../fixtures/kits/README.md)); `tools/studio_run.py --from-output` turns the saved Output into `reports/engine/<probe>.json`. Server Authority probes also need `Workspace.AuthorityMode = Server`, which only the owner can set in Studio.
@@ -189,7 +189,7 @@ The table also holds `schema = "settings/1"` and `version` (integer; the game bu
 | `adReward?` | developer products only; fixed currency, item or entitlement grants (rewarded-ad rules: no random outcome) |
 | `tags?`, `order?` | label list, integer |
 
-Rules: no price-like key anywhere (`price`, `PriceInRobux`, `robux...`, `cost`): prices change per region and under Managed Pricing, so they are runtime reads (`GetProductInfoAsync` in CommerceRoblox), never data. Setup mode keeps every product disabled. Game mode needs real ids, and an enabled product needs `ownershipVerified = true`. Nothing here prompts or grants; prompts stay behind the guard hooks. The UI shows prices only from a price provider passed in: `provider:price(product) -> { state = "ok" | "pending" | "unavailable", text?, robux? }` (G1 implements it, G4 consumes it).
+Rules: no price-like key anywhere (`price`, `PriceInRobux`, `robux...`, `cost`): prices change per region and under Managed Pricing, so they are runtime reads (`GetProductInfoAsync` in CommerceRoblox), never data. Setup mode keeps every product disabled. Game mode needs real ids, and an enabled product needs `ownershipVerified = true`. Nothing here prompts or grants. In agent Studio sessions the guard hooks deny raw subscription, Premium, Robux-transfer and bulk prompts and ask before other purchase prompts, including `CommerceRoblox.prompt`; they match code as text, so a renamed require or a module already in the place is not seen ([mcp.md](mcp.md#safety-gates)). The UI shows prices only from a price provider passed in: `provider:price(product) -> { state = "ok" | "pending" | "unavailable", text?, robux? }` (G1 implements it, G4 consumes it).
 
 ```lua
 { schema = "catalog/1", mode = "setup", products = {
@@ -286,7 +286,7 @@ Rules: no price-like key anywhere (`price`, `PriceInRobux`, `robux...`, `cost`):
 | boot-report/1 | G8 | the starter's boot skeleton (release item S07) |
 | asset-sources/1, asset-cache/1 | G9b | `assets/sources.json`; the CC0 cache lives in `build/asset-cache` (never committed) |
 | engine-report/1 | G9b | `reports/engine/<probe>.json` from `tools/studio_run.py` |
-| kit-tiers/1 | G9b | `reports/kit-tiers.json` from `tools/kit_tiers.py` (gate step `kit-tiers`) |
+| kit-tiers/1 | G9b | `reports/kit-tiers.json` from `tools/kit_tiers.py` (gate step `kit-tiers`); module rows list `probes`, one probe row per name |
 | capture-manifest/1, capture-staleness/1 | G9b | `Pipeline/CaptureSet`, `tools/capture_staleness.py` |
 | luau-defs-lock/1, luau-lsp-baseline/1 | G9b | `luau-defs.lock.json`, `tests/golden/luau-lsp-baseline.json` |
 | pc-doctor/1, factory-skill-stamp/1 | G9b | `tools/pc_doctor.py`, `tools/user_skills.py` |
