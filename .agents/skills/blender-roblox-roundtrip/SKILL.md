@@ -38,7 +38,7 @@ Blender report `pass`; Studio `inspect(...).pass` for v1 and v2; `compareRevisio
 
 ## Failure
 - `ImportInspector` names the cause in each check's `detail`: metre/stud mismatch (Scale Unit), Y/Z swap (axis settings), centimetre scale (FBX unit scale), rotation on import, pivot off base centre, asset facing +Z or upside down (measured from the mesh triangles via EditableMesh against `front_offset`/`up_offset`), precise collision.
-- Pivot off by a fixed offset: Studio sets the imported Model's pivot at the FBX file origin, so the asset's origin must be at Blender's world origin (QA's `studio_pivot_at_origin` blocks single-root exports that are not).
+- Pivot off by a fixed offset: Studio sets the imported Model's pivot at the FBX file origin, so the asset's origin must be at Blender's world origin (QA's `studio_pivot_at_origin` fails a single-root asset that is not, in a `.blend`, `.fbx`, `.glb` or `.gltf`, and blocks the `template` export).
 - Grey mesh: per-material base colours do not survive Import 3D; colour needs a baked texture (gap row B06).
 - If it cannot read the mesh, `orientation_front` reports "front undetermined" and fails: confirm facing with `screen_capture`, never assume it.
 - Blender half fails: read `revisions[].checks` and `revisions[].source_qa` in `roundtrip-report.json`.

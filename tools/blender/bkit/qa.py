@@ -8,6 +8,7 @@ from the asset's own `rbx_*` metadata (category budgets, expected dimensions).""
 import json
 import math
 import os
+import shutil
 import tempfile
 from collections import defaultdict
 from pathlib import Path
@@ -278,7 +279,9 @@ def mesh_checks(obj, meta, weld=0.0):
         if mat.use_nodes:
             for node in mat.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image and not node.image.packed_file:
-                    path = bpy.path.abspath(node.image.filepath)
+                    # Lexical normalisation, as Blender resolves "//../x": a copy reopened from a
+                    # deleted temp folder (`_reimport`) still finds its remapped textures.
+                    path = os.path.normpath(bpy.path.abspath(node.image.filepath))
                     if not os.path.exists(path):
                         missing.append(node.image.filepath)
     checks.append(_check("texture_paths", not missing, len(missing), 0, detail=", ".join(missing[:5])))
@@ -376,9 +379,12 @@ def summarize(report):
 
 def run(export_probe=True, objects=None, weld=0.0):
     """Check every scene mesh, armature and empty except cutters, `rbx_qa = "skip"` objects and
-    bone display shapes. export_probe: export `objects` (default: every scene object except
-    cutters) to a temp dir with the factory exporters, re-import and compare. weld: see
-    mesh_checks; QA of an imported .glb/.gltf needs GLTF_WELD, which `check_file` sets."""
+    bone display shapes, plus the Studio pivot rule (`studio_pivot_check`) on the roots of
+    `objects` (an export set) or, by default, of the scene (`pivot_pool`): a .blend without
+    Export collections or an imported .fbx/.glb is held to it too. export_probe: export
+    `objects` (default: every scene object except cutters) to a temp dir with the factory
+    exporters, re-import and compare. weld: see mesh_checks; QA of an imported .glb/.gltf needs
+    GLTF_WELD, which `check_file` sets."""
     bpy.context.view_layer.update()  # world matrices are stale after scripted transform edits
     report = {"file": bpy.data.filepath or None, "blender": bpy.app.version_string, "objects": []}
     shapes = _bone_shapes()
@@ -396,17 +402,30 @@ def run(export_probe=True, objects=None, weld=0.0):
             else:
                 continue
             report["objects"].append({"name": obj.name, "type": obj.type, "category": meta.get("category"), "checks": checks})
-    if objects:
-        report["objects"].append(studio_pivot_check(objects))
+    pool = pivot_pool() if objects is None else list(objects)
+    if pool:  # an empty export set ships nothing (gated_export reports that)
+        report["objects"].append(studio_pivot_check(pool))
     if export_probe:
         report["export"] = export_roundtrip_probe(objects)
     return summarize(report)
 
 
+PIVOT_TYPES = ("MESH", "ARMATURE", "EMPTY")  # the object types export_fbx writes
+
+
+def pivot_pool():
+    """What a whole-scene export ships as model geometry, for the pivot rule: scene objects in
+    the view layer (as the probe exports them) of PIVOT_TYPES, minus boolean cutters,
+    `rbx_qa = "skip"` helpers and importer bone shapes. Cameras and lights are not asset roots."""
+    shapes = _bone_shapes()
+    return [o for o in _export_set() if o.type in PIVOT_TYPES and o not in shapes and env.get_meta(o).get("qa") != "skip"]
+
+
 def studio_pivot_check(objects):
     """Studio's Import 3D sets the imported Model's pivot at the file origin, not at the object's
     origin (observed 2026-10-05, reports/studio/roundtrip-2026-10-05.json). So a single-root asset
-    must sit at the world origin; kit pieces laid out side by side keep their offsets."""
+    must sit at the world origin; kit pieces laid out side by side keep their offsets (warning).
+    Roots are the objects whose parent is outside `objects`."""
     objects = list(objects)
     roots = [o for o in objects if o.parent not in objects]
     offsets = {o.name: [round(v, 3) for v in o.matrix_world.translation] for o in roots}
@@ -425,8 +444,9 @@ ASSET_SUFFIXES = (".blend", ".fbx", ".glb", ".gltf")
 def check_file(path):
     """QA an asset file (the library form of `factory.py qa`). .blend: open it, check the scene
     and probe the set build_template ships (its Export collections, else every object except
-    cutters). .fbx/.glb/.gltf: import into a clean scene and check what was imported, with glTF
-    seams welded for the topology checks. Raises ValueError for other file types."""
+    cutters); the pivot rule applies to that set's roots (else `pivot_pool`). .fbx/.glb/.gltf:
+    import into a clean scene and check what was imported, pivot rule on the imported roots,
+    with glTF seams welded for the topology checks. Raises ValueError for other file types."""
     path = Path(path)
     suffix = path.suffix.lower()
     if suffix not in ASSET_SUFFIXES:
@@ -491,13 +511,19 @@ def _source(objects):
 
 def _reimport(paths, source):
     """Re-import each file in `paths` ({"fbx": path, "glb": path}) into a clean file and compare
-    its triangles, bounds, mesh names and animation with `source`. Restores the open file."""
+    its triangles, bounds, mesh names and animation with `source`. Restores the scene by
+    reopening a copy saved to a temp folder, then deletes that folder: the session's file path
+    afterwards names a file that no longer exists (a plain Save fails; use Save As)."""
     tmp = Path(tempfile.mkdtemp(prefix="rbxqa_"))
     saved = tmp / "source.blend"
-    bpy.ops.wm.save_as_mainfile(filepath=str(saved), copy=True)
     expected = source["signature"]
     keys = ("tris_match", "dims_match", "meshes_match", "animation_kept")
     results = {}
+    try:
+        bpy.ops.wm.save_as_mainfile(filepath=str(saved), copy=True)
+    except Exception:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
     try:
         for fmt, path in paths.items():
             env.reset()
@@ -522,7 +548,10 @@ def _reimport(paths, source):
                 "animation_kept": not source["animated"] or len(bpy.data.actions) > 0,
             }
     finally:
-        bpy.ops.wm.open_mainfile(filepath=str(saved))
+        try:
+            bpy.ops.wm.open_mainfile(filepath=str(saved))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     failed = {}
     for fmt, r in results.items():
         problems = [k for k in keys if not r[k]]
@@ -541,15 +570,19 @@ def export_roundtrip_probe(objects=None):
     objects = _export_set(objects)
     source = _source(objects)
     tmp = Path(tempfile.mkdtemp(prefix="rbxqa_"))
-    paths = {"fbx": ops.export_fbx(tmp / "probe.fbx", objects), "glb": ops.export_glb(tmp / "probe.glb", objects)}
-    return _reimport(paths, source)
+    try:
+        paths = {"fbx": ops.export_fbx(tmp / "probe.fbx", objects), "glb": ops.export_glb(tmp / "probe.glb", objects)}
+        return _reimport(paths, source)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def gated_export(objects, fbx_path, glb_path):
     """QA, then ship: write FBX + GLB of `objects` only when the checks have no errors, then
     re-import exactly those files and compare them with a signature over `objects`. On any
     error nothing is left at fbx_path/glb_path (stale files from earlier runs are removed
-    first). Reopens a saved copy of the current file, so `objects` are invalid afterwards."""
+    first). Reopens a saved copy of the current file, so `objects` are invalid afterwards, and
+    deletes that copy's temp folder (`_reimport`)."""
     from . import ops
 
     paths = {"fbx": Path(fbx_path), "glb": Path(glb_path)}

@@ -34,7 +34,7 @@ Asset kind (a key of `templates.TEMPLATES`), target size in studs, triangle/mate
 6. LODs: `lod_chain(obj, (0.5, 0.25, 0.1))` adds `<name>_LOD1..` copies (Decimate collapse; triangle counts strictly decrease; skinned copies keep the Armature modifier and are re-limited). Each LOD must pass QA.
 7. Run blender-asset-qa; fix every error and decide on every warning.
 8. Look at the previews with the Read tool before calling it done.
-9. Export only through `ops.export_fbx` / `ops.export_glb` (Roblox axes and scale, animation bake fix) or the gated `template` export.
+9. Export only through `ops.export_fbx` / `ops.export_glb` (Roblox axes and scale, animation bake fix) or the gated `template` export. The ops do not run QA: run `factory.py qa` on each file they write (a single asset must sit at the world origin, `studio_pivot_at_origin`).
 
 ## Outputs
 `.blend` source, FBX and GLB (only when QA passes), `qa.json` (per-object checks, export re-import probe, summary), preview PNGs, `rbx_*` metadata on objects.

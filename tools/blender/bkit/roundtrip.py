@@ -3,8 +3,9 @@
 Creates an asymmetric neutral marker asset (so scale, orientation and pivot errors are
 visible), modifies it, materials it, saves, exports FBX + GLB, re-imports both and checks
 them, then revises the source and proves the revision is detected. It writes
-`roblox_expectation.json` per revision for packages/Pipeline/ImportInspector.luau, which
-performs the Studio half (BLOCKED_EXTERNAL until run in Studio)."""
+`roblox_expectation_v1.json` and `roblox_expectation_v2.json` (one per revision) for
+packages/Pipeline/ImportInspector.luau, which performs the Studio half (BLOCKED_EXTERNAL until
+run in Studio)."""
 import json
 from pathlib import Path
 

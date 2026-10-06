@@ -50,10 +50,17 @@ def _look_at(obj, target):
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
-def setup_stage(ground=True, size=2000, sun_angle=(50, 0, 35)):
+def setup_stage(ground=True, size=2000, sun_angle=(50, 0, 35), clearance=0.02):
+    """Sun, sky and a ground slab. Call after the scene's meshes exist: the ground's top sits
+    `clearance` studs below the lowest of them (and below 0), never coplanar with a face. Cycles
+    rendered faces coplanar with the old ground top (z = 0) black, e.g. floor slabs whose top is
+    at Roblox Y = 0."""
     scene = bpy.context.scene
     if ground:
-        plane = ops.box("Ground", size=(size, size, 0.1), location=(0, 0, -0.1))
+        bpy.context.view_layer.update()
+        corners = [(o.matrix_world @ Vector(c)).z for o in scene.objects if o.type == "MESH" for c in o.bound_box]
+        top = min([0.0, *corners]) - clearance
+        plane = ops.box("Ground", size=(size, size, 0.1), location=(0, 0, top - 0.1))
         ops.assign(plane, ops.pbr_material("ground", (0.22, 0.3, 0.2, 1), roughness=1))
     sun = bpy.data.lights.new("Sun", "SUN")
     sun.energy = 4.0

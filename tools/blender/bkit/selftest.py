@@ -1,16 +1,18 @@
 """QA self-test: known-good and known-bad assets must get the same verdict from source QA (the
-scene), FBX QA and GLB QA. Guards the import paths against false errors on valid kit geometry
-(closed shells stacked, abutting or meeting along an edge in one mesh, which a plain glTF vertex
-weld fuses into non-manifold edges) and against false passes (flipped, degenerate, non-manifold,
-unmaterialled, over-influenced or unweighted skins). Also covers the retopology, LOD and
-weighting ops (`ops.voxel_remesh`, `quadriflow`, `lod_chain`, `bind_auto`): their output must
-pass QA in every format, and their refusals must raise. `factory.py qa-selftest <out_dir>`
-runs it; exit 1 on any disagreement.
+scene) and from `factory.py qa` on the saved .blend (no Export collection: whole scene, export
+probe included), the FBX and the GLB. Guards the import paths against false errors on valid kit
+geometry (closed shells stacked, abutting or meeting along an edge in one mesh, which a plain
+glTF vertex weld fuses into non-manifold edges) and against false passes (flipped, degenerate,
+non-manifold, unmaterialled, over-influenced or unweighted skins, a single root off the world
+origin where Studio anchors the pivot). Also covers the retopology, LOD and weighting ops
+(`ops.voxel_remesh`, `quadriflow`, `lod_chain`, `bind_auto`): their output must pass QA in every
+format, and their refusals must raise. `factory.py qa-selftest <out_dir>` runs it; exit 1 on
+any disagreement.
 
 Skin-weight defects are the one place the formats legitimately differ: Blender's glTF exporter
 keeps each vertex's 4 strongest influences (export_influence_nb) and re-imports a vertex with no
 weight as fully bound to one bone, so a .glb of an over-influenced or unweighted skin passes.
-Those cases expect the error from source and FBX QA only; check weights on the .blend or .fbx."""
+Those cases expect the error from every format but GLB; check weights on the .blend or .fbx."""
 import hashlib
 import json
 import re
@@ -78,11 +80,18 @@ def _rigged():
     ops.bind_rigid(body, rig, [(lambda w: True, "Root")])
 
 
+def _grounded(obj):
+    """Origin at the base centre, and that at the world origin (where Studio anchors the pivot)."""
+    ops.set_origin_base_center(obj)
+    obj.location = (0, 0, 0)
+    return obj
+
+
 def _ball():
     ball = ops.sphere("SM_Ball", radius=2, segments=24, rings=12)
     ops.shade_smooth(ball)
     ops.assign(ball, ops.pbr_material("MAT_A", (0.5, 0.5, 0.5, 1)))
-    ops.set_origin_base_center(ball)
+    _grounded(ball)
     ops.box_uv(ball)
 
 
@@ -99,13 +108,13 @@ def _rock(name="SM_Rock", seed=7):
     rock = ops.icosphere(name, radius=2, subdivisions=4)
     ops.noise_displace(rock, strength=0.5, scale=0.6, seed=seed)
     ops.assign(rock, ops.pbr_material("MAT_A", (0.5, 0.5, 0.5, 1)))
-    ops.set_origin_base_center(rock)
+    _grounded(rock)
     ops.box_uv(rock)
     return rock
 
 
 def _quadriflow_rock():
-    ops.set_origin_base_center(ops.quadriflow(_rock(), target_faces=600, seed=0))
+    _grounded(ops.quadriflow(_rock(), target_faces=600, seed=0))
 
 
 def _column(name):
@@ -200,8 +209,8 @@ def _lod_problems(base, levels, skinned=False):
 
 
 def _quads_only(fmt):
-    if fmt != "source":
-        return []  # glTF triangulates
+    if fmt not in ("source", "blend"):
+        return []  # glTF triangulates; the quads are judged where they were made
     mesh = bpy.data.objects["SM_Rock"].data
     tris = sum(1 for p in mesh.polygons if len(p.vertices) != 4)
     return [f"SM_Rock: {tris} of {len(mesh.polygons)} faces are not quads"] if tris else []
@@ -217,11 +226,12 @@ def _rock_lods():
 
 _CUBE = (4, 4, 4)
 _UNIT = (2, 2, 2)
-_SKIN_BAD = ("source", "fbx")  # see module docstring: the .glb comes back repaired
+FORMATS = ("source", "blend", "fbx", "glb")
+_SKIN_BAD = ("source", "blend", "fbx")  # see module docstring: the .glb comes back repaired
 
 # (name, builder, expected, [verify]): expected is None for a valid asset, the error check every
 # format must report, or {format: check or None}. verify(fmt) runs on the scene each QA saw (the
-# source, then each import) and returns problems; any problem fails the case.
+# source, then each file QA) and returns problems; any problem fails the case.
 CASES = [
     ("box", lambda: _box("SM_Box"), None),
     ("stacked", lambda: _boxes("SM_Stack", [(_CUBE, (0, 0, 0)), (_CUBE, (0, 0, 4))]), None),
@@ -239,13 +249,15 @@ CASES = [
     ("fin", lambda: ops.box_uv(_edit(_box("SM_Fin"), _add_fin)), "non_manifold_edges"),
     ("degenerate", lambda: _edit(_box("SM_Degen"), _add_sliver), "degenerate_faces"),
     ("no_material", lambda: _box("SM_NoMat", material=False), "material_assigned"),
+    ("off_origin", lambda: _box("SM_OffOrigin", loc=(0, -0.75, 0)), "studio_pivot_at_origin"),  # marker v1's Studio defect
+    ("kit_offsets", lambda: [_box("SM_KitA"), _box("SM_KitB", loc=(8, 0, 0))], None),  # several roots: a warning only
     ("auto_weighted_humanoid", _smooth_humanoid, None, lambda fmt: _skin_problems(fmt, raw_over=True)),
     ("auto_weighted_fallback", lambda: ops.bind_auto(*_two_shells("SK_TwoShells")), None, lambda fmt: _skin_problems(fmt, fallback=True)),
     ("quadriflow_rock", _quadriflow_rock, None, _quads_only),
     ("lod_chain_rock", _rock_lods, None, _lod_problems("SM_Rock", 4)),
     ("lod_chain_skinned", _skinned_lods, None, _lod_problems("SK_Column", 3, skinned=True)),
-    ("over_influenced", _over_influenced, {f: "bone_influences" if f in _SKIN_BAD else None for f in ("source", "fbx", "glb")}, lambda fmt: _glb_repaired(fmt, "max_influences", 4)),
-    ("unweighted", _half_weighted, {f: "unweighted_vertices" if f in _SKIN_BAD else None for f in ("source", "fbx", "glb")}, lambda fmt: _glb_repaired(fmt, "unweighted", 0)),
+    ("over_influenced", _over_influenced, {f: "bone_influences" if f in _SKIN_BAD else None for f in FORMATS}, lambda fmt: _glb_repaired(fmt, "max_influences", 4)),
+    ("unweighted", _half_weighted, {f: "unweighted_vertices" if f in _SKIN_BAD else None for f in FORMATS}, lambda fmt: _glb_repaired(fmt, "unweighted", 0)),
 ]
 
 
@@ -337,10 +349,13 @@ def run(out_dir):
             report["cases"].append({"case": name, "pass": False, "detail": f"build raised {type(exc).__name__}: {exc}"})
             print(f"qa-selftest {name:22s} FAIL build raised {type(exc).__name__}: {exc}")
             continue
-        errors = expected if isinstance(expected, dict) else {fmt: expected for fmt in ("source", "fbx", "glb")}
+        errors = expected if isinstance(expected, dict) else {fmt: expected for fmt in FORMATS}
         verdicts = {"source": qa.run(export_probe=False)["summary"]}
         problems = [f"source: {p}" for v in verify for p in v("source")]
-        files = {"fbx": ops.export_fbx(out / f"{name}.fbx"), "glb": ops.export_glb(out / f"{name}.glb")}
+        blend = out / f"{name}.blend"
+        blend.unlink(missing_ok=True)  # no .blend1 backups on re-runs
+        bpy.ops.wm.save_as_mainfile(filepath=str(blend), copy=True)
+        files = {"blend": blend, "fbx": ops.export_fbx(out / f"{name}.fbx"), "glb": ops.export_glb(out / f"{name}.glb")}
         for fmt, path in files.items():
             verdicts[fmt] = qa.check_file(path)["summary"]
             problems += [f"{fmt}: {p}" for v in verify for p in v(fmt)]
