@@ -5,13 +5,15 @@ checkouts break symlinks.
   python3 tools/sync_skills.py          mirror + validate
   python3 tools/sync_skills.py --check  validate and fail on drift (used by check.py / CI)
 
-Every SKILL.md needs frontmatter (`name` equal to its directory, a `description`) and one
-non-empty `## <Section>` heading for each name in SECTIONS.
+Every SKILL.md needs frontmatter (`name` equal to its directory, a `description`), one
+non-empty `## <Section>` heading for each name in SECTIONS, and LF line endings. `--check`
+also runs selftest(): synthetic skills that must pass (good) and fail (CRLF, missing heading).
 """
 import filecmp
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,15 +64,20 @@ def sections(body):
     return found
 
 
-def validate():
+def validate(src=SRC):
     errors = []
     names = []
-    for skill_dir in sorted(p for p in SRC.iterdir() if p.is_dir()):
+    for skill_dir in sorted(p for p in src.iterdir() if p.is_dir()):
         md = skill_dir / "SKILL.md"
         if not md.exists():
             errors.append(f"{skill_dir.name}: missing SKILL.md")
             continue
-        text = md.read_text(encoding="utf-8")
+        # Bytes, not read_text(): universal-newline decoding turns CRLF into LF before any check.
+        # .gitattributes pins LF for skills, so a CRLF file here is an editor or paste, not git.
+        raw = md.read_bytes()
+        if b"\r" in raw:
+            errors.append(f"{skill_dir.name}: CRLF/CR line endings (save with LF)")
+        text = raw.decode("utf-8").replace("\r\n", "\n")
         fm = frontmatter(text)
         if fm is None:
             errors.append(f"{skill_dir.name}: SKILL.md must start with --- frontmatter")
@@ -91,10 +98,39 @@ def validate():
             errors.append(f"{skill_dir.name}: empty sections: {', '.join(empty)}")
         if len(text.splitlines()) > 500:
             errors.append(f"{skill_dir.name}: SKILL.md over 500 lines; move detail to references/")
-        if "\r\n" in text or re.search(r"\\[#*_-]", text.split("\n---", 1)[-1][:2000]):
-            errors.append(f"{skill_dir.name}: CRLF or escaped Markdown (paste damage)")
+        if re.search(r"\\[#*_-]", text.split("\n---", 1)[-1][:2000]):
+            errors.append(f"{skill_dir.name}: escaped Markdown (paste damage)")
         names.append(name)
     return names, errors
+
+
+def selftest():
+    """Negative cases for validate(): a good synthetic skill must pass, a CRLF copy and one
+    missing a heading must fail. Returns a list of errors (empty when the checks still bite)."""
+    def skill(name):
+        head = f"---\nname: {name}\ndescription: Synthetic skill for the sync_skills self-test.\n---\n\n# T\n\n"
+        return head + "".join(f"## {section}\nText.\n\n" for section in SECTIONS)
+
+    cases = {  # directory name -> (SKILL.md text, substring the error must contain or None)
+        "selftest-good": (skill("selftest-good"), None),
+        "selftest-crlf": (skill("selftest-crlf").replace("\n", "\r\n"), "CRLF"),
+        "selftest-heading": (skill("selftest-heading").replace("## Failure", "Failure"), "missing section"),
+    }
+    out = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, (text, _) in cases.items():
+            (Path(tmp) / name).mkdir()
+            # newline="" keeps the "\r\n" exactly as written (no platform translation).
+            with open(Path(tmp) / name / "SKILL.md", "w", encoding="utf-8", newline="") as handle:
+                handle.write(text)
+        _, errors = validate(Path(tmp))
+    for name, (_, needle) in cases.items():
+        hits = [e for e in errors if e.startswith(name + ":")]
+        if needle is None and hits:
+            out.append(f"selftest: valid skill rejected: {hits}")
+        elif needle is not None and not any(needle in e for e in hits):
+            out.append(f"selftest: {name} was not rejected for {needle}")
+    return out
 
 
 def drift():
@@ -115,6 +151,7 @@ def drift():
 def main():
     names, errors = validate()
     if "--check" in sys.argv:
+        errors += selftest()
         diff = drift()
         if diff:
             errors.append("skills out of sync (run python3 tools/sync_skills.py): " + ", ".join(diff[:10]))

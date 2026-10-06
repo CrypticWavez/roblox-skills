@@ -1,6 +1,6 @@
 ---
 name: blender-roblox-roundtrip
-description: Prove the Blender to Roblox import path for an asset and its updates - create/modify/material/save/export in Blender, re-import checks, then import in Studio and verify scale, orientation, pivot, materials, geometry and collision with ImportInspector, revise the source and verify the update. Use whenever a pipeline or importer setting changes or before trusting a new asset type.
+description: Prove the Blender to Roblox import path for an asset and its updates - create/modify/material/save/export in Blender, re-import checks, then import in Studio and check size (unit and axis mistakes), rotation, pivot at the base centre, facing (mesh surface centroid), triangle count, collision fidelity and whether a multi-material asset kept a colour binding (texture, SurfaceAppearance or vertex colours; colour values are not compared) with ImportInspector, revise the source and verify the update (bounds, triangle count, surface offsets). Use whenever a pipeline or importer setting changes or before trusting a new asset type.
 ---
 
 # Blender -> Roblox round trip
@@ -25,21 +25,22 @@ Output folder; the asset (default: the asymmetric `SM_RoundTripMarker` built by 
 ## Procedure
 1. Blender half (headless): `factory.py roundtrip build/roundtrip` QA-checks v1 (no export on errors), exports FBX and GLB, re-imports both and checks triangles, dimensions, origin at the base centre and at the world origin, front (-Y), surface offsets, materials and a stable name; then revises to v2 and proves the change is detected.
 2. Studio half (Ethan's machine): open the diagnostic place, sync with Rojo, import `SM_RoundTripMarker_v1.fbx` with Import 3D, **Scale Unit = Stud**, Insert In Workspace and Insert Using Scene Position on, defaults otherwise. Each import uploads the mesh as a private asset on the account, so every import needs Ethan's go-ahead; the file picker reopens the last folder, so check the path. The importer creates a Model named after the file (`SM_RoundTripMarker_v1`) holding the MeshPart `SM_RoundTripMarker`.
-3. Inspect via `execute_luau`: `local I = require(game.ReplicatedStorage.Workbench.Pipeline.ImportInspector); local HS = game:GetService("HttpService"); local r1 = I.inspect(workspace.SM_RoundTripMarker_v1, HS:JSONDecode(<text of roblox_expectation_v1.json>)); print(HS:JSONEncode(r1))`.
+3. Inspect via `execute_luau`: `local I = require(game.ReplicatedStorage.Workbench.Pipeline.ImportInspector); local HS = game:GetService("HttpService"); local r1 = I.inspect(workspace.SM_RoundTripMarker_v1, HS:JSONDecode(<text of roblox_expectation_v1.json>)); print(HS:JSONEncode(r1))`. `r1.notChecked` names checks that could not be measured (missing expectation field, unreadable mesh); they fail, never pass.
 4. `screen_capture` from the front: the orange nose (`MAT_Front`) must face the camera on -Z.
-5. Import v2 next to v1, inspect `workspace.SM_RoundTripMarker_v2` with the v2 expectation into `r2`; `I.compareRevisions(r1, r2).changed` must be true.
+5. Import v2 next to v1, inspect `workspace.SM_RoundTripMarker_v2` with the v2 expectation into `r2`; `I.compareRevisions(r1, r2).changed` must be true (`differences` lists size, triangles and/or surface_offsets; `notCompared` lists what either report lacked).
 6. Record both Studio reports under `reports/` with the Studio version and importer settings.
 
 ## Outputs
 `SM_RoundTripMarker_v1/_v2` `.fbx` and `.glb`, `roblox_expectation_v1.json`/`_v2.json` (Roblox axes, studs, with `front_offset`/`up_offset`: surface centroid minus bounds centre along front and up), `roundtrip-report.json`, Studio inspection JSON for v1 and v2, the front capture.
 
 ## Acceptance
-Blender report `pass`; Studio `inspect(...).pass` for v1 and v2; `compareRevisions(...).changed == true`; the capture shows the front on -Z. Current status lives in gap-matrix rows B04 (Blender half), B05 (Studio half) and B06 (colour); the 2026-10-05 Studio run is `reports/studio/roundtrip-2026-10-05.json`.
+Blender report `pass`; Studio `inspect(...).pass` for v1 and v2 with `notChecked` empty (the marker's `appearance_bound` fails until B06 bakes a texture); `compareRevisions(...).changed == true`; the capture shows the front on -Z. Current status lives in gap-matrix rows B04 (Blender half), B05 (Studio half) and B06 (colour); the 2026-10-05 Studio run is `reports/studio/roundtrip-2026-10-05.json`.
 
 ## Failure
-- `ImportInspector` names the cause in each check's `detail`: metre/stud mismatch (Scale Unit), Y/Z swap (axis settings), centimetre scale (FBX unit scale), rotation on import, pivot off base centre, asset facing +Z or upside down (measured from the mesh triangles via EditableMesh against `front_offset`/`up_offset`), precise collision.
+- `ImportInspector` names the cause in each check's `detail`: metre/stud mismatch (Scale Unit), Y/Z swap (axis settings), centimetre scale (FBX unit scale), rotation on import, pivot offset from the base centre in studs (same tolerance at any placement), asset facing +Z or upside down (measured from the mesh triangles via EditableMesh against `front_offset`/`up_offset`), triangle count differing from Blender (wrong or stale file), precise collision, material colours lost.
 - Pivot off by a fixed offset: Studio sets the imported Model's pivot at the FBX file origin, so the asset's origin must be at Blender's world origin (QA's `studio_pivot_at_origin` fails a single-root asset that is not, in a `.blend`, `.fbx`, `.glb` or `.gltf`, and blocks the `template` export).
-- Grey mesh: per-material base colours do not survive Import 3D; colour needs a baked texture (gap row B06).
+- Grey mesh: per-material base colours do not survive Import 3D; `appearance_bound` fails with "material colours lost" until colour is baked into a texture (gap row B06).
+- "up not verified by the centroid": `up_offset` is under 0.1 studs (true for the marker), so an upside-down import is only caught by the pivot check and the capture.
 - If it cannot read the mesh, `orientation_front` reports "front undetermined" and fails: confirm facing with `screen_capture`, never assume it.
 - Blender half fails: read `revisions[].checks` and `revisions[].source_qa` in `roundtrip-report.json`.
 

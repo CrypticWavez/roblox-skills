@@ -1,0 +1,4 @@
+# Skills are checked for LF line endings (tools/sync_skills.py); keep them LF on every platform,
+# including Windows checkouts with core.autocrlf=true.
+.agents/skills/** text eol=lf
+.claude/skills/** text eol=lf

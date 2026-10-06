@@ -1,7 +1,12 @@
 --!strict
 -- Headless Luau test runner (Lune). Usage: lune run tests/run.luau [filter]
+-- Finds specs next to this file (debug.info gives ".../tests/run"), so it runs from any working
+-- directory; specs are required relative to it. A spec that reads repo files by a relative path
+-- (scenekit.spec's studio-smoke golden) still needs the repo root as the working directory.
 local fs = require("@lune/fs")
 local process = require("@lune/process")
+
+local TESTS = string.match(debug.info(1, "s"), "^(.*)[/\\][^/\\]*$") or "."
 
 local filter = process.args[1]
 local passed, failed = 0, 0
@@ -53,7 +58,7 @@ function t.throws(fn: () -> (), message: string?)
 end
 
 local files = {}
-for _, name in fs.readDir("tests") do
+for _, name in fs.readDir(TESTS) do
 	if string.match(name, "%.spec%.luau$") and (filter == nil or string.find(name, filter, 1, true)) then
 		table.insert(files, name)
 	end
