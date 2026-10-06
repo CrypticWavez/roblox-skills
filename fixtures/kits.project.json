@@ -1,5 +1,5 @@
 {
-  "name": "SETUP_ONLY_Factory_Diagnostic",
+  "name": "SETUP_ONLY_Kits_Diagnostic",
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
@@ -38,19 +38,26 @@
         "Cinematics": {
           "$path": "../packages/Cinematics"
         }
+      },
+      "KitFixtures": {
+        "$path": "kits/shared"
       }
     },
     "ServerScriptService": {
-      "FactorySmoke": {
-        "$path": "factory/FactorySmoke.server.luau",
-        "$properties": {
-          "Enabled": false
+      "KitFixtures": {
+        "$path": "kits/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "KitFixtures": {
+          "$path": "kits/client"
         }
       }
     },
     "Workspace": {
-      "$properties": {
-        "FilteringEnabled": true
+      "$attributes": {
+        "SETUP_ONLY_KitFixture": "none"
       }
     }
   }
