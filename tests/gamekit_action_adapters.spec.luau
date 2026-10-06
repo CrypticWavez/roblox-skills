@@ -281,6 +281,71 @@ test(
 	end
 )
 
+test(
+	"HitboxRoblox: block casters face the travel direction; Shapecast results convert; misses are nil",
+	function(t)
+		local calls = {}
+		local target = part(CFrame.new(0, 0, -10), Vector3.new(4, 4, 4))
+		local hitResult = {
+			Instance = target,
+			Position = Vector3.new(0, 0, -8),
+			Normal = Vector3.new(0, 0, 1),
+			Distance = 7.5,
+		}
+		local stub = {}
+		function stub:Blockcast(frame: any, size: any, direction: any, params: any)
+			table.insert(
+				calls,
+				{ kind = "block", frame = frame, size = size, direction = direction, params = params }
+			)
+			return hitResult
+		end
+		function stub:Shapecast(cast: any, direction: any, params: any)
+			table.insert(calls, { kind = "shape", part = cast, direction = direction, params = params })
+			return if direction.Magnitude > 1 then hitResult else nil
+		end
+		local params = roblox.RaycastParams.new()
+		local cast = HitboxRoblox.caster(stub, params, roblox, {
+			block = { x = 1, y = 2, z = 3 },
+			resolve = function(instance: any)
+				return if instance == target then "target" else nil
+			end,
+		})
+		local hit = cast({ x = 0, y = 0, z = 0 }, { x = 0, y = 0, z = -20 }, 0, {})
+		t.eq(calls[1].kind, "block")
+		t.near(calls[1].frame.LookVector:Dot(Vector3.new(0, 0, -1)), 1, 1e-6, "the box faces its travel")
+		t.eq(calls[1].size, Vector3.new(1, 2, 3))
+		t.eq(calls[1].direction, Vector3.new(0, 0, -20))
+		t.near(hit.fraction, 0.375, 1e-9)
+		t.eq(hit.target, "target")
+		t.eq(hit.pierceable, true)
+		t.eq(hit.normal, { x = 0, y = 0, z = 1 })
+		local ball = part(CFrame.new(0, 0, 0), Vector3.new(2, 2, 2), "Ball")
+		local shaped = HitboxRoblox.shapecast(stub, ball, { x = 0, y = 0, z = -20 }, params, roblox)
+		t.eq(calls[2].part, ball)
+		t.near(shaped.fraction, 7.5 / 20, 1e-9)
+		t.eq(shaped.target, nil, "no resolver: world geometry")
+		t.eq(shaped.pierceable, false)
+		t.eq(HitboxRoblox.shapecast(stub, ball, { x = 0, y = 0, z = -0.5 }, params, roblox), nil, "a miss")
+		t.eq(HitboxRoblox.shapecast(stub, ball, { x = 0, y = 0, z = 0 }, params, roblox), nil, "zero length")
+		t.eq(#calls, 3, "a zero-length cast never reaches the engine")
+		-- facing() for any direction, vertical included.
+		for _, direction in
+			{
+				Vector3.new(0, 0, -1),
+				Vector3.new(1, 0, 0),
+				Vector3.new(0, -5, 0),
+				Vector3.new(0.3, 0.5, -0.8),
+			}
+		do
+			local frame = HitboxRoblox.facing(lune, Vector3.new(1, 2, 3), direction)
+			t.near(frame.LookVector:Dot(direction.Unit), 1, 1e-6, tostring(direction))
+			t.near(frame.RightVector:Dot(frame.UpVector), 0, 1e-6)
+			t.near((frame.Position - Vector3.new(1, 2, 3)).Magnitude, 0, 1e-6)
+		end
+	end
+)
+
 -- ---------------------------------------------------------------- ZonesRoblox
 
 test("ZonesRoblox: parts become AABBs, prisms and spheres; tilted parts and bad ids are refused", function(t)
@@ -501,6 +566,8 @@ local ENGINE_ONLY = {
 	bool_reads_false = "Lune InputActions have no default BoolState",
 	direction_reads_zero = "Lune InputActions have no default Direction2DState",
 	pressed_signal = "Lune InputActions have no Pressed signal",
+	blockcast_hits_face = "FakeWorld has no Blockcast (no exact moving-box test to fake it with)",
+	shapecast_hits_face = "FakeWorld has no Shapecast",
 	prompt_signals = "Lune ProximityPrompts have no signals",
 	drives_forward = "no physics in Lune",
 	sprint_walkspeed = "Lune Humanoids have no FloorMaterial, so the step raises before applying",
@@ -600,6 +667,7 @@ test("action_probes: every check passes against fakes except the engine-only one
 	local failed = failedChecks(lines)
 	t.eq(failed, {
 		action_animset_clip = { "error" },
+		action_hitbox_shapecast = { "blockcast_hits_face", "shapecast_hits_face" },
 		action_interact_prompt = { "prompt_signals" },
 		action_movement_humanoid = { "sprint_walkspeed", "error" },
 		action_vehicle_drive = { "drives_forward" },

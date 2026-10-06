@@ -10,9 +10,12 @@
 --     really overlaps; sweepQuery() repeats it over Hitbox.sweepPoses so a fast swing cannot skip
 --     a target between frames.
 --   * caster(worldRoot, raycastParams, roblox, options) is a Projectile cast: Raycast for radius
---     0, Spherecast otherwise, with hits already taken by this projectile added to the filter.
---     Engine casts miss parts the shape starts inside (WorldRoot docs), so casters pair with a
---     query at the muzzle when that matters.
+--     0, Spherecast otherwise, Blockcast when options.block gives a box size (the box faces the
+--     direction of travel), with hits already taken by this projectile added to the filter.
+--     shapecast(worldRoot, part, delta, params, options) casts a part's own geometry
+--     (WorldRoot:Shapecast) and returns the same hit table. Engine casts miss parts the shape
+--     starts inside (WorldRoot docs), so casters pair with a query at the muzzle when that
+--     matters.
 -- Lune can run shapeOf and frame with @lune/roblox; the queries need Studio (the probe).
 local Hitbox = require("./Hitbox")
 local Vec = require("../SceneKit/Vec")
@@ -117,7 +120,36 @@ export type CasterOptions = {
 	resolve: ((instance: any) -> any)?,
 	-- Whether a resolved target lets the projectile through (when it has pierce left).
 	pierceable: ((instance: any, target: any) -> boolean)?,
+	-- Cast a box of this size (studs, { x, y, z }) with Blockcast instead of a ray or sphere.
+	block: Vec.V3?,
 }
+
+-- The Projectile hit table for an engine RaycastResult over a cast of length studs.
+local function convert(result: any, length: number, opts: CasterOptions): any
+	local instance = result.Instance
+	local target = if opts.resolve then opts.resolve(instance) else nil
+	return {
+		fraction = math.clamp(result.Distance / length, 0, 1),
+		position = v3(result.Position),
+		normal = v3(result.Normal),
+		target = target,
+		instance = instance,
+		pierceable = if target ~= nil and opts.pierceable
+			then opts.pierceable(instance, target)
+			else target ~= nil,
+	}
+end
+
+-- A CFrame at from whose LookVector is direction, built from its axes (CFrame.lookAt's
+-- straight-down -Z case comes out reversed in @lune/roblox, and a vertical cast needs a
+-- different up vector anyway).
+local function facing(roblox: any, from: any, direction: any): any
+	local look = direction.Unit
+	local up = if math.abs(look.Y) > 0.99 then roblox.Vector3.new(1, 0, 0) else roblox.Vector3.new(0, 1, 0)
+	local right = look:Cross(up).Unit
+	return roblox.CFrame.fromMatrix(from, right, right:Cross(look), -look)
+end
+HitboxRoblox.facing = facing
 
 -- RaycastParams like base with extra Instances excluded (Exclude filters only; an Include
 -- filter is returned unchanged and the Projectile core skips repeats itself).
@@ -159,7 +191,11 @@ function HitboxRoblox.caster(
 		local from = Vector3.new(origin.x, origin.y, origin.z)
 		local direction = Vector3.new(delta.x, delta.y, delta.z)
 		local result
-		if radius > 0 then
+		if opts.block then
+			local size = opts.block :: Vec.V3
+			local frame = facing(roblox, from, direction)
+			result = worldRoot:Blockcast(frame, Vector3.new(size.x, size.y, size.z), direction, params)
+		elseif radius > 0 then
 			result = worldRoot:Spherecast(from, radius, direction, params)
 		else
 			result = worldRoot:Raycast(from, direction, params)
@@ -167,22 +203,34 @@ function HitboxRoblox.caster(
 		if result == nil then
 			return nil
 		end
-		local instance = result.Instance
-		local target = if opts.resolve then opts.resolve(instance) else nil
-		if target ~= nil then
+		local hit = convert(result, length, opts)
+		if hit.target ~= nil then
 			taken[state] = taken[state] or {}
-			table.insert(taken[state], instance)
+			table.insert(taken[state], result.Instance)
 		end
-		return {
-			fraction = math.clamp(result.Distance / length, 0, 1),
-			position = v3(result.Position),
-			normal = v3(result.Normal),
-			target = target,
-			pierceable = if target ~= nil and opts.pierceable
-				then opts.pierceable(instance, target)
-				else target ~= nil,
-		}
+		return hit
 	end
+end
+
+-- Casts part's own geometry along delta (WorldRoot:Shapecast; the part need not be in the
+-- world). Returns the Projectile hit table (plus instance) or nil.
+function HitboxRoblox.shapecast(
+	worldRoot: any,
+	part: any,
+	delta: Vec.V3,
+	params: any,
+	roblox: any,
+	options: CasterOptions?
+): any?
+	local length = Vec.length(delta)
+	if length <= 1e-9 then
+		return nil
+	end
+	local result = worldRoot:Shapecast(part, roblox.Vector3.new(delta.x, delta.y, delta.z), params)
+	if result == nil then
+		return nil
+	end
+	return convert(result, length, options or {})
 end
 
 -- Records a part's pose into a Hitbox validator's history for id (call it every simulation step).

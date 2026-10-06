@@ -34,7 +34,7 @@ Module index (docs/runtime-kits.md section 11; T3 = needs its Studio probe, T4 =
 | `GameKit/StatusEffects` | T0 | stun, slow, burn, shields as data: stacking, ticks, multipliers, immunity, one-attribute serialisation |
 | `GameKit/Knockback` | T0 | hit and blast impulses, ragdoll requests, juggle limits |
 | `GameKit/Hitbox` | T0 | melee swings, overlap tests, pose history and the server hit-claim validator (rewind at most 200 ms) |
-| `GameKit/HitboxRoblox` | T3 | engine overlap queries with an exact narrow phase; Raycast/Spherecast casters for projectiles |
+| `GameKit/HitboxRoblox` | T3 | engine overlap queries with an exact narrow phase; Raycast/Spherecast/Blockcast casters and Shapecast for projectiles |
 | `GameKit/Projectile` | T0 | ballistic shots (gravity, drag, pierce), server-simulated or client-predicted and validated |
 | `GameKit/Zones` | T0 | areas, hazards, kill volumes, checkpoints and lap gates with hysteresis and swept crossings; courses |
 | `GameKit/ZonesRoblox` | T3 | zones authored as parts with attributes; feeding character positions |

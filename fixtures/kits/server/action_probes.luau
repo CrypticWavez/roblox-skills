@@ -5,7 +5,8 @@
 --   action_round_replication  RoundLoopRoblox steps from BindToSimulation and replicates
 --                             phase, round and fsm/1 state as attributes.
 --   action_hitbox_shapecast   HitboxRoblox: box/sphere bounds queries with the exact Hitbox
---                             narrow phase, Raycast/Spherecast casters, swept queries.
+--                             narrow phase, Raycast/Spherecast/Blockcast casters, Shapecast,
+--                             swept queries.
 --   action_authority_projectile  a Projectile simulation stepped from BindToSimulation hits a
 --                             wall through HitboxRoblox.caster, and the server accepts it.
 --   action_interact_prompt    InteractRoblox builds a ProximityPrompt; Interact times a hold;
@@ -192,6 +193,28 @@ probes.action_hitbox_shapecast = staged("HitboxProbe", function(ctx: any, folder
 		"spherecast_hits_earlier",
 		sphere ~= nil and math.abs(sphere.fraction - 0.35) < 0.01,
 		sphere and { fraction = sphere.fraction }
+	)
+	-- A 1-stud block (front face 0.5 ahead of its centre) meets the face at z = -8 after 7.5.
+	local blockCast = HitboxRoblox.caster(workspace, raycast, roblox, { block = { x = 1, y = 1, z = 1 } })
+	local okBlock, block = pcall(blockCast, from, { x = 0, y = 0, z = -20 }, 0, {})
+	ctx.check(
+		"blockcast_hits_face",
+		okBlock and block ~= nil and math.abs(block.fraction - 0.375) < 0.01,
+		if okBlock then block and { fraction = block.fraction } else tostring(block)
+	)
+	-- The same through Shapecast with an unparented 2-stud ball: contact after 7.
+	local ball = roblox.Instance.new("Part")
+	ball.Shape = roblox.Enum.PartType.Ball
+	ball.Size = Vector3.new(2, 2, 2)
+	ball.Anchored = true
+	ball.CFrame = base
+	local okShape, shaped =
+		pcall(HitboxRoblox.shapecast, workspace, ball, { x = 0, y = 0, z = -20 }, raycast, roblox)
+	ball:Destroy()
+	ctx.check(
+		"shapecast_hits_face",
+		okShape and shaped ~= nil and math.abs(shaped.fraction - 0.35) < 0.01,
+		if okShape then shaped and { fraction = shaped.fraction } else tostring(shaped)
 	)
 	local swept = HitboxRoblox.sweepQuery(
 		workspace,
