@@ -2,7 +2,8 @@
 -- G7 probe registry (prefixes level_, lvl_). Run in a play session on the unpublished diagnostic
 -- place built from fixtures/kits.project.json (tests/engine/lvl_<name>.luau are the RunScript
 -- entries); each probe refuses any other place (Env.assertDiagnostic), builds what it needs under
--- Workspace.SETUP_ONLY_LevelProbe and removes it, also when the probe raises.
+-- Workspace.SETUP_ONLY_LevelProbe far above the place's content (y = 800, a convention; layout
+-- coordinates below are relative to that height) and removes it, also when the probe raises.
 --   lvl_pathfinding_probe  PathfindingService with NavAgentRoblox parameters: a wall with a gap,
 --                          a PathfindingModifier label priced out (Costs = math.huge) and a
 --                          PathfindingLink; the path succeeds, ends at the goal and avoids the zone
@@ -19,6 +20,7 @@
 local probes = {}
 
 local FOLDER = "SETUP_ONLY_LevelProbe"
+local STAGING_Y = 800 -- above the place's content (the G2 probes' convention)
 
 local function stage(ctx: any): any
 	ctx.kit("GameKit/Env").assertDiagnostic(ctx.env, ctx.probe)
@@ -58,15 +60,32 @@ local function staged(body: (ctx: any, folder: any, defer: (fn: () -> ()) -> ())
 	end
 end
 
+-- A staged point: x and z as given, y above STAGING_Y.
+local function at(ctx: any, x: number, y: number, z: number): any
+	return ctx.env.roblox.Vector3.new(x, STAGING_Y + y, z)
+end
+
+-- An anchored block; pos is relative to the staging height.
 local function block(ctx: any, parent: any, name: string, size: { number }, pos: { number }): any
 	local R = ctx.env.roblox
 	local part = R.Instance.new("Part")
 	part.Name = name
 	part.Anchored = true
 	part.Size = R.Vector3.new(size[1], size[2], size[3])
-	part.CFrame = R.CFrame.new(pos[1], pos[2], pos[3])
+	part.CFrame = R.CFrame.new(at(ctx, pos[1], pos[2], pos[3]))
 	part.Parent = parent
 	return part
+end
+
+-- Apply.scene builds at the manifest's coordinates (ground at y = 0); this lifts every part it
+-- built to the staging height (anchored parts, so moving each CFrame moves the scene).
+local function lift(ctx: any, root: any)
+	local up = ctx.env.roblox.Vector3.new(0, STAGING_Y, 0)
+	for _, d in root:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CFrame += up
+		end
+	end
 end
 
 probes.lvl_pathfinding_probe = staged(function(ctx: any, folder: any)
@@ -92,7 +111,7 @@ probes.lvl_pathfinding_probe = staged(function(ctx: any, folder: any)
 
 	local params = NavAgentRoblox.parameters({ costs = { avoid = math.huge } })
 	local path = ctx.env.services.PathfindingService:CreatePath(params)
-	local from, to = R.Vector3.new(-50, 3, 0), R.Vector3.new(50, 3, 0)
+	local from, to = at(ctx, -50, 3, 0), at(ctx, 50, 3, 0)
 	local ok, err = pcall(function()
 		path:ComputeAsync(from, to)
 	end)
@@ -143,7 +162,7 @@ probes.lvl_navagent_door = staged(function(ctx: any, folder: any, defer: (fn: ()
 	controller.finished:Connect(function(kind: string)
 		finished = kind
 	end)
-	controller:moveTo(R.Vector3.new(30, 3, 0))
+	controller:moveTo(at(ctx, 30, 3, 0))
 	local crossed, last = false, nil
 	for _ = 1, 400 do
 		local command = controller:step(0.1)
@@ -172,6 +191,7 @@ probes.lvl_kit_swap = staged(function(ctx: any, folder: any)
 	local R = ctx.env.roblox
 	local scene = Course.toScene(Course.linear({ seed = 701, length = 8 }))
 	local _, root = Apply.scene(scene, folder, { env = R })
+	lift(ctx, root)
 	local before = {}
 	for _, d in root:GetDescendants() do
 		if d:IsA("BasePart") and d:GetAttribute("asset") == "course_platform" then
@@ -258,6 +278,7 @@ probes.lvl_course_run = staged(function(ctx: any, folder: any)
 
 	local course = Course.linear({ seed = 701, length = 16 })
 	local _, root = Apply.scene(Course.toScene(course), folder, { env = R })
+	lift(ctx, root)
 	local params = R.RaycastParams.new()
 	params.FilterType = R.Enum.RaycastFilterType.Include
 	params.FilterDescendantsInstances = { root }
@@ -266,8 +287,8 @@ probes.lvl_course_run = staged(function(ctx: any, folder: any)
 	for _, segment in course.segments do
 		local a, b = course.pads[segment.from], course.pads[segment.to]
 		local hit =
-			workspace:Raycast(R.Vector3.new(b.pos.x, b.pos.y + 20, b.pos.z), R.Vector3.new(0, -40, 0), params)
-		if hit == nil or math.abs(hit.Position.Y - b.pos.y) > 0.05 then
+			workspace:Raycast(at(ctx, b.pos.x, b.pos.y + 20, b.pos.z), R.Vector3.new(0, -40, 0), params)
+		if hit == nil or math.abs(hit.Position.Y - (STAGING_Y + b.pos.y)) > 0.05 then
 			table.insert(missed, segment.index)
 		end
 		-- Arc from the take-off pad centre to the landing pad centre at the course physics,
@@ -275,16 +296,17 @@ probes.lvl_course_run = staged(function(ctx: any, folder: any)
 		local vy = math.sqrt(2 * g * course.profile.jumpHeight)
 		local rise = b.pos.y - a.pos.y
 		local tAir = (vy + math.sqrt(math.max(vy * vy - 2 * g * rise, 0))) / g
-		local function at(t: number): any
+		local function arc(t: number): any
 			local f = t / tAir
-			return R.Vector3.new(
+			return at(
+				ctx,
 				a.pos.x + (b.pos.x - a.pos.x) * f,
 				a.pos.y + 1.5 + vy * t - g * t * t / 2,
 				a.pos.z + (b.pos.z - a.pos.z) * f
 			)
 		end
 		for k = 1, 12 do
-			local p, q = at(tAir * (k - 1) / 12), at(tAir * k / 12)
+			local p, q = arc(tAir * (k - 1) / 12), arc(tAir * k / 12)
 			local chord = workspace:Raycast(p, q - p, params)
 			if
 				chord

@@ -3,7 +3,8 @@
 -- the wall gap, straight lines elsewhere), Workspace is a stand-in whose Raycast tests the Lune
 -- parts' oriented boxes, RaycastParams is a plain table, and SceneKit Apply gets a pivotTo
 -- (Lune instances have no PivotTo). Every probe must report ok here; that proves the probe logic
--- and the registry contract, not the engine (the probes stay pending until a Studio run).
+-- and the registry contract, not the engine (the probes stay pending until a Studio run). The
+-- probes stage at y = 800, so the scripted route and every built part sit at that height.
 local roblox = require("@lune/roblox")
 local FakeEnv = require("./fakes/FakeEnv")
 local FakePathfinding = require("./fakes/FakePathfinding")
@@ -28,10 +29,11 @@ local R = setmetatable({
 
 local function route(from, to)
 	if from.X == -50 then
-		-- Around the avoid zone (x -40..-20, z -10..10) and through the wall gap (z 16..26).
+		-- Around the avoid zone (x -40..-20, z -10..10) and through the wall gap (z 16..26), at
+		-- the height the probe asked for.
 		local points = {}
 		for _, p in { { -50, 0 }, { -45, 18 }, { -10, 21 }, { 0, 21 }, { 10, 21 }, { 45, 5 }, { 50, 0 } } do
-			table.insert(points, { pos = Vector3.new(p[1], 3, p[2]) })
+			table.insert(points, { pos = Vector3.new(p[1], from.Y, p[2]) })
 		end
 		return points
 	end
@@ -100,7 +102,8 @@ local function loader(path)
 	return module
 end
 
--- options.place replaces FakeEnv's diagnostic place; options.prepare(env) edits the fakes.
+-- options.place replaces FakeEnv's diagnostic place; options.prepare(env) edits the fakes;
+-- options.onLine(line, game) sees each line as it is emitted (while the probe's staging exists).
 local function run(only, options)
 	local opts = options or {}
 	local game = roblox.Instance.new("DataModel")
@@ -109,7 +112,8 @@ local function run(only, options)
 	local env = FakeEnv.new({ roblox = R, place = opts.place })
 	env:register("Workspace", workspaceStandIn(game:GetService("Workspace")))
 	env:register("StarterPlayer", starter)
-	env:register("PathfindingService", FakePathfinding.new({ roblox = roblox, route = route }))
+	local pathfinding = FakePathfinding.new({ roblox = roblox, route = route })
+	env:register("PathfindingService", pathfinding)
 	if opts.prepare then
 		opts.prepare(env)
 	end
@@ -120,9 +124,12 @@ local function run(only, options)
 		only = only,
 		emit = function(line)
 			table.insert(lines, line)
+			if opts.onLine then
+				opts.onLine(line, game)
+			end
 		end,
 	})
-	return summary, lines, game
+	return summary, lines, game, pathfinding
 end
 
 test("every level probe is registered under an owner prefix", function(t)
@@ -196,6 +203,38 @@ test("a level probe that raises still removes its staging", function(t)
 	t.ok(string.find(errors, "pathfinding exploded", 1, true) ~= nil, errors)
 	t.ok(string.find(errors, "raycast exploded", 1, true) ~= nil, errors)
 	t.eq(game:GetService("Workspace"):FindFirstChild("SETUP_ONLY_LevelProbe"), nil, "staging removed")
+end)
+
+test("every level probe builds and paths far above the place's content", function(t)
+	local rays = {}
+	local parts, lowest = 0, math.huge
+	local summary, lines, _, pathfinding = run(nil, {
+		prepare = function(env)
+			local workspace = env.services.Workspace
+			local raycast = workspace.Raycast
+			workspace.Raycast = function(self, origin, direction, params)
+				table.insert(rays, origin.Y)
+				return raycast(self, origin, direction, params)
+			end
+		end,
+		onLine = function(_, game)
+			local folder = game:GetService("Workspace"):FindFirstChild("SETUP_ONLY_LevelProbe")
+			for _, part in if folder then folder:GetDescendants() else {} do
+				if part:IsA("BasePart") then
+					parts += 1
+					lowest = math.min(lowest, part.CFrame.Position.Y - part.Size.Y / 2)
+				end
+			end
+		end,
+	})
+	t.ok(summary.ok and summary.errors == 0, table.concat(lines, "\n"))
+	t.ok(parts > 20, "parts seen: " .. parts)
+	t.ok(lowest >= 790, "lowest part bottom: " .. lowest)
+	t.ok(#pathfinding.computed >= 2, "paths computed")
+	for _, call in pathfinding.computed do
+		t.eq({ call.from.Y, call.to.Y }, { 803, 803 }, "path endpoints at the staging height")
+	end
+	t.ok(#rays > 0 and math.min(table.unpack(rays)) >= 790, "raycasts at the staging height")
 end)
 
 test("a mismatched engine fails lvl_course_run's physics checks", function(t)
