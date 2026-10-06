@@ -1,0 +1,48 @@
+{
+  "schema": "game-brief/1",
+  "name": "ReleaseFixture",
+  "pitch": "Synthetic release-checker fixture; not a game.",
+  "pillars": ["fixture pillar one", "fixture pillar two"],
+  "genre": {
+    "primary": "Utility & Other",
+    "subgenre": null
+  },
+  "theme_and_setting": "Synthetic fixture: none.",
+  "world": "Synthetic fixture: none.",
+  "characters": "Synthetic fixture: none.",
+  "core_loop": "Synthetic fixture: none.",
+  "progression": "Synthetic fixture: none.",
+  "economy": "Synthetic fixture: one currency, currency_a.",
+  "monetization": ["currency_pack_a", "random_pack_a", "pass_a", "subscription_a"],
+  "social": "Synthetic fixture: none.",
+  "ui_direction": "Synthetic fixture: none.",
+  "art_direction": "Synthetic fixture: none.",
+  "audio_direction": "Synthetic fixture: none.",
+  "audience": {
+    "age_target": "Synthetic fixture: none.",
+    "maturity_label": "Minimal"
+  },
+  "devices": ["computer", "phone"],
+  "players_per_server": {
+    "max": 10,
+    "preferred": 8
+  },
+  "session_minutes": 10,
+  "locales": {
+    "source": "en-us",
+    "targets": ["es-es"]
+  },
+  "kits": [],
+  "engine": {
+    "authority_mode": "Server",
+    "streaming_enabled": true,
+    "signal_behavior": "Deferred",
+    "lighting_style": "Soft",
+    "prioritize_lighting_quality": false,
+    "avatar_type": "R15",
+    "default_listener_location": "Camera"
+  },
+  "references": [],
+  "success_metrics": ["fixture metric"],
+  "open_questions": []
+}

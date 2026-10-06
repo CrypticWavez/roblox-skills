@@ -1,0 +1,198 @@
+{
+  "schema": "production-pipeline/1",
+  "current": "concept",
+  "note": "Stages and exit gates (skill roblox-production-pipeline). `python3 tools/production.py status` shows the current stage's gates; `python3 tools/plan_issues.py` writes issue drafts for them. Only the owner moves `current`, after recording the stage's owner and playtest gates in a release/owner-*.json file.",
+  "stages": [
+    {
+      "id": "concept",
+      "goal": "Decide what the game is, from the game-build request or the owner: identity, audience, platforms and the core loop on paper.",
+      "skills": ["roblox-production-pipeline", "roblox-genre-systems"],
+      "exit": [
+        {
+          "id": "concept.brief",
+          "kind": "brief",
+          "fields": ["name", "pitch", "pillars", "genre", "theme_and_setting", "core_loop", "audience", "devices", "players_per_server", "session_minutes", "locales"],
+          "text": "Brief identity fields decided and logged in docs/decisions.md and the AGENTS.md tables"
+        },
+        {
+          "id": "concept.core-loop",
+          "kind": "file",
+          "path": "docs/design/core-loop.md",
+          "text": "Core loop written up (docs/design/core-loop.md, Status no longer TBD)"
+        },
+        {
+          "id": "concept.approved",
+          "kind": "owner",
+          "text": "Owner approves the brief and the core loop"
+        }
+      ]
+    },
+    {
+      "id": "greybox",
+      "goal": "Make the core loop playable with untextured geometry; wire the chosen kits into the boot phases; settle the engine settings.",
+      "skills": ["roblox-scene-authoring", "roblox-procedural-generation", "roblox-genre-systems", "roblox-level-design-review", "roblox-luau-testing", "roblox-studio-testing"],
+      "exit": [
+        {
+          "id": "greybox.brief",
+          "kind": "brief",
+          "fields": ["world", "kits", "engine"],
+          "text": "World layout, kits and engine settings decided (engine settings set in default.project.json or Studio)"
+        },
+        {
+          "id": "greybox.ux-flows",
+          "kind": "file",
+          "path": "docs/design/ux-flows.md",
+          "text": "Screen and flow map written (docs/design/ux-flows.md)"
+        },
+        {
+          "id": "greybox.gate",
+          "kind": "gate",
+          "tier": "pre-commit",
+          "text": "The game gate passes with the boot phases wired for the chosen kits"
+        },
+        {
+          "id": "greybox.boot",
+          "kind": "release",
+          "items": ["S07"],
+          "text": "Boot report ok on both sides in Play Solo and Server & Clients (owner's Studio run)"
+        },
+        {
+          "id": "greybox.playtest",
+          "kind": "playtest",
+          "text": "Internal playtest of the core loop in greybox; findings filed as issues"
+        }
+      ]
+    },
+    {
+      "id": "vertical-slice",
+      "goal": "One representative slice at target quality: art, audio, UI, feel and one complete progression step.",
+      "skills": ["roblox-ui-ux-pass", "visual-qa", "roblox-animation-integration", "roblox-asset-intake", "roblox-performance-pass"],
+      "exit": [
+        {
+          "id": "vertical-slice.brief",
+          "kind": "brief",
+          "fields": ["characters", "progression", "ui_direction", "art_direction", "audio_direction"],
+          "text": "Characters, progression and the UI, art and audio directions decided"
+        },
+        {
+          "id": "vertical-slice.art",
+          "kind": "file",
+          "path": "docs/design/art-direction.md",
+          "text": "Art direction written (docs/design/art-direction.md)"
+        },
+        {
+          "id": "vertical-slice.audio",
+          "kind": "file",
+          "path": "docs/design/audio-direction.md",
+          "text": "Audio direction written (docs/design/audio-direction.md)"
+        },
+        {
+          "id": "vertical-slice.release",
+          "kind": "release",
+          "items": ["A07", "A10", "A11"],
+          "text": "Motion and flash settings honoured, asset provenance complete, localisation keys resolved"
+        },
+        {
+          "id": "vertical-slice.playtest",
+          "kind": "playtest",
+          "text": "Playtest of the slice on each declared device class"
+        },
+        {
+          "id": "vertical-slice.approved",
+          "kind": "owner",
+          "text": "Owner approves the slice as the quality bar"
+        }
+      ]
+    },
+    {
+      "id": "alpha",
+      "goal": "Feature complete: every system in, persistence, economy, commerce and telemetry wired. Every required brief field is decided from here on.",
+      "skills": ["roblox-persistence-and-commerce", "roblox-multiplayer-integrity", "roblox-luau-testing", "roblox-genre-systems"],
+      "exit": [
+        {
+          "id": "alpha.brief",
+          "kind": "brief",
+          "fields": ["economy", "monetization", "social", "success_metrics"],
+          "text": "Economy, monetization, social features and success metrics decided"
+        },
+        {
+          "id": "alpha.economy",
+          "kind": "file",
+          "path": "docs/design/economy.md",
+          "text": "Economy written up with sources, sinks and simulation results (docs/design/economy.md)"
+        },
+        {
+          "id": "alpha.release",
+          "kind": "release",
+          "items": ["A02", "A03", "A04", "A05", "A06", "A08", "A15"],
+          "text": "Remotes guarded, catalog and receipts right, paid random items disclosed, text filtered, telemetry defined, persistence through the data kit"
+        },
+        {
+          "id": "alpha.studio",
+          "kind": "release",
+          "items": ["S01", "S02", "S05"],
+          "text": "Critical flows, mock purchases and the telemetry sequence checked in Studio (owner)"
+        },
+        {
+          "id": "alpha.playtest",
+          "kind": "playtest",
+          "text": "Full-loop playtest; every critical-flow failure filed"
+        }
+      ]
+    },
+    {
+      "id": "beta",
+      "goal": "Content complete: polish, performance, localisation and device coverage; playtests with a Limited audience set by the owner.",
+      "skills": ["roblox-performance-pass", "roblox-ui-ux-pass", "roblox-release-pass", "roblox-studio-testing", "visual-qa"],
+      "exit": [
+        {
+          "id": "beta.release",
+          "kind": "release",
+          "items": ["A09", "A11", "A13", "A14", "A17"],
+          "text": "Performance within budget, localisation complete, no deprecated APIs, store text rules, release metadata valid"
+        },
+        {
+          "id": "beta.studio",
+          "kind": "release",
+          "items": ["S03", "S04", "S06"],
+          "text": "Locales and regions, device captures and the performance capture done in Studio (owner)"
+        },
+        {
+          "id": "beta.playtest",
+          "kind": "playtest",
+          "text": "Limited-audience playtest (owner sets the audience); findings triaged"
+        }
+      ]
+    },
+    {
+      "id": "release-candidate",
+      "goal": "Everything the release checker automates passes; the owner completes the owner items and publishes. Agents never publish.",
+      "skills": ["roblox-release-pass", "roblox-production-pipeline"],
+      "exit": [
+        {
+          "id": "release-candidate.gate",
+          "kind": "gate",
+          "tier": "pre-release",
+          "text": "The game gate passes at the pre-release tier (it runs the release checker)"
+        },
+        {
+          "id": "release-candidate.automated",
+          "kind": "release",
+          "items": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17"],
+          "text": "Every automated release check passes"
+        },
+        {
+          "id": "release-candidate.owner",
+          "kind": "release",
+          "items": ["O01", "O02", "O03", "O04", "O05", "O06", "O07", "O08", "O09", "O10", "O11", "O12", "O13", "O14", "O15"],
+          "text": "Owner items recorded (account, maturity questionnaire, store page, products, settings, publish, after-publish)"
+        },
+        {
+          "id": "release-candidate.publish",
+          "kind": "owner",
+          "text": "The owner publishes from Studio with version notes (never an agent)"
+        }
+      ]
+    }
+  ]
+}

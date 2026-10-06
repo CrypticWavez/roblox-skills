@@ -1,0 +1,41 @@
+--!strict
+-- Release fixture: a server entry holding the patterns tools/release_check.py looks for. Synthetic and
+-- static only: it is never run, and the kit calls are illustrative, not the kits' real APIs.
+local BadgeService = game:GetService("BadgeService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Kits = ReplicatedStorage:WaitForChild("Kits")
+local RemoteGuard = require(Kits.GameKit.RemoteGuard)
+local PolicyGate = require(Kits.GameKit.PolicyGate)
+local TextFilter = require(Kits.GameKit.TextFilter)
+local PlayerData = require(Kits.GameKit.PlayerData)
+local Telemetry = require(Kits.GameKit.Telemetry)
+
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+RemoteGuard.register(remotes:WaitForChild("SubmitText"), { perSecond = 1 }, function(player, text)
+	return TextFilter.forBroadcast(player, text)
+end)
+
+local function rollRandomPack(player)
+	if not PolicyGate.allows(player, "paidRandomItems") then
+		return false, "policy"
+	end
+	return true, nil
+end
+
+local function handleReceipt(receiptInfo)
+	return PlayerData.grantReceipt(receiptInfo, rollRandomPack)
+end
+
+MarketplaceService.ProcessReceipt = handleReceipt
+
+local function awardBadge(player, badgeId)
+	local ok, info = pcall(BadgeService.GetBadgeInfoAsync, BadgeService, badgeId)
+	if ok and info.IsEnabled then
+		BadgeService:AwardBadge(player.UserId, badgeId)
+	end
+end
+
+return { awardBadge = awardBadge, telemetry = Telemetry }

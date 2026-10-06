@@ -1,0 +1,40 @@
+--!strict
+-- Release fixture: a client entry holding the patterns tools/release_check.py looks for. Synthetic and
+-- static only; {{SYNTHETIC_ASSET_ID}} is filled in by tests/test_release_check.py.
+local GuiService = game:GetService("GuiService")
+local LocalizationService = game:GetService("LocalizationService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local SocialService = game:GetService("SocialService")
+
+local player = Players.LocalPlayer
+local settings = { reducedMotion = GuiService.ReducedMotionEnabled, reduceFlashing = false }
+
+local translator = LocalizationService:GetTranslatorForPlayerAsync(player)
+local status = Instance.new("TextLabel")
+status.Text = translator:FormatByKey("hud.status", { state = "ready" })
+
+local input = Instance.new("TextBox")
+input.Parent = status
+
+local icon = Instance.new("ImageLabel")
+icon.Image = "rbxassetid://{{SYNTHETIC_ASSET_ID}}"
+
+local function animate()
+	if settings.reducedMotion or settings.reduceFlashing then
+		return
+	end
+end
+
+local function promptPack(product)
+	MarketplaceService:PromptProductPurchase(player, product.id)
+end
+
+local function invite()
+	local ok, canSend = pcall(SocialService.CanSendGameInviteAsync, SocialService, player)
+	if ok and canSend then
+		SocialService:PromptGameInvite(player)
+	end
+end
+
+return { animate = animate, promptPack = promptPack, invite = invite, icon = icon }

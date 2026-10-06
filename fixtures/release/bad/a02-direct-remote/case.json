@@ -1,0 +1,7 @@
+{
+  "expect": "A02",
+  "why": "a server script connects OnServerEvent directly instead of registering through RemoteGuard",
+  "append": {
+    "src/server/init.server.luau": "\nremotes:WaitForChild(\"Direct\").OnServerEvent:Connect(function(_player) end)\n"
+  }
+}

@@ -3,13 +3,21 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: "Gate tier (pre-release also runs the release checker)"
+        default: pre-commit
+        type: choice
+        options: [pre-commit, pre-release]
 
 # The repo gate with --strict: a SKIPPED step (missing tool, Selene std not generated) fails the
-# job, so CI is only green when every step ran. Toolchain steps match the factory's CI.
+# job, so CI is only green when every step ran. Factory-managed (tools/new_project.py --update).
+# Nothing here publishes, uploads or buys: the release tier checks and reports; the owner publishes.
 jobs:
   gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -30,12 +38,21 @@ jobs:
         run: |
           rokit authenticate github --token "$ROKIT_TOKEN" --skip-verify
           rokit install --no-trust-check
+      - name: Install Wally packages from the committed lockfile
+        if: hashFiles('wally.toml') != ''
+        run: |
+          test -f wally.lock || (echo "wally.lock is not committed: the owner runs wally install and commits it" && exit 1)
+          wally install
+          git diff --exit-code -- wally.lock || (echo "wally.lock is out of date: the owner runs wally install and commits it" && exit 1)
       - name: Generate the Selene Roblox std
         run: selene generate-roblox-std
       - name: Gate (strict)
-        run: python3 tools/check.py --tier pre-commit --strict
+        run: python3 tools/check.py --tier "${{ inputs.tier || 'pre-commit' }}" --strict
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: gate
-          path: build/check-report.json
+          path: |
+            build/check-report.json
+            release/report.json
+          if-no-files-found: ignore

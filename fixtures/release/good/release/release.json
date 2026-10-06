@@ -1,0 +1,54 @@
+{
+  "schema": "release-meta/1",
+  "note": "Synthetic fixture for tools/release_check.py; every value is made up and decides nothing.",
+  "name": "Release Fixture",
+  "description": "Synthetic fixture for the release checker. Not a game.",
+  "genre": {
+    "primary": "Utility & Other",
+    "subgenre": null
+  },
+  "devices": ["computer", "phone"],
+  "audience": {
+    "maturity_label": "Minimal",
+    "reach": "16_plus"
+  },
+  "maturity_summary": "Synthetic: no questionnaire was answered for this fixture.",
+  "players": {
+    "max": 10,
+    "preferred": 8
+  },
+  "access": {
+    "private_servers": false,
+    "paid_access": false
+  },
+  "locales": {
+    "source": "en-us",
+    "targets": ["es-es"]
+  },
+  "version_notes": "Fixture release notes.",
+  "catalog": "src/shared/catalog.json",
+  "telemetry": "src/shared/telemetry.json",
+  "localization": ["src/localization"],
+  "perf": {
+    "budgets": "release/perf/budgets.json",
+    "captures": ["release/perf/desktop.json", "release/perf/phone.json"]
+  },
+  "paid_random_items": [
+    {
+      "product": "random_pack_a",
+      "odds": {
+        "outcome_a": 50,
+        "outcome_b": 30,
+        "outcome_c": 20
+      },
+      "disclosure_key": "shop.random_pack_a.odds"
+    }
+  ],
+  "store_art": {
+    "icon": "art/icon.png",
+    "thumbnails": ["art/thumb_1.png", "art/thumb_2.png"],
+    "badges": ["art/badge_a.png"],
+    "passes": ["art/pass_a.png"]
+  },
+  "generated": []
+}

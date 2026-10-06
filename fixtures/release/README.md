@@ -1,10 +1,10 @@
 # Release-check fixtures
 
-Inputs for the starter's release checker (`templates/starter/tools/release_check.py`, owned by G8) and its tests (`tests/test_release_check.py`).
+Inputs for the starter's release checker ([templates/starter/tools/release_check.py](../../templates/starter/tools/release_check.py)) and its tests ([tests/test_release_check.py](../../tests/test_release_check.py)). Owner: G8 (starter, release readiness and production pipeline).
 
-| Entry | What it will hold |
+| Entry | What it holds |
 |---|---|
-| `good/` | A minimal generated-project tree that passes every automated A-check; owner items (S, O, P) report OWNER_REQUIRED, never pass |
-| `bad/<case>/` | One minimal tree per A-check, each tripping exactly that check |
+| [good/](good/) | A minimal generated-project tree (only the files the checker reads) that passes every automated item A01-A17; owner items (S, O, P) report OWNER_REQUIRED, never pass |
+| [bad/](bad/) | One case per automated item: `bad/<case>/case.json` names the item it must trip (`expect`), why, and how it differs from `good/`: `json_set` (dotted paths), `replace`, `append`, `delete`, `images` and an optional `files/` overlay |
 
-Owner: G8 (starter, release readiness and production pipeline). The trees are synthetic and SETUP_ONLY: no real product ids, prices, owner answers or asset ids. Empty until G8 fills it.
+The tests build each tree in a temporary directory: they copy `good/`, apply the case, strip `.tmpl` (Luau sources are stored as `*.luau.tmpl` so the factory's Rojo and StyLua checks leave them alone), fill `{{SYNTHETIC_ASSET_ID}}` and `{{UPLOAD_VERB}}`, and write the store art listed in `good/images.json` as blank PNGs. Everything is synthetic and SETUP_ONLY: product ids 900000101-900000104 and asset id 900000001 name nothing real, the genre and every brief value are placeholders that decide nothing, there are no prices, owner answers or real asset ids, and the fixture code is static input that never runs.

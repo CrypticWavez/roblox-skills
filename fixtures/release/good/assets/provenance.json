@@ -1,0 +1,20 @@
+{
+  "schema": "asset-provenance/1",
+  "note": "Synthetic fixture: the id below is written as a token in the fixture sources and filled in by tests/test_release_check.py; it names no real asset.",
+  "assets": [
+    {
+      "id": 900000001,
+      "kind": "image",
+      "name": "synthetic fixture image",
+      "source": "synthetic (fixtures/release)",
+      "creator": "fixture",
+      "license": "synthetic",
+      "approval": "approved",
+      "reviewer": "fixture",
+      "script_review": "not applicable: image",
+      "date": "2026-10-06",
+      "purpose": "release checker fixture (A10)",
+      "origin": "intake"
+    }
+  ]
+}

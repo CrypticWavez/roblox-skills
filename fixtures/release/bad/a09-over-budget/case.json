@@ -1,0 +1,9 @@
+{
+  "expect": "A09",
+  "why": "the phone capture's p95 frame time is over the phone budget",
+  "json_set": {
+    "release/perf/phone.json": {
+      "frame_ms.p95": 45
+    }
+  }
+}

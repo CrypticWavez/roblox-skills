@@ -1,0 +1,7 @@
+{
+  "expect": "A13",
+  "why": "server code calls the deprecated tick()",
+  "append": {
+    "src/server/init.server.luau": "\nlocal _startedAt = tick()\n"
+  }
+}

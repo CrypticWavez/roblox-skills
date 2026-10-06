@@ -1,0 +1,42 @@
+name: Asset
+description: A model, mesh, texture, sound, animation or UI image to make or bring in
+title: "[asset] "
+labels: ["asset"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Assets enter through the asset intake skill: provenance in assets/provenance.json (release check A10), budgets per device class (perf/1).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: [model, mesh, texture or image, audio, animation, UI image, store art (owner uploads)]
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose and placement
+      description: Where it is used and which design doc (art or audio direction) it follows.
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source
+      options: [made for this game, Creator Store (needs review), licensed library, generated]
+    validations:
+      required: true
+  - type: textarea
+    id: budget
+    attributes:
+      label: Budget
+      description: Triangles, texture size, memory or duration limits for the target device classes.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: Provenance entry approved (reviewer, script review), import checks passed, visual check done.
+    validations:
+      required: true

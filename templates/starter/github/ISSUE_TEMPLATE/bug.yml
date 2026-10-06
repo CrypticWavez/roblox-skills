@@ -1,0 +1,34 @@
+name: Bug
+description: Something that does not work as intended
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened and what was expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Test mode (Play Solo, Server & Clients), device or emulator settings, seed if procedural.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Console output (BOOT_REPORT lines, errors), screenshots, perf captures. No personal data or user names.
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options: [blocks play or data, breaks a feature, cosmetic or minor]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or place version

@@ -1,0 +1,9 @@
+{
+  "expect": "A03",
+  "why": "an enabled product has not had its id confirmed by the owner (ownershipVerified false)",
+  "json_set": {
+    "src/shared/catalog.json": {
+      "products.2.ownershipVerified": false
+    }
+  }
+}

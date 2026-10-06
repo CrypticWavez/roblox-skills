@@ -1,0 +1,9 @@
+{
+  "expect": "A08",
+  "why": "the telemetry catalog defines no onboarding funnel",
+  "json_set": {
+    "src/shared/telemetry.json": {
+      "onboarding": []
+    }
+  }
+}

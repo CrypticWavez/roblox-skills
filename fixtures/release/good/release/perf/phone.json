@@ -1,0 +1,19 @@
+{
+  "schema": "perf/1",
+  "kind": "stats",
+  "device_class": "phone",
+  "frame_ms": {
+    "p50": 20,
+    "p95": 28,
+    "p99": 31
+  },
+  "memory_mb": {
+    "total": 550
+  },
+  "counts": {
+    "instances": 15000
+  },
+  "source": {
+    "place": "synthetic fixture"
+  }
+}

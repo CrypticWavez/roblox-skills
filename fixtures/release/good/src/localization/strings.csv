@@ -1,0 +1,7 @@
+Key,Source,Context,Example,es-es
+hud.status,Status: {state},,,Estado: {state}
+shop.currency_pack_a.name,Currency pack A,,,Paquete de moneda A
+shop.random_pack_a.name,Random pack A,,,Paquete aleatorio A
+shop.random_pack_a.odds,"Odds: A {a}%, B {b}%, C {c}%",,,"Probabilidades: A {a}%, B {b}%, C {c}%"
+shop.pass_a.name,Pass A,,,Pase A
+shop.subscription_a.name,Subscription A,,,Suscripción A

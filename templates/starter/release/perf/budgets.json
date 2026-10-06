@@ -1,0 +1,6 @@
+{
+  "schema": "perf/1",
+  "kind": "budgets",
+  "note": "Budgets per device class (desktop, phone, phone_low, tablet, console) for the counters of perf/1 stats: frame_ms_p95, memory_mb, texture_mb_estimate, instances, parts, triangles, shadowed_lights, particle_rate, playing_sounds, highlights. The values are the game's decisions; a class a declared device needs but this file lacks fails release check A09. Captures (perf/1 stats from the Studio performance pass, release item S06) are listed in release/release.json perf.captures.",
+  "classes": {}
+}

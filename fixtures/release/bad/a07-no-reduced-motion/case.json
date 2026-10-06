@@ -1,0 +1,16 @@
+{
+  "expect": "A07",
+  "why": "client code never reads the reduced-motion preference",
+  "replace": {
+    "src/client/init.client.luau": [
+      [
+        "reducedMotion = GuiService.ReducedMotionEnabled, ",
+        ""
+      ],
+      [
+        "settings.reducedMotion or ",
+        ""
+      ]
+    ]
+  }
+}

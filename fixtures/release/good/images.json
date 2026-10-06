@@ -1,0 +1,10 @@
+{
+  "note": "Store art written by tests/test_release_check.py as blank PNGs of these sizes (width, height), so no binary is committed.",
+  "images": {
+    "art/icon.png": [512, 512],
+    "art/thumb_1.png": [1920, 1080],
+    "art/thumb_2.png": [1920, 1080],
+    "art/badge_a.png": [512, 512],
+    "art/pass_a.png": [256, 256]
+  }
+}

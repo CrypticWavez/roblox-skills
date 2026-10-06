@@ -2,17 +2,34 @@
   "name": "{{NAME}}",
   "tree": {
     "$className": "DataModel",
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/first"
+      }
+    },
     "ReplicatedStorage": {
-      "Workbench": {
-        "$path": "packages"
-      },
       "Shared": {
         "$path": "src/shared"
+      },
+      "Packages": {
+        "$path": {
+          "optional": "Packages"
+        }
       }
     },
     "ServerScriptService": {
       "Server": {
         "$path": "src/server"
+      }
+    },
+    "ServerStorage": {
+      "Assets": {
+        "$path": "src/assets"
+      },
+      "ServerPackages": {
+        "$path": {
+          "optional": "ServerPackages"
+        }
       }
     },
     "StarterPlayer": {
@@ -22,9 +39,12 @@
         }
       }
     },
-    "Workspace": {
-      "$properties": {
-        "FilteringEnabled": true
+    "StarterGui": {
+      "$path": "src/gui"
+    },
+    "LocalizationService": {
+      "GameStrings": {
+        "$path": "src/localization/strings.csv"
       }
     }
   }

@@ -1,0 +1,21 @@
+{
+  "onboarding": ["joined", "controls_shown", "first_action"],
+  "funnels": {
+    "shop_flow": {
+      "steps": ["offer_viewed", "prompted", "granted"]
+    }
+  },
+  "custom": {
+    "session_milestone": {
+      "fields": ["milestone"]
+    }
+  },
+  "economy": {
+    "currencies": ["currency_a"],
+    "transactionTypes": ["IAP", "Gameplay"]
+  },
+  "progression": {
+    "main_path": true
+  },
+  "journeys": {}
+}

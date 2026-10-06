@@ -1,0 +1,7 @@
+{
+  "expect": "A15",
+  "why": "server code opens a DataStore directly instead of going through the data kit",
+  "append": {
+    "src/server/init.server.luau": "\nlocal _store = game:GetService(\"DataStoreService\"):GetDataStore(\"fixture\")\n"
+  }
+}

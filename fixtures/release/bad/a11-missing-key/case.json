@@ -1,0 +1,12 @@
+{
+  "expect": "A11",
+  "why": "client code formats a localisation key that no table has",
+  "replace": {
+    "src/client/init.client.luau": [
+      [
+        "FormatByKey(\"hud.status\"",
+        "FormatByKey(\"hud.missing\""
+      ]
+    ]
+  }
+}

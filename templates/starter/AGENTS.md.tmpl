@@ -1,49 +1,80 @@
 # {{NAME}}: agent instructions
 
-Shared by Claude Code (via `CLAUDE.md`) and Codex. Keep this file short. This repository was created by the Roblox production factory's project starter for an explicit game-build request; `starter.json` records the factory commit and the packages copied.
+Shared by Claude Code (via `CLAUDE.md`) and Codex. Keep this file short. This repository was created by the Roblox production factory's project starter for an explicit game-build request; `starter.json` records the factory commit, the packages and every module's tier.
 
 ## Boundary
 - Production skills apply here: this is the game repository the build request asked for.
-- Game content follows the decisions below. A field that is still TBD is not decided: ask the owner and do not build content for it.
-- Never publish a place, upload assets, create or change live products (passes, developer products, subscriptions, prices), spend Robux, buy tools or assets, run ads, or write production data stores without the owner's explicit approval of that specific action. The owner performs approved publishes.
-- Studio work targets an unpublished test place (the skills call it the diagnostic place) unless the owner names another place for the task.
+- Game content follows the decisions below. A TBD field is not decided: ask the owner, and do not build content for it.
+- Never publish a place, upload assets, create or change live products (passes, developer products, subscriptions, prices), spend Robux, buy tools or assets, run ads, write production data stores, or run `wally install` (it downloads code) without the owner's explicit approval of that specific action. The owner publishes; agents never do.
+- Release items S, O and P (`docs/release-runbook.md`) are the owner's; only the owner writes `release/owner-*.json`.
+- Studio work targets an unpublished test place unless the owner names another place for the task.
 - No secrets, tokens, cookies or machine-specific paths in files, logs or commits.
 
 ## Game decisions
-Filled from the game-build request and the owner's later answers, never guessed. Log every decision (date, decision, who decided, source) in `docs/decisions.md`, then update the row here.
+Filled from the game-build request and the owner's later answers, never guessed. The source of truth is `production/brief.json` (game-brief/1); log every decision (date, decision, who decided, source) in `docs/decisions.md`, then update the brief and the row here. The gate step `brief` checks that this table and the brief agree.
 
-| Field | Decision |
-|---|---|
-| Genre | TBD |
-| Theme and setting | TBD |
-| World, maps and levels | TBD |
-| Characters, NPCs and enemies | TBD |
-| Core loop and progression | TBD |
-| Economy and monetization | TBD |
-| UI direction | TBD |
-| Art direction and asset sources | TBD |
-| Target devices and players per server | TBD |
+| Field | Brief key | Decision |
+|---|---|---|
+| Pitch | pitch | TBD |
+| Pillars | pillars | TBD |
+| Genre and subgenre (Roblox's 17 genres) | genre | TBD |
+| Theme and setting | theme_and_setting | TBD |
+| World, maps and levels | world | TBD |
+| Characters, NPCs and enemies | characters | TBD |
+| Core loop | core_loop | TBD |
+| Progression | progression | TBD |
+| Economy | economy | TBD |
+| Monetization | monetization | TBD |
+| Social features | social | TBD |
+| UI direction | ui_direction | TBD |
+| Art direction and asset sources | art_direction | TBD |
+| Audio direction | audio_direction | TBD |
+| Audience and maturity label | audience | TBD |
+| Target devices | devices | TBD |
+| Players per server (max, preferred) | players_per_server | TBD |
+| Session length (minutes) | session_minutes | TBD |
+| Locales (source, targets) | locales | TBD |
+| Kits used | kits | TBD |
+| Success metrics | success_metrics | TBD |
+
+## Engine settings
+Decided with the brief (stage greybox), then set in `default.project.json` `$properties` or in Studio. Release check A01 fails when a project property disagrees with the brief.
+
+| Setting | Brief key | Decision |
+|---|---|---|
+| Workspace.AuthorityMode | engine.authority_mode | TBD |
+| Workspace.StreamingEnabled | engine.streaming_enabled | TBD |
+| Workspace.SignalBehavior | engine.signal_behavior | TBD |
+| Lighting.LightingStyle | engine.lighting_style | TBD |
+| Lighting.PrioritizeLightingQuality | engine.prioritize_lighting_quality | TBD |
+| Avatar type (R6, R15 or PlayerChoice) | engine.avatar_type | TBD |
+| SoundService.DefaultListenerLocation | engine.default_listener_location | TBD |
 
 ## Where things are
 | Need | Go to |
 |---|---|
-| Game code | `src/server`, `src/client`, `src/shared` (Rojo: `default.project.json`) |
-| Factory packages (scene authoring, procedural generation, import checks) | `packages/`, synced to `ReplicatedStorage.Workbench` |
+| Game code | `src/server` (ServerScriptService.Server), `src/client` (StarterPlayerScripts.Client), `src/shared` (ReplicatedStorage.Shared), `src/first` (ReplicatedFirst.Loading), `src/gui` (StarterGui), `src/assets` (ServerStorage.Assets), `src/localization` (LocalizationService) |
+| Boot | `src/shared/Boot.luau` runs the phases config, kits, data, remotes, telemetry, ui, input with a timeout each; wire them in `src/server/Phases.luau` and `src/client/Phases.luau`; settings in `src/shared/Config.luau` (all TBD) |
+| Factory packages | `packages/`: authoring in `ServerStorage.Authoring` (never replicated), kits in `ReplicatedStorage.Kits`, legacy in `ReplicatedStorage.Legacy`; tiers and pending Studio probes in `starter.json` |
+| Production | `production/brief.json`, `production/pipeline.json`, `docs/production-plan.md`, `docs/design/`; `python3 tools/production.py status`; `python3 tools/plan_issues.py` |
+| Release | `python3 tools/release_check.py` (writes `release/report.json`), `release/release.json`, `docs/release-runbook.md` |
 | Specs | `tests/*.spec.luau`, run by `lune run tests/run.luau` |
-| Gate | `python3 tools/check.py [--tier fast] [--strict]` |
+| Gate | `python3 tools/check.py [--tier fast\|pre-commit\|pre-release] [--strict]` |
+| Dependencies | `deps.json` (allowlist), `wally.toml` + committed `wally.lock`, `THIRD_PARTY_NOTICES.md`, `rokit.toml` |
 | Publish/spend guards (Claude and Codex) | `tools/hooks/`, `.claude/settings.json`, `.codex/` (Codex applies them once the project and its hooks are trusted: `/hooks`) |
 | Skills | `.agents/skills/` (Codex), mirrored to `.claude/skills/` by `python3 tools/sync_skills.py` |
 | Decisions | `docs/decisions.md` |
 
-## Factory packages and references
-- `packages/` are copies of the factory's packages. Fix package bugs in the factory, then pull them here: on a clean branch, run the factory's `python3 tools/new_project.py --update <this repo>` and review `git diff`. It refuses when a package was edited here (its hash no longer matches `starter.json`).
-- The copied skills also name factory-only paths (`tools/blender/`, `tools/lune/`, `fixtures/`, `docs/`, `knowledge/`). Those live in the factory repository at the commit in `starter.json`; do Blender asset and research work there. Where a skill says `fixtures/factory.project.json`, use `default.project.json` here.
+## Factory-managed files
+- `packages/`, the copied skills, `tools/hooks/`, `tools/check.py`, `tools/release_check.py`, `tools/production.py`, `tools/plan_issues.py`, `src/shared/Boot.luau`, `src/shared/KitLoader.luau`, `tests/boot.spec.luau`, `tests/layout.spec.luau`, `tests/packages.spec.luau`, `deps.json` and the CI workflow come from the factory (hashes in `starter.json`). Fix them in the factory, then run the factory's `python3 tools/new_project.py --update <this repo>` on a clean branch and review `git diff`; it refuses when one was edited here. A game-specific skill gets a new name.
+- The copied skills also name factory-only paths (`tools/blender/`, `tools/lune/`, `fixtures/`, `knowledge/`). Those live in the factory repository at the commit in `starter.json`; do Blender asset and research work there. Where a skill says `fixtures/factory.project.json`, use `default.project.json` here.
 
 ## Working rules
-- Read the skill for the task, not the whole repo. Retrieve with `rg`.
+- Read the skill for the task, not the whole repo. Retrieve with `rg`. Stage work: skill roblox-production-pipeline.
 - New Luau logic gets a Lune spec in `tests/`. Never skip or weaken a test or validation rule to get green.
-- Before committing: `python3 tools/check.py`. CI runs it with `--strict`.
+- Before committing: `python3 tools/check.py`. CI runs it with `--strict`. Before a release candidate: `--tier pre-release`.
+- Remotes go through `GameKit/RemoteGuard`, persistence through `GameKit/PlayerData`, player text through `GameKit/TextFilter` (release checks A02, A15, A06).
 - One writer per Studio session and per file set.
 
 ## Verification language
-VERIFIED_STRONG, VERIFIED_ACCEPTABLE, WEAK, PARTIAL, BROKEN, MISSING, OUTDATED, REDUNDANT, BLOCKED_EXTERNAL, INTENTIONALLY_EXCLUDED. Verified means a representative execution produced observed output. Files, docs, configs or screenshots alone are not verification.
+VERIFIED_STRONG, VERIFIED_ACCEPTABLE, WEAK, PARTIAL, BROKEN, MISSING, OUTDATED, REDUNDANT, BLOCKED_EXTERNAL, INTENTIONALLY_EXCLUDED. Verified means a representative execution produced observed output. Files, docs, configs or screenshots alone are not verification. Passing checks do not prove fun, commercial success or device coverage.

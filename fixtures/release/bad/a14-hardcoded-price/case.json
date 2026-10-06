@@ -1,0 +1,7 @@
+{
+  "expect": "A14",
+  "why": "a localisation string hard-codes a Robux price",
+  "append": {
+    "src/localization/strings.csv": "shop.price_label,Only 100 Robux,,,\n"
+  }
+}
