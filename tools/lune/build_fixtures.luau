@@ -10,6 +10,8 @@ local serde = require("@lune/serde")
 local Arena = require("../../packages/ProcGen/Arena")
 local Cave = require("../../packages/ProcGen/Cave")
 local Dungeon = require("../../packages/ProcGen/Dungeon")
+local Forest = require("../../packages/ProcGen/Forest")
+local ForestScene = require("../../packages/ProcGen/ForestScene")
 local Manifest = require("../../packages/ProcGen/Manifest")
 local Placement = require("../../packages/ProcGen/Placement")
 local PValidate = require("../../packages/ProcGen/Validate")
@@ -156,6 +158,18 @@ fixtures.cave = function()
 			procgen = PValidate.grid(layout.grid),
 			layoutHash = Manifest.fromLayout(layout).hash,
 			ascii = layout.grid:toAscii(),
+		}
+end
+
+fixtures.forest = function()
+	local layout = Forest.generate({ seed = 606, width = 256, depth = 192, clearings = 4 })
+	local scene = SK.Scene.new({ name = "SETUP_ONLY_Forest", seed = 606, style = "neutral-timber" })
+	ForestScene.toScene(scene, layout)
+	return scene,
+		{
+			procgen = PValidate.forest(layout),
+			layoutHash = Manifest.fromLayout(layout).hash,
+			ascii = Forest.toAscii(layout),
 		}
 end
 

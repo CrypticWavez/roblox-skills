@@ -70,6 +70,23 @@ function Manifest.hash(value: any): string
 	return string.format("%08x", Rng.hash(Manifest.encode(value)))
 end
 
+-- Plain-data layout fields copied into a manifest when present (forest: bands to exit).
+local LAYOUT_KEYS = {
+	"rooms",
+	"spawns",
+	"objectives",
+	"roads",
+	"lots",
+	"landmark",
+	"corridors",
+	"bands",
+	"clearings",
+	"paths",
+	"vegetation",
+	"entry",
+	"exit",
+}
+
 -- Strip runtime objects (Grid/Graph metatables) into plain data.
 function Manifest.fromLayout(layout, extra: { [string]: any }?)
 	local body: { [string]: any } = { version = Manifest.VERSION, kind = layout.kind, params = layout.params }
@@ -84,7 +101,7 @@ function Manifest.fromLayout(layout, extra: { [string]: any }?)
 	if layout.graph then
 		body.graph = layout.graph:toTable()
 	end
-	for _, key in { "rooms", "spawns", "objectives", "roads", "lots", "landmark", "corridors" } do
+	for _, key in LAYOUT_KEYS do
 		if layout[key] ~= nil then
 			body[key] = layout[key]
 		end

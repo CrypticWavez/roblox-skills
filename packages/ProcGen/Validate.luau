@@ -1,6 +1,7 @@
 --!strict
 -- Layout validators. Each check returns { name, pass, value, limit, detail } so reports
 -- are machine-readable and comparable across seeds.
+local Forest = require("./Forest")
 local Grid = require("./Grid")
 local RoomGraph = require("./RoomGraph")
 
@@ -16,6 +17,10 @@ export type Rules = {
 	maxSpawnDistanceSpread: number?, -- fairness ratio tolerance (0.1 = 10%)
 	maxParts: number?, -- performance budget estimate
 	minRoomStuds: number?, -- smallest room side; keeps the default camera boom inside
+	minTrunkSpacing: number?, -- forest: studs between trunk centres
+	minObstacleGapStuds: number?, -- forest: edge gap between collidable trunks and rocks
+	spawnClearStuds: number?, -- forest: studs from the spawn to the nearest trunk or rock edge
+	bandDensity: { [string]: { number } }?, -- forest: {min, max} collidables per 1000 sq studs
 }
 
 local DEFAULTS = {
@@ -27,6 +32,12 @@ local DEFAULTS = {
 	maxSpawnDistanceSpread = 0.1,
 	maxParts = 5000,
 	minRoomStuds = 12,
+	-- Two trunks up to 2 studs wide 6 studs apart leave a 2.5-stud character width plus margin.
+	minTrunkSpacing = 6,
+	-- A gap narrower than a character (2.5 studs) between collidables is a snag, not a route.
+	minObstacleGapStuds = 3,
+	-- The 6-stud spawn pad plus a character width on every side.
+	spawnClearStuds = 8,
 }
 
 local function rule(rules: Rules?, key: string): number
@@ -310,6 +321,340 @@ function Validate.settlement(layout): { Check }
 		check("road_connectivity", #layout.graph:components() == 1, #layout.graph:components(), 1)
 	)
 	table.insert(checks, check("lot_count", #layout.lots > 0, #layout.lots, ">0"))
+	return checks
+end
+
+-- Collidables (trunks and rocks) per 1000 sq studs of plantable band area, i.e. outside the
+-- path corridor and the clearings. Above 12 (one stem per ~83 sq studs, about 9 studs apart)
+-- trunks close sightlines to a few studs and a band reads as a wall at player scale; trunks
+-- packed at the 6-stud minimum spacing exceed it. Open stays under 2 to keep long sightlines.
+Validate.FOREST_BAND_DENSITY = {
+	open = { 0, 2 },
+	sparse = { 1.5, 6 },
+	dense = { 6, 12 },
+	rocky = { 2, 8 },
+}
+local CHARACTER_RADIUS = 1.25 -- half of SceneKit Measure.GUIDE.characterWidth (2.5 studs)
+local WALK_CELL = 2 -- studs per walk-grid cell, finer than a trunk's blocked disc
+-- Sq studs (one 64 x 64 noise patch); a smaller plantable band area holds a handful of stems and
+-- its density is noise, so it is reported as unchecked rather than judged.
+local MIN_BAND_AREA = 4096
+
+local function round2(value: number): number
+	return math.round(value * 100) / 100
+end
+
+-- Forest / biome dressing, measured from the layout's geometry (paths, clearings, band map and
+-- the collidable trunks and rocks, r > 0) rather than the generator's bookkeeping, so a moved
+-- trunk, a dropped path or an over-dense band fails here.
+function Validate.forest(layout, rules: Rules?): { Check }
+	local checks = {}
+	local p = layout.params
+	local width, depth, pathWidth = p.width, p.depth, p.pathWidth
+	local minCorridor = rule(rules, "minCorridorStuds")
+	local corridorHalf = math.max(pathWidth, minCorridor) / 2
+	local obstacles, trees = {}, {}
+	for _, item in layout.vegetation do
+		if item.r > 0 then
+			table.insert(obstacles, item)
+		end
+		if item.kind == "tree" then
+			table.insert(trees, item)
+		end
+	end
+	local function distance(a, b): number
+		return math.sqrt((a.x - b.x) ^ 2 + (a.z - b.z) ^ 2)
+	end
+	local function listed(ids: { string }): string
+		return table.concat(ids, ",", 1, math.min(#ids, 5))
+	end
+
+	table.insert(
+		checks,
+		check(
+			"player_scale_corridor",
+			pathWidth >= minCorridor,
+			pathWidth,
+			minCorridor,
+			"path width in studs"
+		)
+	)
+
+	-- No trunk or rock edge inside the corridor: the path width, and never under minCorridorStuds.
+	local clearance, intruders = math.huge, {}
+	for _, o in obstacles do
+		local edge = Forest.pathDistance(layout.paths, o.x, o.z) - o.r
+		clearance = math.min(clearance, edge)
+		if edge < corridorHalf then
+			table.insert(intruders, o.id)
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"path_clearance",
+			#intruders == 0,
+			if clearance == math.huge then "open" else round2(clearance),
+			corridorHalf,
+			if #intruders > 0
+				then "inside the corridor: " .. listed(intruders)
+				else "studs from a path centreline to the nearest trunk or rock edge"
+		)
+	)
+
+	-- Walk grid: path surface and clearing cells, minus cells a character centre cannot occupy
+	-- next to a trunk or rock. The wider corridor mask feeds the plantable area below.
+	local cols, rows = math.ceil(width / WALK_CELL), math.ceil(depth / WALK_CELL)
+	local onPath, corridor, inClearing, blocked = {}, {}, {}, {}
+	local function stamp(
+		x0: number,
+		z0: number,
+		x1: number,
+		z1: number,
+		visit: (number, number, number) -> ()
+	)
+		for row = math.max(1, math.floor(z0 / WALK_CELL) + 1), math.min(rows, math.floor(z1 / WALK_CELL) + 1) do
+			for col = math.max(1, math.floor(x0 / WALK_CELL) + 1), math.min(cols, math.floor(x1 / WALK_CELL) + 1) do
+				visit((row - 1) * cols + col, (col - 0.5) * WALK_CELL, (row - 0.5) * WALK_CELL)
+			end
+		end
+	end
+	for _, path in layout.paths do
+		for index = 1, #path.points - 1 do
+			local a, b = path.points[index], path.points[index + 1]
+			stamp(
+				math.min(a[1], b[1]) - corridorHalf,
+				math.min(a[2], b[2]) - corridorHalf,
+				math.max(a[1], b[1]) + corridorHalf,
+				math.max(a[2], b[2]) + corridorHalf,
+				function(key, x, z)
+					local d = Forest.segmentDistance(x, z, a, b)
+					if d <= corridorHalf then
+						corridor[key] = true
+					end
+					if d <= pathWidth / 2 then
+						onPath[key] = true
+					end
+				end
+			)
+		end
+	end
+	for _, c in layout.clearings do
+		stamp(c.x - c.radius, c.z - c.radius, c.x + c.radius, c.z + c.radius, function(key, x, z)
+			if (x - c.x) ^ 2 + (z - c.z) ^ 2 <= c.radius ^ 2 then
+				inClearing[key] = true
+			end
+		end)
+	end
+	for _, o in obstacles do
+		local reach = o.r + CHARACTER_RADIUS
+		stamp(o.x - reach, o.z - reach, o.x + reach, o.z + reach, function(key, x, z)
+			if (x - o.x) ^ 2 + (z - o.z) ^ 2 < reach ^ 2 then
+				blocked[key] = true
+			end
+		end)
+	end
+	local grid = Grid.new(cols, rows, WALK_CELL, 0)
+	for key = 1, cols * rows do
+		if (onPath[key] or inClearing[key]) and not blocked[key] then
+			grid.cells[key] = 1
+		end
+	end
+	local function cellOf(x: number, z: number): { number }
+		return {
+			math.clamp(math.floor(x / WALK_CELL) + 1, 1, cols),
+			math.clamp(math.floor(z / WALK_CELL) + 1, 1, rows),
+		}
+	end
+
+	-- Every clearing, the exit and both edge ends reachable from the spawn along the paths.
+	local spawn = cellOf(layout.entry.x, layout.entry.z)
+	local targets = { { "entry_edge", layout.entry.edge[1], layout.entry.edge[2] } }
+	for _, c in layout.clearings do
+		table.insert(targets, { c.id, c.x, c.z })
+	end
+	table.insert(targets, { "exit", layout.exit.x, layout.exit.z })
+	table.insert(targets, { "exit_edge", layout.exit.edge[1], layout.exit.edge[2] })
+	local unreachable = {}
+	for _, target in targets do
+		if grid:walkDistance(spawn, cellOf(target[2], target[3])) == nil then
+			table.insert(unreachable, target[1])
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"clearing_reachability",
+			#unreachable == 0,
+			#unreachable,
+			0,
+			if #unreachable > 0
+				then "not reachable along the paths: " .. table.concat(unreachable, ",")
+				else #targets .. " targets reached along the paths"
+		)
+	)
+
+	local nearest, nearestId = math.huge, "none"
+	for _, o in obstacles do
+		local edge = distance(o, layout.entry) - o.r
+		if edge < nearest then
+			nearest, nearestId = edge, o.id
+		end
+	end
+	local spawnOpen = grid:get(spawn[1], spawn[2]) ~= 0
+	table.insert(
+		checks,
+		check(
+			"spawn_clear",
+			spawnOpen and nearest >= rule(rules, "spawnClearStuds"),
+			if nearest == math.huge then "open" else round2(nearest),
+			rule(rules, "spawnClearStuds"),
+			if spawnOpen
+				then "studs from the spawn to the nearest trunk or rock edge (" .. nearestId .. ")"
+				else "spawn cell blocked or off the path"
+		)
+	)
+
+	local bounds = (rules and rules.bandDensity) or Validate.FOREST_BAND_DENSITY
+	local area, count = {}, {}
+	for row = 1, rows do
+		for col = 1, cols do
+			local key = (row - 1) * cols + col
+			if not corridor[key] and not inClearing[key] then
+				local band = Forest.bandAt(layout, (col - 0.5) * WALK_CELL, (row - 0.5) * WALK_CELL)
+				area[band] = (area[band] or 0) + WALK_CELL ^ 2
+			end
+		end
+	end
+	for _, o in obstacles do
+		local band = Forest.bandAt(layout, o.x, o.z)
+		count[band] = (count[band] or 0) + 1
+	end
+	local outside, notes = 0, {}
+	for _, band in Forest.BAND_ORDER do
+		local limits, plantable = bounds[band], area[band] or 0
+		if limits and plantable >= MIN_BAND_AREA then
+			local density = (count[band] or 0) / plantable * 1000
+			local ok = density >= limits[1] and density <= limits[2]
+			outside += if ok then 0 else 1
+			table.insert(
+				notes,
+				string.format(
+					"%s %.2f [%g-%g] over %d%s",
+					band,
+					density,
+					limits[1],
+					limits[2],
+					plantable,
+					if ok then "" else " OUT"
+				)
+			)
+		else
+			table.insert(
+				notes,
+				string.format(
+					"%s unchecked (%d sq studs; no bounds or under %d)",
+					band,
+					plantable,
+					MIN_BAND_AREA
+				)
+			)
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"band_density",
+			outside == 0,
+			outside,
+			0,
+			"collidables per 1000 sq studs of plantable area: " .. table.concat(notes, "; ")
+		)
+	)
+
+	local closest, pair = math.huge, ""
+	for i = 1, #trees do
+		for j = i + 1, #trees do
+			local d = distance(trees[i], trees[j])
+			if d < closest then
+				closest, pair = d, trees[i].id .. "/" .. trees[j].id
+			end
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"min_trunk_spacing",
+			closest >= rule(rules, "minTrunkSpacing"),
+			if closest == math.huge then "open" else round2(closest),
+			rule(rules, "minTrunkSpacing"),
+			"closest trunk centres " .. pair
+		)
+	)
+	local gap, gapPair = math.huge, ""
+	for i = 1, #obstacles do
+		for j = i + 1, #obstacles do
+			local a, b = obstacles[i], obstacles[j]
+			local d = distance(a, b) - a.r - b.r
+			if d < gap then
+				gap, gapPair = d, a.id .. "/" .. b.id
+			end
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"obstacle_gap",
+			gap >= rule(rules, "minObstacleGapStuds"),
+			if gap == math.huge then "open" else round2(gap),
+			rule(rules, "minObstacleGapStuds"),
+			"narrowest gap between trunk or rock edges " .. gapPair
+		)
+	)
+
+	local cramped = {}
+	for _, c in layout.clearings do
+		local free = c.radius
+		for _, o in obstacles do
+			free = math.min(free, distance(o, c) - o.r)
+		end
+		if free < c.radius or math.pi * c.radius ^ 2 < rule(rules, "minEncounterAreaStuds") then
+			table.insert(cramped, c.id)
+		end
+	end
+	table.insert(
+		checks,
+		check(
+			"clearing_space",
+			#cramped == 0,
+			#cramped,
+			0,
+			if #cramped > 0
+				then "trunk or rock inside, or under minEncounterAreaStuds: " .. listed(cramped)
+				else "clearings free of trunks and rocks and big enough for an encounter"
+		)
+	)
+	table.insert(
+		checks,
+		check(
+			"clearings_placed",
+			#layout.clearings >= p.clearings,
+			#layout.clearings,
+			p.clearings,
+			"clearings placed / requested"
+		)
+	)
+	local parts = Forest.partEstimate(layout)
+	table.insert(
+		checks,
+		check(
+			"performance_part_estimate",
+			parts <= rule(rules, "maxParts"),
+			parts,
+			rule(rules, "maxParts"),
+			"parts ForestScene emits"
+		)
+	)
 	return checks
 end
 
