@@ -944,9 +944,10 @@
       ],
       "name": "authority_simulation_bind",
       "registered_in": [
-        "fixtures/kits/shared/authority_probes.luau"
+        "fixtures/kits/shared/authority_probes.luau",
+        "tests/engine/authority_simulation_bind.luau"
       ],
-      "runner": "tests/engine/kitsmoke_all.luau"
+      "runner": "tests/engine/authority_simulation_bind.luau"
     },
     {
       "evidence": "PENDING",
