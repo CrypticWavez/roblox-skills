@@ -2,6 +2,8 @@
 
 Method: primary sources fetched 2026-10-05 (create.roblox.com, devforum.roblox.com announcements, GitHub repo pages/raw READMEs, PyPI JSON API, crates.io API, code.claude.com docs, learn.chatgpt.com (Codex docs; developers.openai.com/codex now 302-redirects there), agentskills.io, blender.org, extensions.blender.org). GitHub API (`gh`) was blocked in this sandbox, so GitHub release tags were read via repo pages and crates.io; where those disagree it is flagged. Anything not confirmed from a primary source is marked **UNVERIFIED**. Nothing was installed.
 
+Back-fill 2026-10-06: price, last update, maintenance and licence for the candidates below are in section 10, with corrections. Topics not covered here (UI, animation, VFX, terrain, context/code index, visual QA, performance, security, CI/CD, extra MCP servers) are in `tooling-2026-10-addendum.md`.
+
 ---
 
 ## 1. Roblox Studio MCP
@@ -145,6 +147,46 @@ Security: Open Cloud API keys should be scoped (universe-place write + luau-exec
 SELECT: built-in Studio MCP; Rojo 7.7.x; Rokit; Lune; StyLua; Selene; luau-lsp; Wally (pesde optional); Jest Lua; Open Cloud Luau Execution + Assets API; mcp-for-blender 2.1.x (telemetry off, one client); Blender 5.2 LTS + bpy 5.2.2; Asset Browser, Geometry Nodes, core UV tools; Claude `.claude/skills|agents|settings.json|.mcp.json`; Codex `AGENTS.md` + `.agents/skills`.
 REJECT: studio-rust-mcp-server (archived), third-party Studio MCPs, Aftman/Foreman, TestEZ, run-in-roblox, `blender-mcp` name for new configs (shim only).
 
+Superseded 2026-10-06 (section 10, correction 1): the Open Cloud Luau Execution and Assets API SELECTs (sections 3 and 6 and the line above) are REJECT in this SETUP_ONLY factory.
+
+## 10. Back-fill 2026-10-06: price, last update, maintenance
+
+Sources fetched 2026-10-06: crates.io API, PyPI project pages, npm registry search API, GitHub repo and release pages, extensions.blender.org, blender.org, create.roblox.com (`/docs/updates/2026-09-28`, `/docs/en-us/studio/mcp.md`), learn.chatgpt.com config reference. The GitHub API returned 403, and GitHub Atom feeds, commit pages and the PyPI JSON API were blocked by robots.txt, so GitHub-only release dates are given as shown on the release page. That page shows "dd Mon" without a year, so in those cases the year is recorded as unknown. Nothing was installed.
+
+| Candidate | Price | Last update (source) | Maintenance | Licence (2026-10-06) |
+|---|---|---|---|---|
+| Built-in Studio MCP | free with Studio | Tracks Studio; version 741 live in the week of 2026-09-28 (Roblox updates page). Tool list re-read 2026-10-06: the same 26 tools as section 1a | active (Roblox) | proprietary (Roblox terms) |
+| studio-rust-mcp-server | free | archived 2026-04-03 | unmaintained | MIT |
+| Rojo | free | 7.7.1, 2026-10-02 (crates.io); 7.7.0 was 2026-07-02 | active | MPL-2.0 (crates.io; was UNVERIFIED) |
+| Rokit | free | 1.2.0, 2025-09-30 (crates.io) | no release in 12 months; repo not archived | MIT |
+| Aftman | free | 0.3.0, 2024-05-21 (crates.io) | stale | MIT |
+| Foreman | free | 1.7.0, 2026-05-01 (crates.io) | active (Roblox). REJECT still stands because it overlaps Rokit | MIT |
+| Lune | free | 0.10.5, 2026-07-02 (crates.io) | active | MPL-2.0 |
+| StyLua | free | 2.5.2, 2026-05-16 (crates.io) | active | MPL-2.0 (was UNVERIFIED) |
+| Selene | free | 0.31.0, 2026-05-21 (crates.io) | active | MPL-2.0 (was UNVERIFIED) |
+| luau-lsp | free | 1.69.0, 2026-07-18; 1.68.1 2026-06-14; 1.68.0 2026-05-16 (release page) | active, about one release a month | MIT (repo sidebar; was UNVERIFIED) |
+| Wally | free | 0.3.2, **2023-06-05** (crates.io; GitHub release "05 Jun"). This corrects the "2026-09" in section 3 | no tagged release since 2023; repo not archived | MPL-2.0 (crates.io) |
+| pesde | free | 0.7.4, 2026-09-09 (crates.io) | active | MIT (crates.io; was UNVERIFIED) |
+| Jest Lua | free | v3.10.0 (release page "23 Dec", year not shown) | unknown | MIT |
+| TestEZ | free | archived 2024-09-14 (repo banner) | unmaintained | Apache-2.0 |
+| run-in-roblox | free | 0.3.0, 2020-10-30 (crates.io) | unmaintained (no release in about 6 years; not archived) | MIT |
+| Open Cloud Luau Execution / Assets API | free with an API key or OAuth | unknown | active (Roblox) | Roblox terms |
+| mcp-for-blender | free | 2.1.8, 2026-10-05 (PyPI page) | active | MIT |
+| Blender 5.2 LTS / `bpy` | free | 5.2.2, 2026-09-15 (blender.org) | LTS, 2-year critical-fix window | GPL |
+| Rigify | free | 0.6.12, 2024-06-07 (extensions.blender.org) | extension, no newer version listed | GPL-2.0-or-later |
+| LoopTools | free | 4.7.7, 2024-05-14 (extensions.blender.org) | "Community", limited support | GPL-2.0-or-later |
+| Asset Browser, Geometry Nodes, UV tools, Node Wrangler | free (Blender core) | tracks Blender | active | GPL |
+| Claude Code | unknown (needs the owner's existing Claude plan or API billing; pricing page not fetched) | 2.1.290, 2026-10-05 (npm) | active | proprietary ("SEE LICENSE IN README.md") |
+| Codex CLI | unknown (needs the owner's existing ChatGPT plan or API key; pricing page not fetched) | 0.157.1, 2026-09-26 (npm) | active | Apache-2.0 |
+
+Corrections and resolved UNVERIFIEDs:
+1. **Open Cloud is REJECT here.** The SELECTs for the Luau Execution API (section 3) and the Assets API (section 6) conflict with AGENTS.md (SETUP_ONLY: no publishing, no uploads, no production data) and with the guard hooks, which deny Open Cloud writes (`docs/mcp.md`). Luau Execution needs a place that exists on Roblox. The docs also say a task "can also invoke engine APIs that read and/or modify data stored in the cloud, such as those for DataStores". The CI design "upload place version -> run Jest" therefore publishes. Revisit only in a future game repository after explicit authorization. Details: addendum section I.
+2. Wally's last release is 0.3.2 from 2023-06-05, not 2026-09. Wally is still the registry where Jest Lua ships, but release activity is stale. pesde (0.7.4, 2026-09-09) is the actively released alternative. The decision stays SELECT Wally / optional pesde until a dependency is actually needed.
+3. Licences now verified: Rojo, StyLua, Selene, Wally and Lune are MPL-2.0; luau-lsp, pesde and Rokit are MIT.
+4. The Codex MCP config format is now verified (learn.chatgpt.com config reference). `[mcp_servers.<id>]` takes `command`, `args`, `env`, `cwd`, `url`, `enabled`, `enabled_tools`, `disabled_tools`, `startup_timeout_sec`, `tool_timeout_sec` and `bearer_token_env_var`. `enabled_tools`/`disabled_tools` are the Codex least-privilege lever, playing the role Claude's permission rules play. Codex Memories (`features.memories`) are off by default.
+5. The pins lag the latest releases: `rokit.toml` pins Rojo 7.7.0 (latest 7.7.1) and luau-lsp 1.68.1 (latest 1.69.0). This is informational and is not a defect on its own.
+6. TestEZ is confirmed archived (2024-09-14), and run-in-roblox's last release was 2020-10-30, so both REJECTs are confirmed.
+
 ## Sources
 - https://create.roblox.com/docs/studio/mcp
 - https://devforum.roblox.com/t/assistant-updates-studio-built-in-mcp-server-and-playtest-automation/4474643
@@ -161,3 +203,12 @@ REJECT: studio-rust-mcp-server (archived), third-party Studio MCPs, Aftman/Forem
 - https://code.claude.com/docs/en/skills , /hooks , /sub-agents , /mcp , /plugins-reference
 - https://agentskills.io/specification
 - https://learn.chatgpt.com/docs/build-skills , https://learn.chatgpt.com/docs/agent-configuration/agents-md
+
+Back-fill sources (fetched 2026-10-06):
+- https://crates.io/api/v1/crates/{rojo,stylua,selene,wally,pesde,rokit,lune,aftman,foreman,run-in-roblox}
+- https://github.com/UpliftGames/wally/releases , https://github.com/JohnnyMorganz/luau-lsp , https://github.com/JohnnyMorganz/luau-lsp/releases , https://github.com/jsdotlua/jest-lua/releases , https://github.com/Roblox/testez , https://github.com/rojo-rbx/run-in-roblox , https://github.com/rojo-rbx/rokit/releases , https://github.com/Roblox/studio-rust-mcp-server
+- https://pypi.org/project/mcp-for-blender/
+- https://registry.npmjs.org/-/v1/search?text=%40anthropic-ai%2Fclaude-code , https://registry.npmjs.org/-/v1/search?text=%40openai%2Fcodex
+- https://www.blender.org/download/lts/ , https://extensions.blender.org/add-ons/rigify/versions/ , https://extensions.blender.org/add-ons/looptools/
+- https://create.roblox.com/docs/updates/2026-09-28 , https://create.roblox.com/docs/en-us/studio/mcp.md , https://create.roblox.com/docs/cloud/reference/features/luau-execution.md
+- https://learn.chatgpt.com/docs/config-file/config-reference
