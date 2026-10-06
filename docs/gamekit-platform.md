@@ -296,4 +296,4 @@ Nothing here publishes, uploads, buys or spends. The following happen only in a 
 - AnalyticsService delivery;
 - bans.
 
-The `tools/hooks` guards ask or deny on purchase prompts, DataStore writes and publishing in agent sessions.
+The `tools/hooks` guards ask or deny on purchase prompts, DataStore and MemoryStore writes and publishing in agent sessions, including calls through these adapters (`CommerceRoblox.prompt`, LeaderboardRoblox `submit`/`remove` or `writes = true`, LiveBoardRoblox, MemoryQueueRoblox `push`/`ack`/`cycle`, the PlayerData DataStore and ProfileStore backends, `allowStudioDataStores`). They match the code as text, so an adapter required under another name, or a module already in the place that makes the call, is not seen ([mcp.md](mcp.md), Safety gates).

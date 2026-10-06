@@ -3,10 +3,12 @@
 -- LeaderboardRoblox: a persistent board on an OrderedDataStore (env.services.DataStoreService),
 -- every call through GameKit/Retry (DataStore preset: throttles and 5xx retry, key and value
 -- errors stop). Writes are off unless options.writes is true: a SETUP_ONLY factory never writes
--- live data, and the guard hooks ask before DataStore writes from Studio. With options.horizon
--- the stored integer packs the score and the time it was reached (Leaderboard.pack), so equal
--- scores rank by who got there first. T4: OrderedDataStores need a published place with API
--- access, so this is never verified here (BLOCKED_EXTERNAL); Lune specs use FakeOrderedStore.
+-- live data, and the guard hooks ask before Studio Luau that names this module and calls submit or
+-- remove or sets writes (matched by name: a require under another name is not seen, docs/mcp.md).
+-- With options.horizon the stored integer packs the score and the time it was reached
+-- (Leaderboard.pack), so equal scores rank by who got there first. T4: OrderedDataStores need a
+-- published place with API access, so this is never verified here (BLOCKED_EXTERNAL); Lune specs
+-- use FakeOrderedStore.
 -- Every method yields: never call one from a simulation step.
 local Env = require("./Env")
 local Leaderboard = require("./Leaderboard")

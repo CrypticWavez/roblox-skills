@@ -2,8 +2,10 @@
 -- @tier T4
 -- CommerceRoblox: MarketplaceService wiring for GameKit/Commerce. T4 because only a live game
 -- with real, owner-created products shows real prices, ownership and purchases; agents never
--- prompt or buy (the tools/hooks guards ask or deny on Prompt*Purchase). Lune specs cover the
--- wiring against tests/fakes/FakeMarketplace.
+-- prompt or buy (the tools/hooks guards deny raw subscription prompts and ask before other
+-- Prompt*Purchase calls and before Luau that names this module and calls prompt; they match names,
+-- so a require under another name is not seen, docs/mcp.md). Lune specs cover the wiring against
+-- tests/fakes/FakeMarketplace.
 --   fetchInfo(marketplace, enums)          price reads: GetProductInfoAsync(id, InfoType.Product |
 --                                          GamePass) and GetSubscriptionProductInfoAsync(id)
 --                                          (GetProductInfo is deprecated)

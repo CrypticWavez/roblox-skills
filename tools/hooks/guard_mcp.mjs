@@ -6,15 +6,19 @@
 //    (execute_luau, multi_edit edits, unknown field names) is checked as code. Luau that publishes,
 //    uploads or creates assets/places, spends Robux directly, prompts a subscription, Robux transfer or
 //    bulk purchase (not safely mocked in Studio), or sends an HttpService write to a Roblox web API is
-//    denied; Luau that prompts another purchase or writes DataStores or MemoryStores asks. Names are
-//    matched as classes (CreateAsset*Async, Prompt*Purchase, ...) so new variants of an API are caught.
+//    denied; Luau that prompts another purchase or writes DataStores or MemoryStores asks, also when it
+//    does so through a GameKit/Runtime adapter that hides the API name (CommerceRoblox.prompt,
+//    LeaderboardRoblox, LiveBoardRoblox, MemoryQueueRoblox, PlayerData backends, RobloxReceiptAdapter).
+//    Names are matched as classes (CreateAsset*Async, Prompt*Purchase, ...) so new variants of an API
+//    are caught.
 //  - blender* servers: paid 3D generation and third-party asset libraries are denied (credits; Poly
 //    Haven API terms and mixed Sketchfab/Poly Pizza licences); the vendor feedback upload asks;
 //    execute_blender_code that starts a publishing tool or writes to a Roblox web API is denied, and
 //    Python that reaches the network or a shell asks.
 //  - any other server (claude.ai connectors, Claude or Codex plugins, ChatGPT apps, user-level servers)
 //    asks, except the read-only tools of a GitHub server.
-// Code is matched as text: obfuscated code can still slip past (docs/mcp.md).
+// Code is matched as text: obfuscated code and adapters required under another name can still slip
+// past (docs/mcp.md).
 import { CODE_HTTP_CLI_WRITE, CODE_PUBLISH, ROBLOX_HOST, SCRIPT_WRITE, decide, readEvent } from "./lib.mjs";
 
 // Fail closed: a bug in this guard must block the tool call, not wave it through.
@@ -66,6 +70,32 @@ const PURCHASE = /Prompt\w*Purchase|PromptCancelSubscription|PromptRealWorldComm
 // RemoveVersionAsync) and MemoryStore writes (sorted map / hash map Set/Update/RemoveAsync, queue
 // AddAsync and RemoveAsync), with or without a space before the call.
 const DATASTORE_WRITE = /\b(Set|Update|Remove|Increment|RemoveVersion|Add)Async\b/;
+// The kits' own adapters make those calls inside the place, so the API name never shows in the code
+// sent here. Code that names an adapter and uses one of its purchase or write entry points is
+// classified like the call it wraps. Matched by name: an adapter required under another name, or a
+// module already in the place that calls one, is a residual (docs/mcp.md).
+// An entry point read or called as .name, :name or ["name"] (table.remove is not one).
+const ENTRY = (names) => String.raw`(?<!\btable)[.:]\s*(?:${names})\b|\[\s*["'](?:${names})["']\s*\]`;
+// An adapter option set to anything but a literal false or nil.
+const ON = (names) => String.raw`\b(?:${names})\s*=(?!=|\s*(?:false|nil)\b)`;
+const kits = (pairs) => pairs.map(([kit, use]) => [new RegExp(String.raw`\b${kit}\b`), new RegExp(use)]);
+// GameKit/CommerceRoblox.prompt opens PromptProductPurchase, PromptGamePassPurchase or
+// PromptSubscriptionPurchase. Which one is catalog data the guard cannot see, so it asks (and
+// Commerce.canPrompt refuses a subscription unless the caller says the place is live).
+const KIT_PURCHASE = kits([["CommerceRoblox", ENTRY("prompt")]]);
+// LeaderboardRoblox submit/remove (OrderedDataStore; writes = true turns them on), LiveBoardRoblox
+// maps written by LiveBoard submit/remove (MemoryStore sorted map), MemoryQueueRoblox push/ack/cycle
+// (MemoryStore queue AddAsync/RemoveAsync), the PlayerData DataStore and ProfileStore backends
+// (PlayerDataRoblox.chooseBackend picks one in Studio with allowStudioDataStores), and the Runtime
+// receipt ledger's DataStore seam RobloxReceiptAdapter.store.
+const KIT_STORE_WRITE = kits([
+	["LeaderboardRoblox", `${ENTRY("submit|remove")}|${ON("writes")}`],
+	["LiveBoardRoblox", ENTRY("submit|remove")],
+	["MemoryQueueRoblox", ENTRY("push|ack|cycle")],
+	["PlayerData(?:Roblox)?", `${ENTRY("dataStoreBackend|profileStoreBackend")}|${ON("allowStudioDataStores")}`],
+	["RobloxReceiptAdapter", ENTRY("store")],
+]);
+const usesKit = (pairs, text) => pairs.some(([kit, use]) => kit.test(text) && use.test(text));
 
 function checkLuau() {
 	if (!code) return;
@@ -74,7 +104,9 @@ function checkLuau() {
 	if (UNMOCKED_PURCHASE.test(code)) decide("deny", "Luau that prompts a subscription, Premium, Robux transfer or bulk purchase is blocked: Studio does not reliably mock these, so a test can charge a real account. Test product and pass prompts instead; the rest is an owner check in a published place.");
 	if (ROBLOX_WRITE(code)) decide("deny", "Luau that sends an HttpService write (PostAsync, RequestAsync with POST/PUT/PATCH/DELETE) to a Roblox web API reaches production data and is blocked in SETUP_ONLY.");
 	if (PURCHASE.test(code)) decide("ask", "This Luau prompts a purchase. Only allowed in a Studio test session on the diagnostic place, where product and pass purchases are simulated.");
+	if (usesKit(KIT_PURCHASE, code)) decide("ask", "This Luau opens a purchase prompt through GameKit/CommerceRoblox.prompt. The guard cannot see the product kind, and a subscription prompt is not safely mocked in Studio. Only allowed in a Studio test session on the diagnostic place, for a product or pass.");
 	if (DATASTORE_WRITE.test(code)) decide("ask", "This Luau writes DataStores or MemoryStores. Confirm the place is the unpublished diagnostic place, never production data.");
+	if (usesKit(KIT_STORE_WRITE, code)) decide("ask", "This Luau writes DataStores or MemoryStores through a kit adapter (LeaderboardRoblox submit/remove or writes = true, LiveBoardRoblox, MemoryQueueRoblox push/ack/cycle, a PlayerData DataStore/ProfileStore backend or allowStudioDataStores, RobloxReceiptAdapter.store). Confirm the place is the unpublished diagnostic place, never production data.");
 }
 
 if (STUDIO_SERVER.test(server)) {
