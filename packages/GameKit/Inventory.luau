@@ -17,8 +17,9 @@
 --   { op = "equip", uid, slot }  { op = "unequip", slot }
 --   { op = "set_data", uid, data }                     replace an instance's data
 -- State persists through an injected key store (store:set after every commit, rolled back when
--- the write raises). Loading never destroys value: entries for retired item ids, broken entries
--- and duplicate uids go to a quarantine that serializes back, and each repair is noted.
+-- the write raises or returns false; reload() re-reads it after another writer). Loading never
+-- destroys value: entries for retired item ids, broken entries and duplicate uids go to a
+-- quarantine that serializes back, and each repair is noted.
 local Check = require("./Check")
 local ItemDefs = require("./ItemDefs")
 local Signal = require("./Signal")
@@ -64,7 +65,12 @@ export type State = {
 	nextUid: number,
 	quarantine: { any },
 }
-export type Store = { get: (self: any, key: string) -> any, set: (self: any, key: string, value: any) -> () }
+-- set may return (false, reason) to refuse a write (PlayerData session:keyStore()); nil or true is
+-- success.
+export type Store = {
+	get: (self: any, key: string) -> any,
+	set: (self: any, key: string, value: any) -> (boolean?, string?),
+}
 export type Options = {
 	items: ItemDefs.Registry,
 	owner: string,
@@ -83,7 +89,7 @@ export type Tx = {
 	after: State,
 	created: { string },
 	removed: { Entry },
-	state: "prepared" | "committed" | "rolled_back",
+	state: "prepared" | "committed" | "rolled_back" | "reloaded",
 }
 
 local function token(value: any, max: number?): boolean
@@ -603,20 +609,27 @@ function Inventory.prepare(self: Inventory, ops: { Op }): (Tx?, string?, number?
 		nil
 end
 
+-- A write fails when store:set raises or returns false: PlayerData's session:keyStore() answers
+-- (false, reason) for an inactive (lost or released) or busy session instead of raising.
 local function persist(self: Inventory): boolean
 	local store = self._store
 	if store == nil then
 		return true
 	end
-	local ok: boolean, err: any = pcall(store.set, store, self._storeKey, self:serialize())
+	local ok: boolean, result: any, reason: any = pcall(store.set, store, self._storeKey, self:serialize())
 	if not ok then
-		self._report("Inventory: store:set failed: " .. tostring(err))
+		self._report("Inventory: store:set failed: " .. tostring(result))
+		return false
 	end
-	return ok
+	if result == false then
+		self._report("Inventory: store:set refused: " .. tostring(reason))
+		return false
+	end
+	return true
 end
 
 -- Applies a prepared tx ("stale" when the inventory changed since prepare; "store_failed" with
--- the state restored when the store write raised).
+-- the state restored when the store write raised or was refused).
 function Inventory.commit(self: Inventory, tx: Tx): (boolean, string?)
 	if type(tx) ~= "table" or tx.inventory ~= self or tx.state ~= "prepared" then
 		return false, "invalid_tx"
@@ -764,6 +777,43 @@ end
 -- Quarantined entries (retired items, broken or duplicate entries found while loading).
 function Inventory.quarantine(self: Inventory): { any }
 	return Check.copy(self._state.quarantine)
+end
+
+-- Re-reads the store after something else wrote it, such as an item granted by a developer-product
+-- receipt through the player's PlayerData session (Commerce.receiptProcessor): without a reload
+-- the next commit would write the stale entries back over the grant. The state becomes what the
+-- store holds (load repairs are noted as in new); prepared transactions go stale; changed fires
+-- with a tx-shaped record whose state is "reloaded" (created and removed empty). (true) or
+-- (false, reason) with no_store, empty (the store holds nothing yet) or store_failed (get
+-- raised); on false nothing changed.
+function Inventory.reload(self: Inventory): (boolean, string?)
+	local store = self._store
+	if store == nil then
+		return false, "no_store"
+	end
+	local ok, stored = pcall(store.get, store, self._storeKey)
+	if not ok then
+		self._report("Inventory: store:get failed: " .. tostring(stored))
+		return false, "store_failed"
+	end
+	if stored == nil then
+		return false, "empty"
+	end
+	local previous = self._state
+	self._state = { entries = {}, equipped = {}, nextUid = 1, quarantine = {} }
+	decode(self, stored)
+	local record: Tx = {
+		inventory = self,
+		version = self._version,
+		before = previous,
+		after = copyState(self._state),
+		created = {},
+		removed = {},
+		state = "reloaded",
+	}
+	self._version += 1
+	self.changed:Fire(record)
+	return true, nil
 end
 
 -- Plain inventory/1 data for a key store.

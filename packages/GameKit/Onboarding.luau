@@ -16,7 +16,12 @@ Onboarding.__index = Onboarding
 Onboarding.SCHEMA = "onboarding/1"
 Onboarding.DONE = "done"
 
-export type Store = { get: (self: any, key: string) -> any, set: (self: any, key: string, value: any) -> () }
+-- set may return (false, reason) to refuse a write (PlayerData session:keyStore()); nil or true is
+-- success.
+export type Store = {
+	get: (self: any, key: string) -> any,
+	set: (self: any, key: string, value: any) -> (boolean?, string?),
+}
 export type Options = {
 	steps: { string },
 	store: Store?,
@@ -200,12 +205,19 @@ local function persist(self: Onboarding): boolean
 	if store == nil then
 		return true
 	end
-	local ok: boolean, err: any =
+	-- A write fails when store:set raises or returns false (PlayerData's session:keyStore()
+	-- answers (false, reason) for an inactive or busy session instead of raising).
+	local ok: boolean, result: any, reason: any =
 		pcall(store.set, store, self._options.storeKey or "onboarding", self:serialize())
 	if not ok then
-		self._report("Onboarding: store:set failed: " .. tostring(err))
+		self._report("Onboarding: store:set failed: " .. tostring(result))
+		return false
 	end
-	return ok
+	if result == false then
+		self._report("Onboarding: store:set refused: " .. tostring(reason))
+		return false
+	end
+	return true
 end
 
 local function emit(self: Onboarding, event: any)

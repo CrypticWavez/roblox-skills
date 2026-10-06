@@ -7,7 +7,10 @@
 -- transact(changes), and other kits (Trade, Crafting, UnlockGraph) join them into larger
 -- atomic units through the two-phase prepare / commit / rollback calls. A transaction id
 -- (opts.txId) makes a retried credit or debit a no-op: recent ids are kept (ledgerSize) and
--- persisted with the balances. No currency, cap or amount ships here: the game supplies them.
+-- persisted with the balances. A store write that raises or returns false fails the change
+-- (store_failed, nothing emitted); reload() re-reads the store after another writer (a receipt
+-- granted through the PlayerData session). No currency, cap or amount ships here: the game
+-- supplies them.
 local Check = require("./Check")
 local Events = require("./Events")
 local Signal = require("./Signal")
@@ -39,7 +42,12 @@ export type CurrencyConfig = {
 	report: boolean?, -- emit kit-event/1 economy events for this currency (default true)
 	initial: number?, -- balance of a new wallet (default 0)
 }
-export type Store = { get: (self: any, key: string) -> any, set: (self: any, key: string, value: any) -> () }
+-- set may return (false, reason) to refuse a write (PlayerData session:keyStore()); nil or true is
+-- success.
+export type Store = {
+	get: (self: any, key: string) -> any,
+	set: (self: any, key: string, value: any) -> (boolean?, string?),
+}
 export type Options = {
 	currencies: { [string]: CurrencyConfig },
 	sink: Events.Sink?,
@@ -294,6 +302,45 @@ function Wallet.new(options: Options, env: any?): Wallet
 	return self
 end
 
+-- Re-reads the store after something else wrote it, such as a developer-product receipt granted
+-- through the player's PlayerData session (Commerce.receiptProcessor): without a reload the
+-- next commit would write the stale balances back over the grant. Balances, preserved
+-- currencies and recent tx ids become what the store holds; prepared transactions go stale;
+-- changed fires (currency, balance, delta) for each balance that moved. No economy event is
+-- emitted (the writer reports its own). (true) or (false, reason) with no_store, empty (the store
+-- holds nothing yet) or store_failed (get raised); on false nothing changed.
+function Wallet.reload(self: Wallet): (boolean, string?)
+	local store = self._store
+	if store == nil then
+		return false, "no_store"
+	end
+	local ok, stored = pcall(store.get, store, self._storeKey)
+	if not ok then
+		self._report("Wallet: store:get failed: " .. tostring(stored))
+		return false, "store_failed"
+	end
+	if stored == nil then
+		return false, "empty"
+	end
+	local before = self._balances
+	self._balances = {}
+	self._preserved = {}
+	self._recent = {}
+	self._recentSet = {}
+	for id, config in self._currencies do
+		self._balances[id] = config.initial or 0
+	end
+	decode(self, stored)
+	self._version += 1
+	for _, currency in sortedKeys(self._balances) do
+		local delta = self._balances[currency] - (before[currency] or 0)
+		if delta ~= 0 then
+			self.changed:Fire(currency, self._balances[currency], delta)
+		end
+	end
+	return true, nil
+end
+
 -- Whole balance of a currency (0 for an unknown one; check has() for existence).
 function Wallet.balance(self: Wallet, currency: string): number
 	return self._balances[currency] or 0
@@ -423,16 +470,23 @@ local function forget(self: Wallet, txId: string?)
 	end
 end
 
+-- A write fails when store:set raises or returns false: PlayerData's session:keyStore() answers
+-- (false, reason) for an inactive (lost or released) or busy session instead of raising.
 local function persist(self: Wallet): boolean
 	local store = self._store
 	if store == nil then
 		return true
 	end
-	local ok: boolean, err: any = pcall(store.set, store, self._storeKey, self:serialize())
+	local ok: boolean, result: any, reason: any = pcall(store.set, store, self._storeKey, self:serialize())
 	if not ok then
-		self._report("Wallet: store:set failed: " .. tostring(err))
+		self._report("Wallet: store:set failed: " .. tostring(result))
+		return false
 	end
-	return ok
+	if result == false then
+		self._report("Wallet: store:set refused: " .. tostring(reason))
+		return false
+	end
+	return true
 end
 
 local function emitChange(self: Wallet, tx: Tx, index: number, compensate: boolean)
@@ -502,8 +556,9 @@ function Wallet.emit(self: Wallet, tx: Tx)
 end
 
 -- Applies a prepared tx. Fails with "stale" when the wallet changed since prepare, or
--- "store_failed" (state restored) when the store write raised. opts.emit = false defers the
--- events until emit(tx), so a larger unit (a trade) reports only after all parts committed.
+-- "store_failed" (state restored, no event) when the store write raised or was refused.
+-- opts.emit = false defers the events until emit(tx), so a larger unit (a trade) reports only
+-- after all parts committed.
 function Wallet.commit(self: Wallet, tx: Tx, opts: { emit: boolean? }?): (boolean, string?)
 	if type(tx) ~= "table" or tx.wallet ~= self or tx.state ~= "prepared" then
 		return false, "invalid_tx"
