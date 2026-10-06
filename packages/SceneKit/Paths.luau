@@ -36,14 +36,16 @@ function Paths.path(
 				rot = { x = 0, y = yaw, z = 0 },
 			})
 		end)
-		-- Round joints so bends have no gaps.
+		-- Round joints so bends have no gaps. Their tops sit a hair below the segment tops: coplanar
+		-- overlapping faces z-fight in Studio and render black in the Cycles previews.
+		local jointHeight = math.max(thickness - 0.02, thickness / 2)
 		for index = 2, #points - 1 do
 			local p = points[index]
 			scene:add({
 				role = role,
 				shape = "Cylinder",
-				size = { x = thickness, y = width, z = width },
-				pos = { x = p.x, y = p.y + thickness / 2, z = p.z },
+				size = { x = jointHeight, y = width, z = width },
+				pos = { x = p.x, y = p.y + jointHeight / 2, z = p.z },
 				rot = { x = 0, y = 0, z = 90 },
 			})
 		end

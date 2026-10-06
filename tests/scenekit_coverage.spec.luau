@@ -251,4 +251,22 @@ test("Vegetation.tree, bush, cluster and clear", function(t)
 	t.eq(#a.specs, 0)
 end)
 
+test("path joint pads sit just below the segment tops (no coplanar faces)", function(t)
+	local scene = SK.Scene.new({ name = "PathJoints", seed = 1 })
+	SK.Paths.path(scene, { { x = 0, y = 0, z = 0 }, { x = 20, y = 0, z = 0 }, { x = 30, y = 0, z = 15 } })
+	local segmentTop, joints = nil, 0
+	for _, spec in scene.specs do
+		local top = spec.pos.y + (if spec.shape == "Cylinder" then spec.size.x else spec.size.y) / 2
+		if spec.shape == "Cylinder" then
+			joints += 1
+			t.ok(top > 0.3, "joint pad still covers the bend")
+			t.ok(top < 0.4 - 0.01, "joint top below the segment tops")
+		else
+			segmentTop = segmentTop or top
+			t.near(top, segmentTop, 1e-9, "segment tops level")
+		end
+	end
+	t.eq(joints, 1, "one joint at the single bend")
+end)
+
 return cases

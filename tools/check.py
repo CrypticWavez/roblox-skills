@@ -807,7 +807,7 @@ def main():
             gate.cmd("blender-templates", blender + ["templates", "build/blender"], timeout=3000)
             gate.cmd("blender-roundtrip", blender + ["roundtrip", "build/roundtrip"], timeout=900)
             gate.cmd("blender-qa-selftest", blender + ["qa-selftest", "build/qa-selftest"], timeout=900)
-            for fixture in ("modular_building", "dungeon", "settlement"):
+            for fixture in ("modular_building", "dungeon", "settlement", "forest"):
                 manifest = f"build/fixtures/{fixture}.manifest.json"
                 gate.cmd(f"preview-{fixture}", blender + ["render-manifest", manifest, "build/previews"], timeout=900)
 
