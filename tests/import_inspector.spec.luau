@@ -465,4 +465,330 @@ test("revision comparison never reports a change it could not measure", function
 	t.ok(Inspector.compareRevisions(a, b).changed)
 end)
 
+-- ---------------------------------------------------------------- appearance block (factory bakes)
+
+local function baked(maps)
+	local exp = table.clone(expectation)
+	exp.materials = { "MAT_SM_RoundTripMarker_v1" }
+	exp.appearance = { kind = "palette_atlas", maps = maps, palette = 3 }
+	return exp
+end
+
+local function surface(part, props)
+	part.Children.SurfaceAppearance = props
+	return part
+end
+
+test("palette atlas: the colour map must arrive (B06)", function(t)
+	local exp = baked({ color = "SM_RoundTripMarker_v1_Color.png" })
+	local report = Inspector.inspect(importedPart(MARKER), exp, correct)
+	t.ok(check(report, "appearance").pass, "TextureID carries the atlas")
+	t.ok(report.pass)
+	local grey = importedPart(MARKER)
+	grey.TextureID = ""
+	local lost = check(Inspector.inspect(grey, exp, correct), "appearance")
+	t.ok(not lost.pass)
+	t.ok(string.find(lost.detail, "B06"), lost.detail)
+	-- The Content property (TextureContent) or a SurfaceAppearance ColorMapContent counts too.
+	local content = importedPart(MARKER)
+	content.TextureID = ""
+	content.TextureContent = { Uri = "rbxasset://textures/SETUP_ONLY_atlas.png" }
+	t.ok(check(Inspector.inspect(content, exp, correct), "appearance").pass)
+	local sa = surface(importedPart(MARKER), { ColorMapContent = { Uri = "rbxasset://x" } })
+	sa.TextureID = ""
+	t.ok(check(Inspector.inspect(sa, exp, correct), "appearance").pass)
+	-- An appearance block replaces the materials-count rule: no appearance_bound check.
+	t.ok(not pcall(check, Inspector.inspect(grey, exp, correct), "appearance_bound"))
+end)
+
+test("palette atlas with PBR maps: only a TextureID is diagnosed as B02", function(t)
+	local exp = baked({ color = "a_Color.png", roughness = "a_Roughness.png", metalness = "a_Metalness.png" })
+	local textureOnly = Inspector.inspect(importedPart(MARKER), exp, correct)
+	local rough = check(textureOnly, "appearance_roughness")
+	t.ok(not rough.pass and string.find(rough.detail, "B02"), rough.detail)
+	t.ok(not check(textureOnly, "appearance_metalness").pass)
+	t.ok(not textureOnly.pass)
+	local full = surface(importedPart(MARKER), {
+		ColorMap = "rbxassetid://0",
+		RoughnessMap = "rbxassetid://0",
+		MetalnessMapContent = { Uri = "rbxasset://m" },
+	})
+	local report = Inspector.inspect(full, exp, correct)
+	t.ok(check(report, "appearance_roughness").pass)
+	t.ok(check(report, "appearance_metalness").pass)
+	t.ok(report.pass)
+	t.ok(not pcall(check, report, "appearance_normal"), "no normal map expected, none checked")
+end)
+
+test("vertex-colour route needs colours and a white part", function(t)
+	local exp = table.clone(expectation)
+	exp.appearance =
+		{ kind = "vertex_colors", palette = 2, vertex_colors = "Color", part_color = { 255, 255, 255 } }
+	local part = importedPart(MARKER)
+	part.TextureID = ""
+	part.Color = roblox.Color3.new(1, 1, 1)
+	local two = {
+		triangles = reader(MARKER),
+		colours = function()
+			return 2
+		end,
+	}
+	local report = Inspector.inspect(part, exp, two)
+	t.ok(check(report, "appearance").pass and check(report, "appearance_part_color").pass)
+	part.Color = roblox.Color3.new(0.64, 0.64, 0.64)
+	local tinted = check(Inspector.inspect(part, exp, two), "appearance_part_color")
+	t.ok(not tinted.pass and string.find(tinted.detail, "multiplies"), tinted.detail)
+	part.Color = roblox.Color3.new(1, 1, 1)
+	local none = {
+		triangles = reader(MARKER),
+		colours = function()
+			return 0
+		end,
+	}
+	t.ok(not check(Inspector.inspect(part, exp, none), "appearance").pass)
+	local unread = check(Inspector.inspect(part, exp, correct), "appearance")
+	t.ok(unread.checked == false and string.find(unread.detail, "unreadable"), unread.detail)
+end)
+
+test("library route needs the MaterialVariant applied; unknown kinds are not checked", function(t)
+	local exp = table.clone(expectation)
+	exp.appearance = { kind = "library", materials = { "library:concrete_a" } }
+	local part = importedPart(MARKER)
+	part.MaterialVariant = ""
+	local missing = check(Inspector.inspect(part, exp, correct), "appearance")
+	t.ok(not missing.pass and string.find(missing.detail, "SceneKit/Materials"), missing.detail)
+	part.MaterialVariant = "concrete_a"
+	t.ok(check(Inspector.inspect(part, exp, correct), "appearance").pass)
+	exp.appearance = { kind = "hologram" }
+	local unknown = Inspector.inspect(part, exp, correct)
+	t.ok(table.find(unknown.notChecked, "appearance"), "unknown kind listed as not checked")
+	t.ok(not unknown.pass)
+end)
+
+-- The marker with a side fin on Roblox -X (Blender +X under the derived mapping): asymmetric in X.
+local FINNED = {
+	MARKER[1],
+	MARKER[2],
+	{ { -3, 4, 0.25 }, { -2, 5, 1.25 } },
+}
+
+test("side offset catches an import mirrored along X", function(t)
+	local size, mid, front, up = measure(FINNED)
+	local exp = expectationFor(FINNED)
+	-- Area-weighted centroid along +X minus the bounds centre, computed the same way as measure().
+	local sum, total = 0, 0
+	for _, box in FINNED do
+		local d = { box[2][1] - box[1][1], box[2][2] - box[1][2], box[2][3] - box[1][3] }
+		local area = 2 * (d[1] * d[2] + d[2] * d[3] + d[3] * d[1])
+		total += area
+		sum += area * (box[1][1] + box[2][1]) / 2
+	end
+	exp.side_offset = sum / total - mid[1]
+	t.ok(math.abs(exp.side_offset) > 0.1, "fin makes the marker asymmetric in X")
+	local part = importedPart(FINNED)
+	local good = Inspector.inspect(part, exp, { triangles = reader(FINNED) })
+	t.ok(check(good, "orientation_side").pass)
+	t.ok(good.pass, "finned marker passes everything")
+	local flipX = function(p)
+		return { 2 * mid[1] - p[1], p[2], p[3] }
+	end
+	local mirrored =
+		check(Inspector.inspect(part, exp, { triangles = reader(FINNED, flipX) }), "orientation_side")
+	t.ok(not mirrored.pass and string.find(mirrored.detail, "mirrored"), mirrored.detail)
+	local symmetric = table.clone(exp)
+	symmetric.side_offset = 0.02
+	local sym =
+		check(Inspector.inspect(part, symmetric, { triangles = reader(FINNED, flipX) }), "orientation_side")
+	t.ok(sym.pass and string.find(sym.detail, "symmetric"), sym.detail)
+	local unreadable = Inspector.inspect(part, exp, {
+		triangles = function()
+			return nil, "no access"
+		end,
+	})
+	t.ok(table.find(unreadable.notChecked, "orientation_side"), "unreadable mesh: side not checked")
+	t.ok(
+		not pcall(check, Inspector.inspect(part, expectation, correct), "orientation_side"),
+		"older expectations skip it"
+	)
+	t.ok(size[1] > 0 and front ~= nil and up ~= nil)
+end)
+
+-- ---------------------------------------------------------------- clips/1
+
+local function petSidecar()
+	return {
+		schema = "clips/1",
+		asset = "pet_follower",
+		rig = "custom",
+		fps = 30,
+		files = {
+			glb = "pet_follower_clips.glb",
+			fbx = { idle = "pet_follower_idle.fbx", walk = "pet_follower_walk.fbx" },
+		},
+		clips = {
+			{
+				name = "idle",
+				slot = "idle",
+				start = 0,
+				["end"] = 59,
+				loop = true,
+				root_motion = false,
+				priority = "Idle",
+				markers = {},
+			},
+			{
+				name = "walk",
+				slot = "walk",
+				start = 0,
+				["end"] = 29,
+				loop = true,
+				root_motion = false,
+				markers = {
+					{ name = "footstep", frame = 7, param = "left" },
+					{ name = "footstep", frame = 22, param = "right" },
+				},
+			},
+		},
+	}
+end
+
+test("inspectClips passes matching clips and returns the play plan", function(t)
+	local observed = {
+		{ name = "idle", length = 59 / 30 },
+		{ name = "RIG_PetFollower|walk", length = 29 / 30 },
+		{ name = "Take 001", length = 1 },
+	}
+	local report = Inspector.inspectClips(petSidecar(), observed)
+	t.ok(report.pass, "all clips present with their lengths")
+	t.eq(report.extra, { "Take 001" })
+	t.eq(#report.plan, 2)
+	local walk = report.plan[2]
+	t.eq(walk.name, "walk")
+	t.ok(walk.looped)
+	t.near(walk.markers[1].time, 7 / 30, 1e-9)
+	t.eq(walk.markers[2].param, "right")
+	t.eq(report.plan[1].priority, "Idle")
+	local markers = check(report, "clip_markers:walk")
+	t.ok(markers.pass and string.find(markers.detail, "plan"), markers.detail)
+end)
+
+test("inspectClips fails missing, wrong-length and mis-marked clips", function(t)
+	local short = Inspector.inspectClips(petSidecar(), { { name = "idle", length = 1.0 } })
+	t.ok(not short.pass)
+	t.ok(not check(short, "clip_length:idle").pass, "1.0 s is not 59 frames at 30 fps")
+	t.ok(not check(short, "clip_present:walk").pass)
+	local marked = Inspector.inspectClips(petSidecar(), {
+		{ name = "idle", length = 59 / 30 },
+		{
+			name = "walk",
+			length = 29 / 30,
+			markers = { { name = "footstep", time = 7 / 30 }, { name = "footstep", time = 0.9 } },
+		},
+	})
+	local m = check(marked, "clip_markers:walk")
+	t.ok(not m.pass and string.find(m.detail, "footstep@0.733"), m.detail)
+	local unknown =
+		Inspector.inspectClips(petSidecar(), { { name = "idle" }, { name = "walk", length = 29 / 30 } })
+	t.ok(table.find(unknown.notChecked, "clip_length:idle"), "no readable length is not a pass")
+end)
+
+test("validateClips rejects broken sidecars", function(t)
+	t.eq(#Inspector.validateClips(petSidecar()), 0)
+	local bad = petSidecar()
+	bad.clips[1].slot = "dance"
+	bad.clips[2]["end"] = -1
+	bad.clips[2].markers[1].frame = 40
+	table.insert(bad.clips, table.clone(bad.clips[1]))
+	bad.fps = 0
+	local problems = Inspector.validateClips(bad)
+	local text = table.concat(problems, "\n")
+	for _, needle in { "fps", "dance", "end >= start", "duplicate name idle" } do
+		t.ok(string.find(text, needle, 1, true), needle .. " in " .. text)
+	end
+	local report = Inspector.inspectClips(bad, {})
+	t.ok(not report.pass and not check(report, "sidecar_valid").pass)
+	t.eq(Inspector.validateClips({ schema = "clips/0" }), { "schema must be 'clips/1'" })
+end)
+
+-- ---------------------------------------------------------------- T3 probe registries (mocks)
+
+local Probe = require("../packages/GameKit/Probe")
+local function runProbe(registry)
+	local lines = {}
+	local summary = Probe.runAll(registry, {
+		emit = function(line)
+			table.insert(lines, line)
+		end,
+		kit = function(path)
+			assert(path == "Pipeline/ImportInspector", path)
+			return Inspector
+		end,
+	})
+	return summary, lines
+end
+
+test("import_appearance probe records every inspector check", function(t)
+	local Appearance = require("./engine/import_appearance")
+	local exp = baked({ color = "SM_RoundTripMarker_v1_Color.png" })
+	local summary, lines = runProbe(Appearance.registry({
+		{ asset = "SM_RoundTripMarker", expectation = exp, root = importedPart(MARKER), options = correct },
+	}))
+	t.ok(summary.ok, lines[#lines])
+	t.ok(string.find(lines[#lines], "^ENGINE_DONE "), "one done line")
+	local missing = runProbe(Appearance.registry({ { asset = "pickup", expectation = exp } }))
+	t.ok(not missing.ok, "a model that was not imported fails")
+	t.ok(not runProbe(Appearance.registry({})).ok, "no cases is not a pass")
+end)
+
+test("import_clips probe reads KeyframeSequences and checks them against the sidecar", function(t)
+	local Clips = require("./engine/import_clips")
+	local function sequence(name, times, markers)
+		local keyframes = {}
+		for _, time in times do
+			table.insert(keyframes, {
+				Time = time,
+				GetMarkers = function()
+					return markers[time] or {}
+				end,
+			})
+		end
+		return {
+			Name = name,
+			Loop = true,
+			Priority = { Name = "Core" },
+			IsA = function(_, class)
+				return class == "KeyframeSequence"
+			end,
+			GetKeyframes = function()
+				return keyframes
+			end,
+		}
+	end
+	local root = {
+		GetDescendants = function()
+			return {
+				sequence("idle", { 0, 1, 59 / 30 }, {}),
+				sequence(
+					"walk",
+					{ 0, 7 / 30, 29 / 30 },
+					{ [7 / 30] = { { Name = "footstep", Value = "left" } } }
+				),
+			}
+		end,
+	}
+	local summary, lines =
+		runProbe(Clips.registry({ { asset = "pet_follower", sidecar = petSidecar(), root = root } }))
+	t.ok(not summary.ok, "one of two walk markers arrived: the marker check fails")
+	local text = table.concat(lines, "\n")
+	t.ok(string.find(text, "animations_found", 1, true), "where the clips were found is recorded")
+	local lengthLine = string.match(text, '[^\n]*"pet_follower:clip_length:idle"[^\n]*')
+	t.ok(lengthLine and string.find(lengthLine, '"ok":true', 1, true), text)
+	local clean = {
+		GetDescendants = function()
+			return { sequence("idle", { 0, 59 / 30 }, {}), sequence("walk", { 0, 29 / 30 }, {}) }
+		end,
+	}
+	t.ok(runProbe(Clips.registry({ { asset = "pet_follower", sidecar = petSidecar(), root = clean } })).ok)
+end)
+
 return cases
