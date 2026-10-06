@@ -1,0 +1,13 @@
+{
+  "schema_version":1,
+  "mode":"SETUP_ONLY_METADATA_FIXTURE",
+  "seed":421,
+  "entry":"inspection_entry",
+  "budgets":{"diagnostic_nodes":20},
+  "nodes":[
+    {"id":"inspection_entry","kind":"anchor","position":[0,0,0],"routes":["inspection_panel"]},
+    {"id":"inspection_panel","kind":"interaction","authority":"server","rate_limit_per_second":2,"required_route":true,"routes":["inspection_exit"],"depends_on":["inspection_entry"]},
+    {"id":"inspection_exit","kind":"anchor","required_route":true,"routes":[],"depends_on":["inspection_panel"]},
+    {"id":"optional_review","kind":"state","optional":true,"purpose":"Inspect optional branch metadata without instantiating geometry"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "collection_loop": {
+    "digest": "5b0b8486",
+    "events": {
+      "level_up": 18,
+      "objective_complete": 2,
+      "trade_committed": 1,
+      "wallet_credit": 709,
+      "wallet_debit": 132
+    }
+  },
+  "plot_generator": {
+    "digest": "8220246e",
+    "events": {
+      "unlock": 15,
+      "wallet_credit": 188,
+      "wallet_debit": 15
+    }
+  }
+}

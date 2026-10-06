@@ -1,0 +1,11 @@
+{
+  "genre":"atmospheric horror",
+  "audience":"Age and content eligibility unresolved",
+  "aesthetic":"low saturation, controlled contrast, restrained effects",
+  "core_fantasy":"Hypothetical tense observation for planning validation only",
+  "differentiator":"Unvalidated design hypothesis; no game concept selected in setup",
+  "platforms":["desktop","controller"],
+  "multiplayer":{"mode":"solo","max_players":1},
+  "constraints":["DRY RUN ONLY","reduced camera motion","no flashing-light requirement"],
+  "monetization":{"enabled":false}
+}

@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-05",
+  "studio": {
+    "version": "0.741.19",
+    "place": "SETUP_ONLY_Factory_Diagnostic built by rojo 7.7.0 from fixtures/factory at 9c12091 (unpublished, placeId 0)"
+  },
+  "command": "execute_luau: HttpService:JSONEncode(require(game.ReplicatedStorage.Workbench.Pipeline.FactorySmoke).run(workspace))",
+  "result": {
+    "building": {
+      "hash": "778d1d9a",
+      "parts": 96,
+      "pass": true
+    },
+    "dungeon": {
+      "hash": "8494d161",
+      "parts": 108,
+      "pass": true
+    }
+  },
+  "golden": "tests/golden/studio-smoke.json at 9c12091: identical",
+  "undo": "two ChangeHistoryService undos removed both scenes (confirmed with search_game_tree)",
+  "run_mode": "not obtained: reading the FACTORY_SMOKE console line in Run mode was blocked by the PC's permission prompt; FactorySmoke.Enabled restored to false"
+}

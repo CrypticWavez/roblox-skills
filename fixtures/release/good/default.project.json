@@ -1,0 +1,46 @@
+{
+  "name": "ReleaseFixture",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedFirst": {
+      "Loading": {
+        "$path": "src/first"
+      }
+    },
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "ServerStorage": {
+      "ServerPackages": {
+        "$path": {
+          "optional": "ServerPackages"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true,
+        "SignalBehavior": "Deferred"
+      }
+    },
+    "LocalizationService": {
+      "GameStrings": {
+        "$path": "src/localization/strings.csv"
+      }
+    }
+  }
+}

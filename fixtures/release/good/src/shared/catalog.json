@@ -1,0 +1,43 @@
+{
+  "schema": "catalog/1",
+  "mode": "game",
+  "products": [
+    {
+      "key": "currency_pack_a",
+      "kind": "devproduct",
+      "id": 900000101,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [{ "type": "currency", "currency": "currency_a", "amount": 100 }],
+      "display": { "nameKey": "shop.currency_pack_a.name" }
+    },
+    {
+      "key": "random_pack_a",
+      "kind": "devproduct",
+      "id": 900000102,
+      "enabled": true,
+      "ownershipVerified": true,
+      "tags": ["paid_random_item"],
+      "grants": [{ "type": "custom", "handler": "roll_random_pack" }],
+      "display": { "nameKey": "shop.random_pack_a.name" }
+    },
+    {
+      "key": "pass_a",
+      "kind": "gamepass",
+      "id": 900000103,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [{ "type": "entitlement", "entitlement": "entitlement_a" }],
+      "display": { "nameKey": "shop.pass_a.name" }
+    },
+    {
+      "key": "subscription_a",
+      "kind": "subscription",
+      "id": "EXP-900000104",
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [{ "type": "entitlement", "entitlement": "entitlement_b" }],
+      "display": { "nameKey": "shop.subscription_a.name" }
+    }
+  ]
+}

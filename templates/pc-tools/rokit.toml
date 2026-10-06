@@ -1,0 +1,16 @@
+# Owner PC tools folder (Rokit 1.2). Copy this file into an empty folder that is not a git repository,
+# for example <home>/roblox-tools, and run `rokit install` there. Each repository keeps its own
+# rokit.toml (Rokit uses the nearest one), so this folder only pins the tools for work outside a
+# repository. Steps and checks: docs/pc-setup.md; `python3 tools/pc_doctor.py` compares the versions.
+# The first five match the factory's rokit.toml; darklua and wally are for game repositories.
+[tools]
+rojo = "rojo-rbx/rojo@7.7.0"
+lune = "lune-org/lune@0.10.5"
+stylua = "JohnnyMorganz/StyLua@2.5.2"
+selene = "Kampfkarren/selene@0.31.0"
+luau-lsp = "JohnnyMorganz/luau-lsp@1.70.1"
+# darklua 0.19.0 (MIT, crates.io 2026-06-10, tag v0.19.0): Luau bundling and require conversion.
+darklua = "seaofvoices/darklua@0.19.0"
+# Wally 0.3.2 (MPL-2.0): package installs only. `wally publish` and `wally login` are denied by the
+# repository guards; never publish from this folder.
+wally = "UpliftGames/wally@0.3.2"

@@ -1,0 +1,9 @@
+{
+  "expect": "A05",
+  "why": "the displayed odds of a paid random item sum to 99.99%, not exactly 100%",
+  "json_set": {
+    "release/release.json": {
+      "paid_random_items.0.odds.outcome_c": 19.99
+    }
+  }
+}

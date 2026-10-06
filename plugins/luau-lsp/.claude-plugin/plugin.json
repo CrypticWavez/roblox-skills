@@ -1,0 +1,38 @@
+{
+  "name": "luau-lsp",
+  "version": "1.70.1",
+  "description": "Luau language server for this repository: luau-lsp from rokit.toml, the pinned Roblox definitions and API docs from build/luau-lsp/ (python3 tools/luau_defs.py), and the kit sourcemap that tools/luau_analyze.py writes. Crash reporting stays off (luau-lsp sends nothing unless --enable-crash-reporting is given).",
+  "author": {
+    "name": "Roblox factory maintainers"
+  },
+  "keywords": ["luau", "roblox", "lsp"],
+  "lspServers": {
+    "luau-lsp": {
+      "command": "luau-lsp",
+      "args": [
+        "lsp",
+        "--stdio",
+        "--definitions:@roblox=${CLAUDE_PROJECT_DIR}/build/luau-lsp/globalTypes.PluginSecurity.d.luau",
+        "--docs=${CLAUDE_PROJECT_DIR}/build/luau-lsp/en-us.json"
+      ],
+      "extensionToLanguage": {
+        ".luau": "luau"
+      },
+      "settings": {
+        "luau-lsp": {
+          "platform": {
+            "type": "roblox"
+          },
+          "sourcemap": {
+            "enabled": true,
+            "autogenerate": false,
+            "sourcemapFile": "build/luau-lsp/sourcemap.json"
+          }
+        }
+      },
+      "startupTimeout": 60000,
+      "restartOnCrash": true,
+      "maxRestarts": 3
+    }
+  }
+}

@@ -1,0 +1,1290 @@
+{
+  "counts": {
+    "by_tier": {
+      "T0": 88,
+      "T1": 38,
+      "T3": 27,
+      "T4": 8
+    },
+    "evidence": {
+      "PENDING": 31
+    },
+    "kit_modules": 157,
+    "modules": 161,
+    "probes": 31,
+    "t3_modules": 27,
+    "t3_with_passing_probe": 0
+  },
+  "modules": [
+    {
+      "kit": true,
+      "path": "packages/AVKit/AudioCues.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/AudioDirector.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/AudioGraph.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/AudioGraphRoblox.luau",
+      "probes": [
+        "av_audiograph_wires",
+        "av_audio_master_level"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/AudioMixer.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/Music.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/Pool.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/Vfx.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/VfxLibrary.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/AVKit/VfxPoolRoblox.luau",
+      "probes": [
+        "av_vfx_grid"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/Cinematics/Cinematics.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Cinematics/CinematicsRoblox.luau",
+      "probes": [
+        "cin_play_sample"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/Cinematics/Spline.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": false,
+      "path": "packages/Diagnostics/PerfProbe.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": false,
+      "path": "packages/Diagnostics/PerfProbeRoblox.luau",
+      "probes": [
+        "perf_capture"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Cues.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/FeelRoblox.luau",
+      "probes": [
+        "feel_marker_cue"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Haptics.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/HitStop.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Popups.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Screen.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Shake.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/Feel/Spring.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Abilities.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/AnimSet.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/AnimSetRoblox.luau",
+      "probes": [
+        "action_animset_clip"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/AuthorityRoblox.luau",
+      "probes": [
+        "authority_simulation_bind"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/BehaviorTree.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Catalog.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Check.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Checkpoints.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Commerce.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/CommerceRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Config.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/ConfigRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Cooldowns.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Crafting.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/DebugCommands.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Dialogue.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/EconomySim.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Env.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/EnvRoblox.luau",
+      "probes": [
+        "foundation_env_studio"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Events.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Followers.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/FollowersRoblox.luau",
+      "probes": [
+        "economy_followers_formation"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Fsm.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Generators.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Hitbox.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/HitboxRoblox.luau",
+      "probes": [
+        "action_hitbox_shapecast"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/InputMap.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/InputMapRoblox.luau",
+      "probes": [
+        "inputmap_contexts"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Interact.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/InteractRoblox.luau",
+      "probes": [
+        "action_interact_prompt"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Inventory.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/ItemDefs.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Json.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Knockback.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Leaderboard.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/LeaderboardRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/LiveBoard.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/LiveBoardRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/LiveOps.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/MemoryQueueRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Moderation.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/ModerationRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Movement.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/MovementRoblox.luau",
+      "probes": [
+        "action_movement_humanoid"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/NavAgent.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/NavAgentRoblox.luau",
+      "probes": [
+        "lvl_pathfinding_probe"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Objectives.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/OddsTable.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Onboarding.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Outfits.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/OutfitsRoblox.luau",
+      "probes": [
+        "economy_outfits_apply"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PartyRoblox.luau",
+      "probes": [
+        "platform_party_simulator"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Perception.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PlacementGrid.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PlayerData.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PlayerDataRoblox.luau",
+      "probes": [
+        "platform_playerdata_memory"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Plots.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PolicyGate.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/PolicyGateRoblox.luau",
+      "probes": [
+        "platform_policy_emulator"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Probe.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Progression.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Projectile.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Queue.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/RateLimit.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/RemoteGuard.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/RemoteGuardRoblox.luau",
+      "probes": [
+        "platform_remoteguard_flood"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Retry.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/RoundLoop.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/RoundLoopRoblox.luau",
+      "probes": [
+        "action_round_replication"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Schema.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Scope.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/SeasonTrack.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Settings.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/SettingsStore.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Signal.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/StatusEffects.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Streaks.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/TeamBalance.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Telemetry.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/TelemetryRoblox.luau",
+      "probes": [
+        "platform_telemetry_recorder"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/TeleportRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/TextFilter.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/TextFilterRoblox.luau",
+      "tier": "T4"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Trade.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/UnlockGraph.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/VehicleRigRoblox.luau",
+      "probes": [
+        "action_vehicle_drive"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Vehicles.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Vitals.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/VotingRound.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Wallet.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/WaveDirector.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/WorldCycle.luau",
+      "probes": [
+        "worldcycle_phases"
+      ],
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Zones.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/ZonesRoblox.luau",
+      "probes": [
+        "action_zones_enter_exit"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": false,
+      "path": "packages/Pipeline/ImportInspector.luau",
+      "probes": [
+        "import_appearance"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": false,
+      "path": "packages/Pipeline/KitSmoke.luau",
+      "probes": [
+        "kitsmoke_all"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Audit.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/AuditRoblox.luau",
+      "probes": [
+        "ui_gallery_audit"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Breakpoints.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Build.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Badge.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Button.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Card.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/ConfirmDialog.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Countdown.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/DialogueBox.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Grid.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/IconButton.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/InventoryGrid.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/KeybindPrompt.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/LeaderboardPanel.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/LoadingScreen.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Modal.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/ProgressBar.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/RollingCounter.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/SettingsPanel.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/ShopCard.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Slider.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/StatBar.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Tabs.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/TeleportTransition.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Timer.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Toast.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Toggle.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/Tooltip.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/TouchActionButton.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/VirtualList.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Ease.luau",
+      "probes": [
+        "ui_ease_parity"
+      ],
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Gallery/Browser.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Gallery/Stories.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Localize.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Nav.luau",
+      "probes": [
+        "ui_nav_keyboard"
+      ],
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/State.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Style.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/StyleRoblox.luau",
+      "probes": [
+        "ui_style_sheet"
+      ],
+      "tier": "T3"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Tokens.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Transitions.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/UIKit.luau",
+      "tier": "T1"
+    }
+  ],
+  "probes": [
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/AnimSetRoblox.luau"
+      ],
+      "name": "action_animset_clip",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_animset_clip.luau"
+      ],
+      "runner": "tests/engine/action_animset_clip.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/HitboxRoblox.luau"
+      ],
+      "name": "action_hitbox_shapecast",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_hitbox_shapecast.luau"
+      ],
+      "runner": "tests/engine/action_hitbox_shapecast.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/InteractRoblox.luau"
+      ],
+      "name": "action_interact_prompt",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_interact_prompt.luau"
+      ],
+      "runner": "tests/engine/action_interact_prompt.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/MovementRoblox.luau"
+      ],
+      "name": "action_movement_humanoid",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_movement_humanoid.luau"
+      ],
+      "runner": "tests/engine/action_movement_humanoid.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/RoundLoopRoblox.luau"
+      ],
+      "name": "action_round_replication",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_round_replication.luau"
+      ],
+      "runner": "tests/engine/action_round_replication.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/VehicleRigRoblox.luau"
+      ],
+      "name": "action_vehicle_drive",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_vehicle_drive.luau"
+      ],
+      "runner": "tests/engine/action_vehicle_drive.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/ZonesRoblox.luau"
+      ],
+      "name": "action_zones_enter_exit",
+      "registered_in": [
+        "fixtures/kits/server/action_probes.luau",
+        "tests/engine/action_zones_enter_exit.luau"
+      ],
+      "runner": "tests/engine/action_zones_enter_exit.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/AuthorityRoblox.luau"
+      ],
+      "name": "authority_simulation_bind",
+      "registered_in": [
+        "fixtures/kits/shared/authority_probes.luau",
+        "tests/engine/authority_simulation_bind.luau"
+      ],
+      "runner": "tests/engine/authority_simulation_bind.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/AVKit/AudioGraphRoblox.luau"
+      ],
+      "name": "av_audio_master_level",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/av_audio_master_level.luau"
+      ],
+      "runner": "tests/engine/av_audio_master_level.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/AVKit/AudioGraphRoblox.luau"
+      ],
+      "name": "av_audiograph_wires",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/av_audiograph_wires.luau"
+      ],
+      "runner": "tests/engine/av_audiograph_wires.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/AVKit/VfxPoolRoblox.luau"
+      ],
+      "name": "av_vfx_grid",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/av_vfx_grid.luau"
+      ],
+      "runner": "tests/engine/av_vfx_grid.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/Cinematics/CinematicsRoblox.luau"
+      ],
+      "name": "cin_play_sample",
+      "registered_in": [
+        "fixtures/kits/shared/cin_probes.luau",
+        "tests/engine/cin_play_sample.luau"
+      ],
+      "runner": "tests/engine/cin_play_sample.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/FollowersRoblox.luau"
+      ],
+      "name": "economy_followers_formation",
+      "registered_in": [
+        "fixtures/kits/server/economy_probes.luau",
+        "tests/engine/economy_followers_formation.luau"
+      ],
+      "runner": "tests/engine/economy_followers_formation.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/OutfitsRoblox.luau"
+      ],
+      "name": "economy_outfits_apply",
+      "registered_in": [
+        "fixtures/kits/server/economy_probes.luau",
+        "tests/engine/economy_outfits_apply.luau"
+      ],
+      "runner": "tests/engine/economy_outfits_apply.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/Feel/FeelRoblox.luau"
+      ],
+      "name": "feel_marker_cue",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/feel_marker_cue.luau"
+      ],
+      "runner": "tests/engine/feel_marker_cue.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/EnvRoblox.luau"
+      ],
+      "name": "foundation_env_studio",
+      "registered_in": [
+        "fixtures/kits/shared/foundation_probes.luau",
+        "tests/engine/foundation_env_studio.luau"
+      ],
+      "runner": "tests/engine/foundation_env_studio.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/Pipeline/ImportInspector.luau"
+      ],
+      "name": "import_appearance",
+      "registered_in": [
+        "tests/engine/import_appearance.luau"
+      ],
+      "runner": "tests/engine/import_appearance.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/InputMapRoblox.luau"
+      ],
+      "name": "inputmap_contexts",
+      "registered_in": [
+        "fixtures/kits/shared/ui_probes.luau",
+        "tests/engine/inputmap_contexts.luau"
+      ],
+      "runner": "tests/engine/inputmap_contexts.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/Pipeline/KitSmoke.luau"
+      ],
+      "name": "kitsmoke_all",
+      "registered_in": [
+        "tests/engine/kitsmoke_all.luau"
+      ],
+      "runner": "tests/engine/kitsmoke_all.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/NavAgentRoblox.luau"
+      ],
+      "name": "lvl_pathfinding_probe",
+      "registered_in": [
+        "fixtures/kits/server/level_probes.luau",
+        "tests/engine/lvl_pathfinding_probe.luau"
+      ],
+      "runner": "tests/engine/lvl_pathfinding_probe.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/Diagnostics/PerfProbeRoblox.luau"
+      ],
+      "name": "perf_capture",
+      "registered_in": [
+        "fixtures/kits/server/kitsmoke_probes.luau",
+        "tests/engine/perf_capture.luau"
+      ],
+      "runner": "tests/engine/perf_capture.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/PartyRoblox.luau"
+      ],
+      "name": "platform_party_simulator",
+      "registered_in": [
+        "fixtures/kits/server/platform_probes.luau",
+        "tests/engine/platform_party_simulator.luau"
+      ],
+      "runner": "tests/engine/platform_party_simulator.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/PlayerDataRoblox.luau"
+      ],
+      "name": "platform_playerdata_memory",
+      "registered_in": [
+        "fixtures/kits/server/platform_probes.luau",
+        "tests/engine/platform_playerdata_memory.luau"
+      ],
+      "runner": "tests/engine/platform_playerdata_memory.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/PolicyGateRoblox.luau"
+      ],
+      "name": "platform_policy_emulator",
+      "registered_in": [
+        "fixtures/kits/server/platform_probes.luau",
+        "tests/engine/platform_policy_emulator.luau"
+      ],
+      "runner": "tests/engine/platform_policy_emulator.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/RemoteGuardRoblox.luau"
+      ],
+      "name": "platform_remoteguard_flood",
+      "registered_in": [
+        "fixtures/kits/server/platform_probes.luau",
+        "tests/engine/platform_remoteguard_flood.luau"
+      ],
+      "runner": "tests/engine/platform_remoteguard_flood.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/TelemetryRoblox.luau"
+      ],
+      "name": "platform_telemetry_recorder",
+      "registered_in": [
+        "fixtures/kits/server/platform_probes.luau",
+        "tests/engine/platform_telemetry_recorder.luau"
+      ],
+      "runner": "tests/engine/platform_telemetry_recorder.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/UIKit/Ease.luau"
+      ],
+      "name": "ui_ease_parity",
+      "registered_in": [
+        "fixtures/kits/shared/ui_probes.luau",
+        "tests/engine/ui_ease_parity.luau"
+      ],
+      "runner": "tests/engine/ui_ease_parity.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/UIKit/AuditRoblox.luau"
+      ],
+      "name": "ui_gallery_audit",
+      "registered_in": [
+        "fixtures/kits/shared/ui_probes.luau",
+        "tests/engine/ui_gallery_audit.luau"
+      ],
+      "runner": "tests/engine/ui_gallery_audit.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/UIKit/Nav.luau"
+      ],
+      "name": "ui_nav_keyboard",
+      "registered_in": [
+        "fixtures/kits/shared/ui_probes.luau",
+        "tests/engine/ui_nav_keyboard.luau"
+      ],
+      "runner": "tests/engine/ui_nav_keyboard.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/UIKit/StyleRoblox.luau"
+      ],
+      "name": "ui_style_sheet",
+      "registered_in": [
+        "fixtures/kits/shared/ui_probes.luau",
+        "tests/engine/ui_style_sheet.luau"
+      ],
+      "runner": "tests/engine/ui_style_sheet.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/GameKit/WorldCycle.luau"
+      ],
+      "name": "worldcycle_phases",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/worldcycle_phases.luau"
+      ],
+      "runner": "tests/engine/worldcycle_phases.luau"
+    }
+  ],
+  "problems": [],
+  "schema": "kit-tiers/1"
+}

@@ -1,0 +1,161 @@
+{
+  "round_arena": {
+    "counts": {
+      "claim_rejected": 31,
+      "dash": 4,
+      "enter": 11,
+      "exit": 5,
+      "hazard": 5,
+      "hazard_damage": 5,
+      "hit": 34,
+      "input_rejected": 3,
+      "join": 8,
+      "kill": 3,
+      "out": 7,
+      "phase": 5,
+      "spawn": 16
+    },
+    "digest": "a6e958d5",
+    "events": 137,
+    "final": {
+      "bodies": {
+        "1": {
+          "active": true,
+          "health": 75,
+          "role": "participant",
+          "stamina": 95,
+          "x": 9.216,
+          "z": -3.278
+        },
+        "2": {
+          "active": true,
+          "health": 100,
+          "role": "participant",
+          "stamina": 100,
+          "x": 5.688,
+          "z": 18.559
+        },
+        "3": {
+          "active": true,
+          "health": 100,
+          "role": "participant",
+          "stamina": 87,
+          "x": 0.753,
+          "z": 12.845
+        },
+        "4": {
+          "active": false,
+          "health": 0,
+          "role": "spectator",
+          "stamina": 100,
+          "x": -16.884,
+          "z": 8.838
+        },
+        "5": {
+          "active": true,
+          "health": 40,
+          "role": "participant",
+          "stamina": 90,
+          "x": -2.716,
+          "z": -6.558
+        },
+        "6": {
+          "active": true,
+          "health": 80,
+          "role": "participant",
+          "stamina": 100,
+          "x": -0.597,
+          "z": -10.183
+        },
+        "7": {
+          "active": true,
+          "health": 40,
+          "role": "participant",
+          "stamina": 100,
+          "x": 5.658,
+          "z": -9.905
+        },
+        "8": {
+          "active": true,
+          "health": 100,
+          "role": "participant",
+          "stamina": 100,
+          "x": 18.424,
+          "z": -7.783
+        }
+      },
+      "phase": "active",
+      "round": 2
+    },
+    "seed": 20261006,
+    "stats": {
+      "accepted": 34,
+      "claimRejected": {
+        "bad_angle": 2,
+        "cooldown": 8,
+        "future_time": 4,
+        "origin_mismatch": 4,
+        "self_hit": 2,
+        "too_old": 11
+      },
+      "clamped": 3,
+      "deaths": 7,
+      "inputRejected": {
+        "bad_input": 3,
+        "rate_limited": 20
+      },
+      "inputs": 287
+    },
+    "steps": 600
+  },
+  "time_trial": {
+    "counts": {
+      "boost_end": 3,
+      "boost_start": 3,
+      "finish": 2,
+      "lap": 4,
+      "rubber_band": 2,
+      "sector": 16
+    },
+    "digest": "70b6784a",
+    "events": 30,
+    "final": {
+      "car_a": {
+        "finished": true,
+        "gates": 8,
+        "lap": 2,
+        "snapshot": {
+          "boost": 0,
+          "drifting": false,
+          "heading": 18.061,
+          "slip": 10.585,
+          "speed": 50.863,
+          "x": 21.456,
+          "z": 32.518
+        },
+        "total": 9.733
+      },
+      "car_b": {
+        "finished": true,
+        "gates": 8,
+        "lap": 2,
+        "snapshot": {
+          "boost": 0,
+          "drifting": false,
+          "heading": 15.433,
+          "slip": 10.013,
+          "speed": 50.781,
+          "x": -34.781,
+          "z": -17.598
+        },
+        "total": 11.733
+      },
+      "standings": [
+        "car_a",
+        "car_b"
+      ]
+    },
+    "seed": 20261006,
+    "steps": 900
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "course_checkpoints": {
+    "checkpoints": 5,
+    "course": "e3e9790a",
+    "digest": "6e8a5f13",
+    "finished": true,
+    "rejected": [
+      "rejected 2 2 skipped",
+      "rejected 2 1 too_fast",
+      "rejected 1 1 already_reached",
+      "rejected 1 2 already_reached",
+      "rejected 1 3 already_reached",
+      "rejected 1 4 already_reached",
+      "rejected 1 5 finished"
+    ],
+    "respawns": [
+      [
+        60.09,
+        9,
+        16.96
+      ],
+      [
+        121.67,
+        9,
+        27.48
+      ],
+      [
+        184.66,
+        16.13,
+        27.48
+      ],
+      [
+        192.35,
+        19.08,
+        -33.83
+      ],
+      [
+        192.35,
+        23.69,
+        -85.42
+      ]
+    ],
+    "splits": [
+      4.08,
+      8.15,
+      12.09,
+      16.05,
+      19.27
+    ],
+    "time": 19.27
+  },
+  "wave_lane": {
+    "course": "154b0108",
+    "digest": "8e0ce327",
+    "kills": 18,
+    "leaks": 3,
+    "seconds": 64.75,
+    "spawned": 21,
+    "state": "done",
+    "towers": 3
+  }
+}

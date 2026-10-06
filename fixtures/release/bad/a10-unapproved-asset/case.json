@@ -1,0 +1,9 @@
+{
+  "expect": "A10",
+  "why": "an asset id in place content is registered but rejected",
+  "json_set": {
+    "assets/provenance.json": {
+      "assets.0.approval": "rejected"
+    }
+  }
+}

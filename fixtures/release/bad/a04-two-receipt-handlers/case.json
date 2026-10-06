@@ -1,0 +1,7 @@
+{
+  "expect": "A04",
+  "why": "a second ProcessReceipt assignment; exactly one receipt handler may exist",
+  "append": {
+    "src/server/init.server.luau": "\nMarketplaceService.ProcessReceipt = function(_receiptInfo) end\n"
+  }
+}

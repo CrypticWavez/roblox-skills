@@ -1,0 +1,49 @@
+{
+  "schema": "asset-provenance/1",
+  "policy": "Every real Roblox asset id in a committable file (rbxassetid://, rbxthumb://, roblox.com asset/place/bundle/badge/pass URLs, numeric AssetId/MeshId/TextureId/SoundId/AnimationId/ImageId/DecalId fields) must have an entry here; 0 is the only placeholder. Only entries with approval 'approved' (reviewer and script_review filled in by the roblox-asset-intake skill) may appear in place content (.luau, .lua, .rbxmx, .rbxlx, .project.json, .model.json, .meta.json). 'research_citation' ids may only be cited in docs and records; 'rejected' ids stay listed so the decision is not redone. Checked by the gate step asset-provenance in tools/check.py. Ids of private assets on the owner's account (such as the round-trip meshes) are never committed.",
+  "fields": {
+    "id": "Roblox asset id (positive integer)",
+    "kind": "model, mesh, image, audio, animation, plugin, place, bundle, badge or pass",
+    "name": "display name at the source",
+    "source": "URL where the asset was found",
+    "creator": "publisher at the source",
+    "license": "licence or terms as read at the source; 'not inspected' when unknown",
+    "approval": "approved, research_citation or rejected",
+    "reviewer": "who approved it (required for approved)",
+    "script_review": "script and security review findings (required for approved)",
+    "date": "date of the decision, YYYY-MM-DD",
+    "purpose": "why the id is in the repo and where it is cited",
+    "origin": "intake (reviewed in this repo) or inherited_unverified (copied in, never reviewed here)",
+    "source_key": "optional: the assets/sources.json key the uploaded file came from (its pinned file is in files with the same source_key)"
+  },
+  "files_policy": "files lists external files pinned by python3 tools/fetch_assets.py --pin (the owner's per-item approval). The files themselves live in build/asset-cache/ and are never committed; an entry records where the file came from, its sha256 and bytes, and the licence evidence. Checked by python3 tools/asset_sources.py --check.",
+  "files_fields": {
+    "source_key": "assets/sources.json key",
+    "item": "item id within the source (kit/1 cites it as cc0:<source_key>:<item>)",
+    "url": "https URL it was downloaded from, or manual:<page> for a manual download pinned with --from-file",
+    "sha256": "sha256 of the downloaded file",
+    "bytes": "size of the downloaded file",
+    "type": "file type detected from its content",
+    "licence": "CC0-1.0",
+    "licence_url": "the source's licence page",
+    "licence_text_sha256": "sha256 of the legal code text verified at pin time",
+    "date": "pin date, YYYY-MM-DD",
+    "purpose": "why it was fetched",
+    "approval": "pinned"
+  },
+  "files": [],
+  "assets": [
+    {
+      "id": 4725618216,
+      "kind": "plugin",
+      "name": "Moon Animator 2",
+      "source": "https://create.roblox.com/store/asset/4725618216/Moon-Animator-2",
+      "creator": "xsixx",
+      "license": "Creator Store purchase terms; not inspected",
+      "approval": "research_citation",
+      "date": "2026-10-05",
+      "purpose": "Cited as a researched optional tool in knowledge/records/tools-options.json (not selected). Never bought, installed, inserted or used in any place.",
+      "origin": "inherited_unverified"
+    }
+  ]
+}

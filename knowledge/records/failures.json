@@ -1,0 +1,162 @@
+[
+  {
+    "id": "failure-gallery-canonical-path",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Gallery GET traversal and unguarded HEAD exposed files outside its allowlist",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "summary": "Independent tests reproduced dot-segment GET escaping allowed folders and unrestricted HEAD. Canonical resolved-path checks now run in shared send_head for both verbs; environment files and outside-root paths are denied.",
+    "verification_command": ".venv/Scripts/python.exe -m unittest discover -s tests -p test_workbench_http.py",
+    "evidence_path": "artifacts/review-runtime/findings.json",
+    "lesson": "Authorize the exact canonical path served, and apply the same guard to every method."
+  },
+  {
+    "id": "failure-native-report-fail-open",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Incomplete or nonfinite constructed native reports were accepted",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "summary": "The validator previously accepted empty source manifests, unknown checks and NaN viewports. It now requires the full current source set, exact12checks, correct unpublished mode, real finite UI bounds and ordered motion samples.",
+    "verification_command": ".venv/Scripts/python.exe -m unittest discover -s tests -p test_observe.py",
+    "lesson": "Schema integrity supports retained native tool evidence; passing constructed JSON never proves authenticity."
+  },
+  {
+    "id": "failure-production-dependency-drift",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Planning resumed after acceptance artifacts changed",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "summary": "Accepted source hashes are now rechecked before status and checkpoint; downstream acceptance is blocked on drift. DRY_RUN no longer advertises execution phases as eligible. Hand-edited authorization flags and phase shapes fail closed.",
+    "verification_command": ".venv/Scripts/python.exe -m unittest discover -s tests -p test_production_review.py",
+    "lesson": "Completion is tied to current immutable acceptance artifacts, not only a saved status string."
+  },
+  {
+    "id": "failure-media-recovery-eof",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Repeated media intake missed deleted bytes; full clip sampling asked for EOF",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "summary": "Exact repeated imports repair missing archived media and preserve reviewed metadata; tampering fails closed. Half-open contact-sheet sampling now decodes a full-duration1second real video without requesting an EOF frame.",
+    "verification_command": ".venv/Scripts/python.exe -m unittest discover -s tests -p test_media_review.py",
+    "lesson": "Recheck retained bytes and record actual sampling times."
+  },
+  {
+    "id": "failure-studio-startup-layout",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Startup viewport and report lifetime made early native observations invalid",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "summary": "The fixture waits for stable real viewport/layout and stores JSON in PlayerScripts so initial spawn does not clear it. All12named native checks passed after source sync/readback.",
+    "local_reports": [
+      "reports/native_runtime_final_desktop.json"
+    ],
+    "lesson": "Wait for stable native state, retain source readback and distinguish programmatic actions from native input."
+  },
+  {
+    "id": "failure-project-mcp-trust",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Blender project MCP activation is blocked by normal host trust state",
+    "claim_type": "observation",
+    "status": "blocked_on_workbench",
+    "summary": "TOML and direct subprocess MCP work; installed Codex config/read explicitly disabled this project layer because the workspace is untrusted. Automatic approval review rejected a temporary process trust override. No global trust or safeguards were changed.",
+    "local_reports": [
+      "reports/blender_mcp_host.json"
+    ],
+    "lesson": "Installed/configured/exercised direct tooling is distinct from host discovery. Use supported owner trust controls and reload; preserve safeguards."
+  },
+  {
+    "id": "failure-native-readback-output-cap",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Large native source readback was truncated",
+    "summary": "One native JSON readback stopped at100013characters and could not parse. Bounded source chunks now return complete JSON and21 current Creator sources match disk.",
+    "lesson": "Preserve actual source contents and split results below the installed output cap.",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "local_reports": [
+      "artifacts/creator-source-manifest.json"
+    ]
+  },
+  {
+    "id": "failure-effects-moving-camera",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Effect counts passed while the capture missed the cues",
+    "summary": "The default camera followed a falling avatar away from fixed diagnostic effects. The fixture now owns/restores its camera; the repaired capture shows three cues and all9checks pass.",
+    "lesson": "Inspect actual pixels separately from instantiated-object counts.",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "local_reports": [
+      "artifacts/creator-effects-first-inspection.json",
+      "reports/creator_effects_native.json"
+    ]
+  },
+  {
+    "id": "failure-observation-status-overflow",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Native observation status text overflowed",
+    "summary": "A real trace recorded8text-overflow rows. Wrapping and a96pixel label fixed the fixture; repeated native trace validation records0overflow. Unrelated source drift was fixed by binding only the exact consumed sources.",
+    "lesson": "Treat native trace findings as repair evidence and keep immutable readback receipts.",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "local_reports": [
+      "artifacts/creator-observation-first-config.json",
+      "artifacts/observation/native-validation.json"
+    ]
+  },
+  {
+    "id": "failure-gate-optional-evidence",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Missing native receipts could leave a passing local gate",
+    "summary": "Required native receipts are now mandatory; malformed files become named failures, complete authored sources are checked before/after, and12regressions pass.",
+    "lesson": "Always write a fresh result and fail closed on absent evidence.",
+    "claim_type": "observation",
+    "status": "verified_on_workbench",
+    "local_reports": [
+      "reports/verification.json"
+    ]
+  },
+  {
+    "id": "failure-network-cold-start-deadline",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "failure",
+    "title": "Two Studio clients joined but sent no input before watchdog",
+    "summary": "Source-rebound first attempt joined two clients yet received zero protocol input by20seconds. The failed tool receipt is retained; unchanged-source retries passed6aggregate+22participant checks. Cause of the initial startup delay remains unverified.",
+    "status": "partially_verified_on_workbench",
+    "claim_type": "observation",
+    "tags": [
+      "network",
+      "multiplayer",
+      "startup",
+      "deadline",
+      "failure"
+    ],
+    "local_reports": [
+      "artifacts/network/native-rebound-multiplayer-first-failure.json",
+      "reports/network_native_multiplayer.json"
+    ],
+    "limitations": [
+      "Warm retries do not certify cold-start reliability or performance.",
+      "No deadline was extended to turn this failure into a pass."
+    ]
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "expect": "A01",
+  "why": "default.project.json overrides the deprecated Workspace.FilteringEnabled property",
+  "json_set": {
+    "default.project.json": {
+      "tree.Workspace.$properties.FilteringEnabled": true
+    }
+  }
+}

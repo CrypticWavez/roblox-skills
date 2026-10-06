@@ -1,0 +1,11 @@
+{
+  "genre":"social / collaborative building",
+  "audience":"General audience, exact content maturity requires review",
+  "aesthetic":"cozy restrained natural palette",
+  "core_fantasy":"Hypothetical collaborative expression for planning validation only",
+  "differentiator":"Placeholder hypothesis to be tested in a future explicitly authorized design phase",
+  "platforms":["desktop","touch"],
+  "multiplayer":{"mode":"cooperative","max_players":8},
+  "constraints":["DRY RUN ONLY: do not design or implement gameplay"],
+  "monetization":{"enabled":false}
+}

@@ -1,0 +1,44 @@
+{
+  "schema": "release-meta/1",
+  "note": "What this release declares, checked by tools/release_check.py (A17 and the files it points to). Every TBD is decided by the owner and must match production/brief.json. The store page itself is set by the owner in Creator Hub (items O05-O13); this file is the repo's record of it.",
+  "name": "TBD",
+  "description": "TBD",
+  "genre": {
+    "primary": "TBD",
+    "subgenre": "TBD"
+  },
+  "devices": "TBD",
+  "audience": {
+    "maturity_label": "TBD",
+    "reach": "TBD"
+  },
+  "maturity_summary": "TBD",
+  "players": {
+    "max": "TBD",
+    "preferred": "TBD"
+  },
+  "access": {
+    "private_servers": "TBD",
+    "paid_access": "TBD"
+  },
+  "locales": {
+    "source": "TBD",
+    "targets": "TBD"
+  },
+  "version_notes": "TBD",
+  "catalog": "src/shared/catalog.json",
+  "telemetry": "src/shared/telemetry.json",
+  "localization": ["src/localization"],
+  "perf": {
+    "budgets": "release/perf/budgets.json",
+    "captures": []
+  },
+  "paid_random_items": [],
+  "store_art": {
+    "icon": null,
+    "thumbnails": [],
+    "badges": [],
+    "passes": []
+  },
+  "generated": []
+}

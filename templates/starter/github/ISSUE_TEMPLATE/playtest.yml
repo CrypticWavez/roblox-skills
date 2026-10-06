@@ -1,0 +1,37 @@
+name: Playtest
+description: Plan or report a playtest (internal, Limited audience or owner gate)
+title: "[playtest] "
+labels: ["playtest"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Playtest gates are closed by the owner (release/owner-*.json). Fixture or Studio passes do not prove fun; this issue records what people did and said.
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      options: [greybox, vertical-slice, alpha, beta, release-candidate]
+    validations:
+      required: true
+  - type: textarea
+    id: questions
+    attributes:
+      label: Questions this playtest answers
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup
+      description: Audience (the owner sets Limited audiences), devices, session length, build or commit.
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+      description: Observations, quotes without names, funnel or telemetry numbers if any; link follow-up issues.
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision
+      description: What changes because of this playtest, and who decided (logged in docs/decisions.md).

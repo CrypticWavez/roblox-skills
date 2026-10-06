@@ -1,0 +1,45 @@
+name: System or feature
+description: A gameplay, platform or tooling system to build or change
+title: "[system] "
+labels: ["system"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One system per issue. Check the kits first (starter.json modules, skill roblox-genre-systems); new code goes in src/.
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      options: [concept, greybox, vertical-slice, alpha, beta, release-candidate]
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What the player or the team gets. Cite the brief field or design doc it serves.
+    validations:
+      required: true
+  - type: textarea
+    id: modules
+    attributes:
+      label: Kit modules and new code
+      description: Package/Module names used, and the new src/ modules with their realm (server, client, shared).
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority and data
+      description: What the server owns, which remotes (through RemoteGuard), what persists (through the data kit).
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: Checkable outcomes, including the Lune spec and any release check (A01-A17) it touches.
+    validations:
+      required: true
+  - type: input
+    id: verify
+    attributes:
+      label: Verify with
+      placeholder: python3 tools/check.py --tier pre-commit

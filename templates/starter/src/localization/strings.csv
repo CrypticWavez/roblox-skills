@@ -1,0 +1,4 @@
+Key,Source,Context,Example
+loading.status,Loading,Loading screen status line,
+loading.slow,Still loading,Loading screen when loading takes long,
+loading.failed,Loading failed ({phase}). Please rejoin.,Loading screen when a boot phase fails; {phase} is the phase name,Loading failed (remotes). Please rejoin.

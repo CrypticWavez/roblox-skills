@@ -1,0 +1,16 @@
+{
+  "expect": "A06",
+  "why": "the client takes typed text (TextBox) but no server code filters it",
+  "replace": {
+    "src/server/init.server.luau": [
+      [
+        "local TextFilter = require(Kits.GameKit.TextFilter)\n",
+        ""
+      ],
+      [
+        "return TextFilter.forBroadcast(player, text)",
+        "return text"
+      ]
+    ]
+  }
+}

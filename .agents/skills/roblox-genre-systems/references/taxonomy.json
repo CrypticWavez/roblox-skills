@@ -1,0 +1,383 @@
+{
+  "schema": "genre-taxonomy/1",
+  "source": {
+    "doc": "docs/research/genre-coverage-2026-10.md",
+    "section": "1. Official genre taxonomy",
+    "official_page": "https://create.roblox.com/docs/en-us/production/publishing/experience-genres.md",
+    "verified": "2026-10-06"
+  },
+  "counts": {
+    "genres": 17,
+    "subgenres": 43,
+    "genres_without_subgenres": 3
+  },
+  "notes": [
+    "Labels are copied from the cited doc's table; tools/playbook_lint.py re-reads that table and fails on any difference. The table lists 43 subgenre labels across 14 genres; Education, Social and Utility & Other have none.",
+    "'<Genre> > (none)' is an experience labelled with the genre only. It is mandatory for the three genres without subgenres and optional elsewhere (the doc's chart snapshot shows Survival and Simulation experiences with no subgenre).",
+    "Each label maps to one primary playbook or to an exclusion with a reason; 'also' lists playbooks that cover part of it. Mapping is coverage, not a recommendation: this file and the playbooks pick no genre.",
+    "'aliases' turns a brief's informal genre words into official labels. Where the doc's 'requested genre' table has a row, the alias copies it; the rest are lookup conveniences."
+  ],
+  "genres": [
+    {
+      "genre": "Action",
+      "subgenres": [
+        {
+          "subgenre": "Battlegrounds & Fighting",
+          "playbook": "battlegrounds-fighting",
+          "also": ["practice-range-builder", "ranked-and-leaderboards"]
+        },
+        {
+          "subgenre": "Music & Rhythm",
+          "playbook": "music-rhythm",
+          "also": ["entertainment-showcase"]
+        },
+        {
+          "subgenre": "Open World Action",
+          "playbook": "rpg-quest-dialogue-and-inventory",
+          "also": ["battlegrounds-fighting", "racing-driving", "roleplay-life"],
+          "note": "Open-world streaming, NPC AI and combat are the RPG playbook's open-world half; vehicles and town roles live in racing-driving and roleplay-life."
+        }
+      ]
+    },
+    {
+      "genre": "Adventure",
+      "subgenres": [
+        {
+          "subgenre": "Exploration",
+          "playbook": "rpg-quest-dialogue-and-inventory",
+          "also": ["story-chapter", "survival-crafting"]
+        },
+        {
+          "subgenre": "Scavenger Hunt",
+          "playbook": "puzzle-escape",
+          "also": ["story-chapter"],
+          "note": "Hidden finds, clue chains and found-set persistence are the puzzle playbook's discovery half."
+        },
+        {
+          "subgenre": "Story",
+          "playbook": "story-chapter",
+          "also": ["horror-atmosphere-and-event-flow"]
+        }
+      ]
+    },
+    {
+      "genre": "Education",
+      "subgenres": [],
+      "none": {
+        "playbook": "education-learning",
+        "also": ["party-minigames"]
+      }
+    },
+    {
+      "genre": "Entertainment",
+      "subgenres": [
+        {
+          "subgenre": "Music & Audio",
+          "playbook": "entertainment-showcase",
+          "also": ["music-rhythm"]
+        },
+        {
+          "subgenre": "Showcase & Hub",
+          "playbook": "entertainment-showcase",
+          "also": ["social-hub-and-cosmetics"]
+        },
+        {
+          "subgenre": "Video",
+          "playbook": "entertainment-showcase"
+        }
+      ]
+    },
+    {
+      "genre": "Obby & Platformer",
+      "subgenres": [
+        {
+          "subgenre": "Classic Obby",
+          "playbook": "obby-checkpoint-and-flow"
+        },
+        {
+          "subgenre": "Runner",
+          "playbook": "obby-checkpoint-and-flow"
+        },
+        {
+          "subgenre": "Tower Obby",
+          "playbook": "obby-checkpoint-and-flow"
+        }
+      ]
+    },
+    {
+      "genre": "Party & Casual",
+      "subgenres": [
+        {
+          "subgenre": "Childhood Game",
+          "playbook": "party-minigames"
+        },
+        {
+          "subgenre": "Coloring & Drawing",
+          "playbook": "sandbox-building",
+          "also": ["party-minigames"],
+          "note": "A canvas is free-form user creation: save, undo, sharing and moderation match the sandbox playbook; round-based drawing games add the party playbook."
+        },
+        {
+          "subgenre": "Minigame",
+          "playbook": "party-minigames",
+          "also": ["party-and-matchmaking"]
+        },
+        {
+          "subgenre": "Quiz",
+          "playbook": "party-minigames",
+          "also": ["education-learning"]
+        }
+      ]
+    },
+    {
+      "genre": "Puzzle",
+      "subgenres": [
+        {
+          "subgenre": "Escape Room",
+          "playbook": "puzzle-escape",
+          "also": ["horror-atmosphere-and-event-flow"]
+        },
+        {
+          "subgenre": "Match & Merge",
+          "playbook": "puzzle-escape",
+          "also": ["board-and-card-games", "idle-incremental"]
+        },
+        {
+          "subgenre": "Word",
+          "playbook": "puzzle-escape",
+          "also": ["education-learning", "party-minigames"]
+        }
+      ]
+    },
+    {
+      "genre": "RPG",
+      "subgenres": [
+        {
+          "subgenre": "Action RPG",
+          "playbook": "rpg-quest-dialogue-and-inventory",
+          "also": ["battlegrounds-fighting"]
+        },
+        {
+          "subgenre": "Open World & Survival RPG",
+          "playbook": "rpg-quest-dialogue-and-inventory",
+          "also": ["survival-crafting"]
+        },
+        {
+          "subgenre": "Turn-based RPG",
+          "playbook": "rpg-quest-dialogue-and-inventory",
+          "also": ["board-and-card-games"]
+        }
+      ]
+    },
+    {
+      "genre": "Roleplay & Avatar Sim",
+      "subgenres": [
+        {
+          "subgenre": "Animal Sim",
+          "playbook": "roleplay-life",
+          "also": ["survival-crafting"],
+          "note": "Playing as a creature is a morph (body swap) plus needs and growth; the survival playbook covers meters and threats."
+        },
+        {
+          "subgenre": "Dress Up",
+          "playbook": "dress-up-fashion",
+          "also": ["avatar-shopping"]
+        },
+        {
+          "subgenre": "Life",
+          "playbook": "roleplay-life",
+          "also": ["social-hub-and-cosmetics"]
+        },
+        {
+          "subgenre": "Morph Roleplay",
+          "playbook": "roleplay-life"
+        },
+        {
+          "subgenre": "Pet Care",
+          "playbook": "pet-collection-trading",
+          "also": ["roleplay-life"]
+        }
+      ]
+    },
+    {
+      "genre": "Shooter",
+      "subgenres": [
+        {
+          "subgenre": "Battle Royale",
+          "playbook": "shooter",
+          "also": ["party-and-matchmaking"]
+        },
+        {
+          "subgenre": "Deathmatch Shooter",
+          "playbook": "shooter",
+          "also": ["practice-range-builder", "ranked-and-leaderboards"]
+        },
+        {
+          "subgenre": "PvE Shooter",
+          "playbook": "shooter",
+          "also": ["tower-defense-wave-and-pathing"]
+        }
+      ]
+    },
+    {
+      "genre": "Shopping",
+      "subgenres": [
+        {
+          "subgenre": "Avatar Shopping",
+          "playbook": "avatar-shopping",
+          "also": ["dress-up-fashion"]
+        }
+      ]
+    },
+    {
+      "genre": "Simulation",
+      "subgenres": [
+        {
+          "subgenre": "Idle",
+          "playbook": "idle-incremental"
+        },
+        {
+          "subgenre": "Incremental Simulator",
+          "playbook": "simulator-progression",
+          "also": ["idle-incremental", "pet-collection-trading"]
+        },
+        {
+          "subgenre": "Physics Sim",
+          "playbook": "sandbox-building"
+        },
+        {
+          "subgenre": "Sandbox",
+          "playbook": "sandbox-building"
+        },
+        {
+          "subgenre": "Tycoon",
+          "playbook": "tycoon-economy-and-rebirth"
+        },
+        {
+          "subgenre": "Vehicle Sim",
+          "playbook": "racing-driving",
+          "also": ["roleplay-life"]
+        }
+      ],
+      "none": {
+        "playbook": "simulator-progression",
+        "note": "Simulation with no subgenre appears in the doc's chart snapshot; the collect-upgrade loop is the closest match, and the label carries no further system signal."
+      }
+    },
+    {
+      "genre": "Social",
+      "subgenres": [],
+      "none": {
+        "playbook": "social-hub-and-cosmetics",
+        "also": ["entertainment-showcase"]
+      }
+    },
+    {
+      "genre": "Sports & Racing",
+      "subgenres": [
+        {
+          "subgenre": "Racing",
+          "playbook": "racing-driving",
+          "also": ["ranked-and-leaderboards"]
+        },
+        {
+          "subgenre": "Sports",
+          "playbook": "sports",
+          "also": ["party-and-matchmaking"]
+        }
+      ]
+    },
+    {
+      "genre": "Strategy",
+      "subgenres": [
+        {
+          "subgenre": "Board & Card Games",
+          "playbook": "board-and-card-games"
+        },
+        {
+          "subgenre": "Tower Defense",
+          "playbook": "tower-defense-wave-and-pathing"
+        }
+      ]
+    },
+    {
+      "genre": "Survival",
+      "subgenres": [
+        {
+          "subgenre": "1 vs All",
+          "playbook": "horror-atmosphere-and-event-flow",
+          "also": ["party-and-matchmaking"],
+          "note": "The doc maps horror chase to Survival > 1 vs All; the playbook covers asymmetric roles whether or not the experience is horror."
+        },
+        {
+          "subgenre": "Escape",
+          "playbook": "horror-atmosphere-and-event-flow",
+          "also": ["puzzle-escape", "story-chapter"]
+        }
+      ],
+      "none": {
+        "playbook": "survival-crafting",
+        "note": "The doc maps survival/crafting to Survival, often with no subgenre."
+      }
+    },
+    {
+      "genre": "Utility & Other",
+      "subgenres": [],
+      "none": {
+        "excluded": "A catch-all for experiences that are not games (tools, tests, utilities) with no shared core loop to describe, so no playbook. Apply the cross-cutting playbooks and the platform skills case by case; revisit if the genre gains subgenres."
+      }
+    }
+  ],
+  "cross_cutting": [
+    {
+      "playbook": "liveops-events-and-shop",
+      "systems": "timed events, rotating offers, season tracks, event currencies"
+    },
+    {
+      "playbook": "party-and-matchmaking",
+      "systems": "parties, queues, team balance, teleports, private matches"
+    },
+    {
+      "playbook": "practice-range-builder",
+      "systems": "warm-up and test spaces, target drills, isolated from rewards"
+    },
+    {
+      "playbook": "ranked-and-leaderboards",
+      "systems": "ratings, ranked results, persistent and live leaderboards"
+    }
+  ],
+  "aliases": {
+    "simulator": ["Simulation > Incremental Simulator"],
+    "incremental": ["Simulation > Incremental Simulator", "Simulation > Idle"],
+    "tycoon": ["Simulation > Tycoon"],
+    "obby": ["Obby & Platformer > Classic Obby", "Obby & Platformer > Runner", "Obby & Platformer > Tower Obby"],
+    "platformer": ["Obby & Platformer > Classic Obby", "Obby & Platformer > Runner"],
+    "difficulty chart": ["Obby & Platformer > Tower Obby", "Obby & Platformer > Classic Obby"],
+    "tower defense": ["Strategy > Tower Defense"],
+    "horror": ["Survival > 1 vs All", "Survival > Escape"],
+    "anime": ["RPG > Action RPG", "RPG > Open World & Survival RPG"],
+    "adventure": ["Adventure > Exploration", "Adventure > Story"],
+    "fighting": ["Action > Battlegrounds & Fighting"],
+    "fps": ["Shooter > Deathmatch Shooter", "Shooter > PvE Shooter", "Shooter > Battle Royale"],
+    "driving": ["Simulation > Vehicle Sim", "Sports & Racing > Racing"],
+    "town": ["Roleplay & Avatar Sim > Life", "Roleplay & Avatar Sim > Morph Roleplay"],
+    "life sim": ["Roleplay & Avatar Sim > Life"],
+    "crafting": ["Survival > (none)", "RPG > Open World & Survival RPG"],
+    "hangout": ["Social > (none)", "Entertainment > Showcase & Hub"],
+    "fashion": ["Roleplay & Avatar Sim > Dress Up", "Shopping > Avatar Shopping"],
+    "minigames": ["Party & Casual > Minigame", "Party & Casual > Childhood Game", "Party & Casual > Quiz"],
+    "clicker": ["Simulation > Idle"],
+    "pvp arena": ["Action > Battlegrounds & Fighting", "Shooter > Deathmatch Shooter", "Survival > 1 vs All"],
+    "round-based": ["Action > Battlegrounds & Fighting", "Shooter > Deathmatch Shooter", "Survival > 1 vs All"],
+    "pet collection": ["Simulation > Incremental Simulator", "Roleplay & Avatar Sim > Pet Care"],
+    "trading": ["Roleplay & Avatar Sim > Pet Care", "Simulation > Incremental Simulator"],
+    "building": ["Simulation > Sandbox", "Simulation > Physics Sim"],
+    "escape": ["Survival > Escape", "Puzzle > Escape Room"],
+    "story": ["Adventure > Story", "Survival > Escape", "Puzzle > Escape Room"],
+    "card game": ["Strategy > Board & Card Games"],
+    "strategy": ["Strategy > Board & Card Games", "Strategy > Tower Defense"],
+    "rhythm": ["Action > Music & Rhythm"],
+    "concert": ["Entertainment > Music & Audio", "Entertainment > Showcase & Hub"],
+    "learning": ["Education > (none)", "Party & Casual > Quiz"]
+  }
+}

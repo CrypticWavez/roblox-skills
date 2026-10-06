@@ -1,0 +1,101 @@
+name: factory
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Both gates run with --strict: a SKIPPED step (missing tool, Selene std not generated, no bpy)
+# fails the job, so CI can only be green when every step actually ran.
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install rokit toolchain (rokit.toml)
+        env:
+          GITHUB_PAT: ${{ github.token }} # the installer's GitHub API calls; avoids anonymous rate limits
+        run: |
+          curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
+          echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
+      - name: Install pinned tools
+        env:
+          ROKIT_TOKEN: ${{ github.token }}
+        run: |
+          rokit authenticate github --token "$ROKIT_TOKEN" --skip-verify
+          rokit install --no-trust-check
+      - name: Generate the Selene Roblox std
+        # roblox.yml is gitignored. Generating it before the gate makes Selene run instead of SKIPPED.
+        run: selene generate-roblox-std
+      - name: Rojo builds the diagnostic projects
+        # network.project.json reads build/network/SourceManifest.luau, generated from its sources.
+        run: |
+          python3 tools/network_manifest.py
+          for p in creator diagnostic factory network kits; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
+      - name: Pre-commit gate (strict)
+        run: python3 tools/check.py --tier pre-commit --strict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fixtures
+          path: build/
+
+  blender:
+    # 5.1.2 matches the Blender installed on the workbench PC; 5.2.2 is the selected LTS.
+    # Both are run because 5.2 changed boolean material slots (see tools/blender/bkit/ops.py).
+    # The full pre-release tier runs here: pre-commit steps, Blender templates with Cycles CPU
+    # previews, the round trip, kit/1 and glTF checks, the fixture previews (which need the
+    # Lune-built manifests), luau-lsp analysis against its baseline and the full starter smoke.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        bpy: ["5.1.2", "5.2.2"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install rokit toolchain (rokit.toml)
+        env:
+          GITHUB_PAT: ${{ github.token }} # the installer's GitHub API calls; avoids anonymous rate limits
+        run: |
+          curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
+          echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
+      - name: Install pinned tools
+        env:
+          ROKIT_TOKEN: ${{ github.token }}
+        run: |
+          rokit authenticate github --token "$ROKIT_TOKEN" --skip-verify
+          rokit install --no-trust-check
+      - name: Generate the Selene Roblox std
+        run: selene generate-roblox-std
+      - name: Install bpy
+        run: python3 -m pip install "bpy==${{ matrix.bpy }}"
+      - name: Fetch the pinned Luau definitions (luau-defs.lock.json)
+        # luau-lsp-analyze in the pre-release tier needs them; the fetch verifies each sha256.
+        run: python3 tools/luau_defs.py
+      - name: Pre-release gate (strict)
+        run: python3 tools/check.py --tier pre-release --strict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blender-${{ matrix.bpy }}
+          path: |
+            build/check-report.json
+            build/blender/**/qa.json
+            build/blender/templates-summary.json
+            build/roundtrip/*.json
+            build/previews/*.png
+            build/kit/*.json
+            build/luau-lsp/*.json

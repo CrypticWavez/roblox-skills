@@ -1,0 +1,280 @@
+[
+  {
+    "id": "workflow-blender-studio-import",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Blender-to-Studio import workflow: local preview and unverified native transfer",
+    "summary": "Verified Blender creation, edit, FBX/glTF export and Blender reimport are available. The documented Studio local Importer preview is researched; its zero-upload transfer boundary and native mesh/animation runtime path remain unverified.",
+    "tags": [
+      "verified Blender-to-Studio import workflows",
+      "Blender",
+      "Studio",
+      "import",
+      "rig",
+      "animation",
+      "permissions"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "documented_platform_behavior",
+    "sources": [
+      {
+        "url": "https://create.roblox.com/docs/art/modeling/3d-importer",
+        "accessed_at": "2026-10-05"
+      }
+    ],
+    "evidence_ids": [
+      "fixture-blender-turntable",
+      "fixture-blender-front",
+      "fixture-blender-revised"
+    ],
+    "local_reports": [
+      "reports/studio_import_route.json",
+      "reports/blender_status.json",
+      "reports/blender_mcp_host.json"
+    ],
+    "limitations": [
+      "Current native MCP has no documented standalone FBX/glTF file-import preview action.",
+      "Disabling model inventory upload is not documented as a zero-resource-transfer guarantee.",
+      "No Roblox native mesh, animation, material appearance or ownership acceptance is claimed."
+    ]
+  },
+  {
+    "id": "workflow-motion-contact-review",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Responsive melee anticipation and recovery: curves, markers and contact diagnostics",
+    "summary": "Curves, actual GLB rig/sampler inspection and bounded marker/priority/blend/contact trace analysis are implemented. Nine native owned-rig/empty-Animator snapshot/cleanup checks pass; no asset playback, melee attack, input feel or humanoid contact acceptance is claimed.",
+    "tags": [
+      "responsive melee anticipation and recovery",
+      "motion",
+      "contact",
+      "rig",
+      "markers",
+      "transition"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "design_recommendation",
+    "sources": [
+      {
+        "url": "https://create.roblox.com/docs/reference/engine/classes/AnimationTrack",
+        "accessed_at": "2026-10-05"
+      }
+    ],
+    "evidence_ids": [
+      "fixture-blender-turntable"
+    ],
+    "local_reports": [
+      "reports/runtime_status.json",
+      "reports/blender_status.json",
+      "reports/creator_animation_native.json",
+      "artifacts/animation/native-analysis.json",
+      "docs/animation-inspection.md"
+    ],
+    "limitations": [
+      "Diagnostic curves and artificial contact traces cannot certify a real animation or player feel.",
+      "Per-game Animator priority, blend, marker timing, rig permissions and actual input-to-response traces remain required."
+    ]
+  },
+  {
+    "id": "workflow-native-ui-state-review",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Readable mobile shop layouts and responsive native item cards",
+    "summary": "Runtime panel/card checks and Creator HUD/menu/inventory/unavailable-shop/settings states have source-bound desktop/portrait-emulator receipts. Native simulated keys adjusted volume and mouse toggled reduced motion; live purchases, arbitrary localization and physical devices remain unverified.",
+    "tags": [
+      "mobile shop layouts with readable item cards",
+      "ui",
+      "focus",
+      "loading",
+      "error",
+      "empty",
+      "responsive"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "design_recommendation",
+    "evidence_ids": [
+      "fixture-native-desktop",
+      "fixture-creator-ui-desktop",
+      "fixture-creator-ui-portrait",
+      "evidence-user-003"
+    ],
+    "local_reports": [
+      "reports/creator_ui_desktop.json",
+      "reports/creator_ui_phone_portrait.json",
+      "reports/creator_ui_input_actions.json"
+    ],
+    "limitations": [
+      "No actual shop or purchase screen was created.",
+      "A desktop source screenshot cannot certify a phone layout, localization or purchase clarity.",
+      "Fixtures establish narrow component behavior and simulated input only."
+    ]
+  },
+  {
+    "id": "workflow-onboarding-evidence",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "First-minute onboarding patterns and missing timing evidence",
+    "summary": "Attached stills show one stated objective, pointer, destination landmark, skip and confirmation. These support layout observations. First-control, first-action and first-reward timing and successful onboarding remain unknown without actual session footage.",
+    "tags": [
+      "successful first-minute onboarding patterns",
+      "onboarding",
+      "first action",
+      "first reward",
+      "session"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "design_recommendation",
+    "evidence_ids": [
+      "evidence-user-001",
+      "evidence-user-003",
+      "evidence-user-004",
+      "evidence-user-007"
+    ],
+    "limitations": [
+      "Success, retention and time-to-action are not inferred from screenshot appearance.",
+      "Import consented session recordings and retain timestamped event/action traces before timing or clarity claims."
+    ]
+  },
+  {
+    "id": "workflow-effects-inspection",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Bounded native effect recipes and resource pooling",
+    "summary": "Three neutral cues, capped resources, priority/reduced-effects admission, reuse, expiry and camera restoration have narrow fixture evidence. Still previews do not establish particle motion or renderer performance.",
+    "tags": [
+      "vfx",
+      "pooling",
+      "telegraph",
+      "impact",
+      "reward",
+      "reduced effects"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "observation",
+    "evidence_ids": [
+      "fixture-creator-effects"
+    ],
+    "local_reports": [
+      "reports/creator_effects_native.json"
+    ],
+    "limitations": [
+      "SETUP_ONLY diagnostic scope; no game, physical hardware, human quality or release acceptance."
+    ]
+  },
+  {
+    "id": "workflow-source-bound-observation",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Camera and state traces tied to actual source readback",
+    "summary": "Native bounded rings retain timestamps, actor positions/velocities, UI bounds/counts and frame/Lua-heap samples. Three fixed cameras and owned overlays restore correctly. Supplied recordings can be aligned; OS recording and deterministic replay are unavailable.",
+    "tags": [
+      "camera",
+      "observation",
+      "source readback",
+      "timestamps",
+      "recording"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "observation",
+    "evidence_ids": [],
+    "local_reports": [
+      "reports/creator_observation_native.json",
+      "artifacts/observation/native-validation.json"
+    ],
+    "limitations": [
+      "SETUP_ONLY diagnostic scope; no game, physical hardware, human quality or release acceptance."
+    ]
+  },
+  {
+    "id": "workflow-world-query-review",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Scoped world geometry, grid, spawn-overlap and sightline review",
+    "summary": "WorldInspector validates conservative bounds/density and bounded include-only overlap/ray queries. Native neutral cases test blocked/clear queries and guards. Results do not prove navigability, accurate mesh contact or player clearance.",
+    "tags": [
+      "world",
+      "spawn",
+      "collision",
+      "sightline",
+      "grid",
+      "density"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "observation",
+    "evidence_ids": [],
+    "local_reports": [
+      "reports/creator_world_native.json"
+    ],
+    "limitations": [
+      "SETUP_ONLY diagnostic scope; no game, physical hardware, human quality or release acceptance."
+    ]
+  },
+  {
+    "id": "workflow-network-fault-review",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Local client/server echo, synthetic faults and disconnect review",
+    "summary": "Actual one/two-client Studio cases retain seeded delay/loss/duplicates, sequence order/dedupe accounting, observed leave and cleanup. The queue is a diagnostic, not production networking. Latency includes synthetic delay and scheduling; broad capacity is unverified.",
+    "tags": [
+      "network",
+      "multiplayer",
+      "disconnect",
+      "loss",
+      "duplicate",
+      "load"
+    ],
+    "status": "partially_verified_on_workbench",
+    "claim_type": "observation",
+    "evidence_ids": [],
+    "local_reports": [
+      "reports/network_native_single.json",
+      "reports/network_native_multiplayer.json"
+    ],
+    "limitations": [
+      "SETUP_ONLY diagnostic scope; no game, physical hardware, human quality or release acceptance."
+    ]
+  },
+  {
+    "id": "workflow-owned-window-recording",
+    "scope": "workbench",
+    "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
+    "type": "workflow",
+    "title": "Owned diagnostic HWND recording and retained decode verification",
+    "summary": "Exact-window PID/start/executable/geometry/ownership checks precede a bounded silent FFmpeg recording. Actual Blender menu/grid crop is retained; no focus/scene mutation, Studio recording, animation motion or replay acceptance claimed.",
+    "claim_type": "observation",
+    "status": "partially_verified_on_workbench",
+    "tags": [
+      "recording",
+      "video",
+      "window",
+      "ownership",
+      "capture",
+      "diagnostic"
+    ],
+    "evidence_ids": [
+      "fixture-owned-window-recording"
+    ],
+    "local_reports": [
+      "artifacts/window-recordings/blender-20261005-crop/receipt.json",
+      "docs/window-recording.md"
+    ],
+    "sources": [
+      {
+        "url": "https://ffmpeg.org/ffmpeg-devices.html#gdigrab",
+        "accessed_at": "2026-10-05"
+      }
+    ],
+    "limitations": [
+      "Conservative occlusion polls are not atomic with frames; GDI may return stale/incomplete GPU pixels.",
+      "Recorded crop omits the mesh; no motion, hearing or scenario synchronization acceptance."
+    ]
+  }
+]

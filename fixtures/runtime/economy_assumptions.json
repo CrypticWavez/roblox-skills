@@ -1,0 +1,10 @@
+{
+  "evidence_kind": "assumption",
+  "description": "Neutral arithmetic fixture only. Not a playable economy or commercial design recommendation.",
+  "sessions": 20,
+  "milestone_costs": [50, 100, 200],
+  "cohorts": [
+    {"id": "fixture_short_session", "initial_balance": 0, "source_per_session": 20, "desired_sink_per_session": 5, "session_minutes": 5},
+    {"id": "fixture_long_session", "initial_balance": 0, "source_per_session": 40, "desired_sink_per_session": 10, "session_minutes": 10}
+  ]
+}

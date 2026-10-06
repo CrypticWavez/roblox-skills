@@ -1,0 +1,58 @@
+{
+  "client": {
+    "lines": [
+      "ENGINE_CHECK {\"check\":\"loaded client/kitsmoke_client_probes\",\"detail\":{\"probes\":1},\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"registries_found\",\"detail\":{\"registries\":1},\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"no_problems\",\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"perf1_valid\",\"detail\":{\"counts\":{\"highlights\":1,\"instances\":2048,\"particle_rate\":15,\"parts\":3,\"playing_sounds\":1,\"shadowed_lights\":1,\"triangles\":15000},\"device_class\":\"desktop\",\"frame_ms\":{\"p50\":16.666666666666668,\"p95\":33.333333333333336,\"p99\":33.333333333333336},\"kind\":\"stats\",\"memory_mb\":{\"graphics_texture\":96,\"lua_heap\":32,\"total\":640},\"schema\":\"perf/1\",\"source\":{\"place\":\"kits-diagnostic-client\"}},\"ok\":true,\"probe\":\"perf_capture_client\"}",
+      "ENGINE_CHECK {\"check\":\"frames_sampled\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
+      "ENGINE_CHECK {\"check\":\"triangles_read\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
+      "ENGINE_CHECK {\"check\":\"client_side\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
+      "ENGINE_DONE {\"checks\":7,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":7,\"probes\":[\"kitsmoke_registries\",\"perf_capture_client\"],\"runtime\":\"lune\"}"
+    ],
+    "summary": {
+      "checks": 7,
+      "errors": 0,
+      "failed": 0,
+      "ok": true,
+      "passed": 7,
+      "probes": [
+        "kitsmoke_registries",
+        "perf_capture_client"
+      ]
+    }
+  },
+  "server": {
+    "lines": [
+      "ENGINE_CHECK {\"check\":\"active_on_diagnostic_place\",\"detail\":{\"active\":true},\"ok\":true,\"probe\":\"kitsmoke_debug_commands\"}",
+      "ENGINE_CHECK {\"check\":\"runs_a_command\",\"detail\":{\"ok\":true,\"result\":7},\"ok\":true,\"probe\":\"kitsmoke_debug_commands\"}",
+      "ENGINE_CHECK {\"check\":\"rejects_bad_args\",\"detail\":\"bad_arg: value must be at most 10\",\"ok\":true,\"probe\":\"kitsmoke_debug_commands\"}",
+      "ENGINE_CHECK {\"check\":\"inert_when_published\",\"detail\":{\"active\":false,\"reason\":\"published_game\"},\"ok\":true,\"probe\":\"kitsmoke_debug_commands\"}",
+      "ENGINE_CHECK {\"check\":\"Observation_target_accepted\",\"detail\":{\"reached_options_check\":true,\"refused\":false},\"ok\":true,\"probe\":\"kitsmoke_inspector_target\"}",
+      "ENGINE_CHECK {\"check\":\"AnimationInspector_target_accepted\",\"detail\":{\"reached_options_check\":true,\"refused\":false},\"ok\":true,\"probe\":\"kitsmoke_inspector_target\"}",
+      "ENGINE_CHECK {\"check\":\"WorldInspector_target_accepted\",\"detail\":{\"reached_options_check\":true,\"refused\":false},\"ok\":true,\"probe\":\"kitsmoke_inspector_target\"}",
+      "ENGINE_CHECK {\"check\":\"loaded server/kitsmoke_probes\",\"detail\":{\"probes\":3},\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"registries_found\",\"detail\":{\"registries\":1},\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"no_problems\",\"ok\":true,\"probe\":\"kitsmoke_registries\"}",
+      "ENGINE_CHECK {\"check\":\"perf1_valid\",\"detail\":{\"counts\":{\"highlights\":1,\"instances\":2048,\"particle_rate\":15,\"parts\":3,\"playing_sounds\":1,\"shadowed_lights\":1},\"device_class\":\"desktop\",\"frame_ms\":{\"p50\":16.666666666666668,\"p95\":33.333333333333336,\"p99\":33.333333333333336},\"kind\":\"stats\",\"memory_mb\":{\"graphics_texture\":0,\"lua_heap\":32,\"total\":480},\"schema\":\"perf/1\",\"source\":{\"place\":\"kits-diagnostic\"}},\"ok\":true,\"probe\":\"perf_capture\"}",
+      "ENGINE_CHECK {\"check\":\"memory_total_read\",\"ok\":true,\"probe\":\"perf_capture\"}",
+      "ENGINE_CHECK {\"check\":\"instance_count_read\",\"ok\":true,\"probe\":\"perf_capture\"}",
+      "ENGINE_CHECK {\"check\":\"world_walk_counted\",\"ok\":true,\"probe\":\"perf_capture\"}",
+      "ENGINE_CHECK {\"check\":\"frame_timing\",\"detail\":{\"running\":true},\"ok\":true,\"probe\":\"perf_capture\"}",
+      "ENGINE_DONE {\"checks\":15,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":15,\"probes\":[\"kitsmoke_debug_commands\",\"kitsmoke_inspector_target\",\"kitsmoke_registries\",\"perf_capture\"],\"runtime\":\"lune\"}"
+    ],
+    "summary": {
+      "checks": 15,
+      "errors": 0,
+      "failed": 0,
+      "ok": true,
+      "passed": 15,
+      "probes": [
+        "kitsmoke_debug_commands",
+        "kitsmoke_inspector_target",
+        "kitsmoke_registries",
+        "perf_capture"
+      ]
+    }
+  }
+}

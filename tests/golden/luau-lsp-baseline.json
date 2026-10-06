@@ -1,0 +1,243 @@
+{
+  "definitions_sha256": "e441a5cefd41d05649e14659b5bc23147bb1637b91ff86b04cbf1f45d8a4573c",
+  "files": {
+    "fixtures/creator/AudioMovement.client.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "fixtures/creator/Effects.client.luau": {
+      "by_type": {
+        "TypeError": 4
+      },
+      "total": 4
+    },
+    "fixtures/creator/MediaPlayback.client.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "fixtures/creator/UI.client.luau": {
+      "by_type": {
+        "TypeError": 6
+      },
+      "total": 6
+    },
+    "fixtures/network/Echo.client.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    },
+    "fixtures/network/Echo.server.luau": {
+      "by_type": {
+        "TypeError": 4
+      },
+      "total": 4
+    },
+    "fixtures/observation/Diagnostic.client.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "fixtures/runtime/Diagnostic.client.luau": {
+      "by_type": {
+        "TypeError": 7
+      },
+      "total": 7
+    },
+    "packages/Creator/AnimationInspector.luau": {
+      "by_type": {
+        "TypeError": 7
+      },
+      "total": 7
+    },
+    "packages/Creator/Effects.luau": {
+      "by_type": {
+        "TypeError": 12
+      },
+      "total": 12
+    },
+    "packages/Creator/Observation.luau": {
+      "by_type": {
+        "TypeError": 4
+      },
+      "total": 4
+    },
+    "packages/Creator/UI.luau": {
+      "by_type": {
+        "TypeError": 101
+      },
+      "total": 101
+    },
+    "packages/Creator/WorldInspector.luau": {
+      "by_type": {
+        "TypeError": 3
+      },
+      "total": 3
+    },
+    "packages/GameKit/EnvRoblox.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/GameKit/Probe.luau": {
+      "by_type": {
+        "TypeError": 3
+      },
+      "total": 3
+    },
+    "packages/GameKit/Retry.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/GameKit/Settings.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/Pipeline/FactorySmoke.luau": {
+      "by_type": {
+        "TypeError": 9
+      },
+      "total": 9
+    },
+    "packages/ProcGen/Cave.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    },
+    "packages/ProcGen/Dungeon.luau": {
+      "by_type": {
+        "TypeError": 11
+      },
+      "total": 11
+    },
+    "packages/ProcGen/Forest.luau": {
+      "by_type": {
+        "TypeError": 9
+      },
+      "total": 9
+    },
+    "packages/ProcGen/Graph.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/ProcGen/Manifest.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/ProcGen/Placement.luau": {
+      "by_type": {
+        "ForRange": 1,
+        "TypeError": 18
+      },
+      "total": 19
+    },
+    "packages/ProcGen/RoomGraph.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    },
+    "packages/ProcGen/Validate.luau": {
+      "by_type": {
+        "TypeError": 8
+      },
+      "total": 8
+    },
+    "packages/Runtime/NativeAudio.luau": {
+      "by_type": {
+        "TypeError": 8
+      },
+      "total": 8
+    },
+    "packages/Runtime/NativeEffects.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/Runtime/NativeUI.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    },
+    "packages/SceneKit/Building.luau": {
+      "by_type": {
+        "TypeError": 24
+      },
+      "total": 24
+    },
+    "packages/SceneKit/Camera.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    },
+    "packages/SceneKit/Layout.luau": {
+      "by_type": {
+        "TypeError": 8
+      },
+      "total": 8
+    },
+    "packages/SceneKit/Lighting.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/SceneKit/Model.luau": {
+      "by_type": {
+        "TypeError": 4
+      },
+      "total": 4
+    },
+    "packages/SceneKit/Props.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/SceneKit/Scene.luau": {
+      "by_type": {
+        "TypeError": 3
+      },
+      "total": 3
+    },
+    "packages/SceneKit/Terrain.luau": {
+      "by_type": {
+        "TypeError": 1
+      },
+      "total": 1
+    },
+    "packages/SceneKit/Validate.luau": {
+      "by_type": {
+        "TypeError": 2
+      },
+      "total": 2
+    }
+  },
+  "luau_lsp": "1.70.1",
+  "note": "No-regression ratchet for tools/luau_analyze.py: per-file diagnostic counts may only go down. Rewrite with --update-baseline and say why in the commit.",
+  "project": "fixtures/kits.project.json",
+  "schema": "luau-lsp-baseline/1",
+  "targets": [
+    "packages",
+    "fixtures"
+  ],
+  "total": 278
+}

@@ -1,0 +1,11 @@
+{
+  "name": "SETUP_ONLY_Workbench_Diagnostic",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": { "Workbench": { "$path": "../packages" } },
+    "StarterPlayer": {
+      "StarterPlayerScripts": { "WorkbenchRuntimeDiagnostic": { "$path": "runtime/Diagnostic.client.luau" } }
+    },
+    "Workspace": { "$properties": { "Gravity": 196.2 } }
+  }
+}

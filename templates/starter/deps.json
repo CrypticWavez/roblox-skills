@@ -1,0 +1,87 @@
+{
+  "schema": "starter-deps/1",
+  "policy": "Allowlist for the optional third-party dependencies of a game repository made by the factory starter. tools/new_project.py --deps <bundle> writes exact pins from here (wally.toml entries use the semver '=' operator; rokit.toml tool pins are exact). The gate step `deps` (tools/check.py) refuses a Wally dependency that is not listed here at exactly this version, a missing or uncommitted wally.lock, a lock entry outside the allowlist, and a THIRD_PARTY_NOTICES.md that does not name every dependency and its licence. Nothing here is installed by the starter: `wally install` downloads code and is an owner step. Dependencies live in ServerPackages/ and DevPackages/ (gitignored) and never inside factory/ (Lune cannot load Wally's instance-require linker modules). The factory packages live in factory/, not packages/: `wally install` first deletes Packages/, ServerPackages/ and DevPackages/, and on case-insensitive filesystems (Windows NTFS, macOS APFS) Packages/ is packages/; the gate step `deps` flags any folder named like a Wally folder in another case. Shared-realm dependencies (wally.toml [dependencies], installed into Packages/) stay refused by tools/new_project.py and the gate step `deps`, the safer choice now that Packages/ collides with nothing: none is allowlisted, they replicate to clients, and release check A01 keeps every Wally folder out of replicated services, so allowing one is a reviewed factory change (an allowlist entry, a ReplicatedStorage mapping and an A01 exception), never a game-repo edit. Versions, licences and sources were checked on 2026-10-06 (docs/research/gameplay-libraries-2026-10.md and tooling-2026-10.md in the factory).",
+  "wally": {
+    "registry": "https://github.com/UpliftGames/wally-index",
+    "tables": {
+      "shared": "dependencies",
+      "server": "server-dependencies",
+      "dev": "dev-dependencies"
+    },
+    "folders": {
+      "shared": "Packages",
+      "server": "ServerPackages",
+      "dev": "DevPackages"
+    }
+  },
+  "packages": {
+    "lm-loleris/profilestore": {
+      "version": "1.0.3",
+      "realm": "server",
+      "alias": "ProfileStore",
+      "license": "Apache-2.0",
+      "source": "https://github.com/MadStudioRoblox/ProfileStore",
+      "attribution": "ProfileStore by loleris (MadStudioRoblox)",
+      "notice": "Licensed under the Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). The upstream repository ships the standard licence text in LICENSE and no NOTICE file (checked 2026-10-06); keep that LICENSE with any copy of the package you redistribute.",
+      "reason": "Session-locked, auto-saving player profiles; wrapped by GameKit/PlayerData through injection (the module is passed in, never required by the kit)."
+    },
+    "jsdotlua/jest": {
+      "version": "3.10.0",
+      "realm": "dev",
+      "alias": "Jest",
+      "license": "MIT",
+      "source": "https://github.com/jsdotlua/jest-lua",
+      "attribution": "Jest Lua, Copyright (c) 2017-2023 Roblox Corporation",
+      "notice": "MIT licence (https://github.com/jsdotlua/jest-lua/blob/main/LICENSE). Dev-only: mapped by studio-tests.project.json, never by default.project.json.",
+      "reason": "In-Studio tests for Roblox-API logic that Lune cannot run."
+    },
+    "jsdotlua/jest-globals": {
+      "version": "3.10.0",
+      "realm": "dev",
+      "alias": "JestGlobals",
+      "license": "MIT",
+      "source": "https://github.com/jsdotlua/jest-lua",
+      "attribution": "Jest Lua, Copyright (c) 2017-2023 Roblox Corporation",
+      "notice": "MIT licence (https://github.com/jsdotlua/jest-lua/blob/main/LICENSE). Dev-only.",
+      "reason": "describe/it/expect globals for Jest Lua specs."
+    }
+  },
+  "transitive_scopes": {
+    "jsdotlua": {
+      "bundle": "studio-tests",
+      "license": "MIT",
+      "why": "Jest Lua 3.10.0 depends on further jsdotlua packages; wally.lock records their exact versions."
+    }
+  },
+  "tools": {
+    "wally": {
+      "pin": "UpliftGames/wally@0.3.2",
+      "license": "MPL-2.0",
+      "source": "https://github.com/UpliftGames/wally",
+      "note": "Last release 2023-06-05; the registry still serves ProfileStore and Jest Lua. Wally's registry upload and login commands are never run here (private = true in wally.toml)."
+    },
+    "blink": {
+      "pin": "1Axen/blink@0.18.9",
+      "license": "MIT",
+      "source": "https://github.com/1Axen/blink",
+      "note": "Release v0.18.9 (19 Sep) ships blink-linux-x86_64.tar.xz (checked 2026-10-06); Rokit reads .tar.xz artifacts from 1.2.0. 0.18.9 fixed NaN values bypassing inexact range validation, so do not pin lower. Compiles *.blink schemas into validated remote code; no runtime library."
+    }
+  },
+  "bundles": {
+    "persistence": {
+      "packages": ["lm-loleris/profilestore"],
+      "tools": ["wally"],
+      "why": "Player data with session locking (GameKit/PlayerData takes the ProfileStore module as a parameter)."
+    },
+    "studio-tests": {
+      "packages": ["jsdotlua/jest", "jsdotlua/jest-globals"],
+      "tools": ["wally"],
+      "why": "Jest Lua specs that run inside Studio (studio-tests.project.json)."
+    },
+    "networking": {
+      "packages": [],
+      "tools": ["blink"],
+      "why": "Blink-compiled remotes (net/*.blink); the gate step `blink` compiles them."
+    }
+  }
+}

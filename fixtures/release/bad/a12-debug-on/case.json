@@ -1,0 +1,12 @@
+{
+  "expect": "A12",
+  "why": "Config turns Studio-only debug commands on",
+  "replace": {
+    "src/shared/Config.luau": [
+      [
+        "debugCommands = false",
+        "debugCommands = true"
+      ]
+    ]
+  }
+}

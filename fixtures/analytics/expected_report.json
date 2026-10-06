@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "status": "partially_verified",
+  "mode": "offline_report",
+  "window": {
+    "start_inclusive": "2026-10-05T12:00:00+00:00",
+    "end_exclusive": "2026-10-05T12:10:00+00:00"
+  },
+  "synthetic_opt_in": true,
+  "duplicate_events_ignored": 0,
+  "excluded_events": {
+    "test_or_staging_events": 1
+  },
+  "anomalies": {},
+  "cohorts": [
+    {
+      "cohort_id": "c_fixture",
+      "build_id": "b_fixture",
+      "acquisition": "home_recommendation",
+      "synthetic": true,
+      "sessions_started": 2,
+      "excluded_from_60s_denominator": 1,
+      "excluded_from_5m_denominator": 1,
+      "load_success": {
+        "numerator": 1,
+        "denominator": 2,
+        "rate": 0.5
+      },
+      "load_failure": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0.0
+      },
+      "first_action_within_60s": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "onboarding_within_5m": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "ordered_core_loop_within_5m": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "observed_exit_before_60s": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "session_error": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0.0
+      },
+      "social_action": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0.0
+      },
+      "progression_step": {
+        "numerator": 0,
+        "denominator": 2,
+        "rate": 0.0
+      },
+      "offer_to_prompt": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "prompt_to_confirmation": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "time_to_first_action_seconds": {
+        "sample_sessions": 1,
+        "p50": 12.0,
+        "p95": 12.0,
+        "population": "ordered converters only"
+      },
+      "loading_seconds": {
+        "sample_sessions": 1,
+        "p50": 4.0,
+        "p95": 4.0
+      },
+      "economy_units": {
+        "sources": 10,
+        "sinks": 4,
+        "net": 6
+      }
+    },
+    {
+      "cohort_id": "c_fixture",
+      "build_id": "b_fixture",
+      "acquisition": "sponsored_ads",
+      "synthetic": true,
+      "sessions_started": 1,
+      "excluded_from_60s_denominator": 0,
+      "excluded_from_5m_denominator": 0,
+      "load_success": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "load_failure": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "first_action_within_60s": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "onboarding_within_5m": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "ordered_core_loop_within_5m": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "observed_exit_before_60s": {
+        "numerator": 1,
+        "denominator": 1,
+        "rate": 1.0
+      },
+      "session_error": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "social_action": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "progression_step": {
+        "numerator": 0,
+        "denominator": 1,
+        "rate": 0.0
+      },
+      "offer_to_prompt": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "prompt_to_confirmation": {
+        "numerator": 0,
+        "denominator": 0,
+        "rate": null
+      },
+      "time_to_first_action_seconds": {
+        "sample_sessions": 0,
+        "p50": null,
+        "p95": null,
+        "population": "ordered converters only"
+      },
+      "loading_seconds": {
+        "sample_sessions": 0,
+        "p50": null,
+        "p95": null
+      },
+      "economy_units": {
+        "sources": 0,
+        "sinks": 0,
+        "net": 0
+      }
+    }
+  ],
+  "limitations": [
+    "Session metrics only; no persistent player identity, D1/D7 retention, revenue, or unique-player count is inferred.",
+    "The input must be a complete session event export through the declared end; this tool cannot detect silent telemetry loss.",
+    "Window-edge sessions lack follow-up and are excluded from fixed-horizon denominators.",
+    "Purchase metrics are observed session funnels, not durable purchase accounting or lifetime conversion; delayed receipts can arrive in other sessions.",
+    "No discovery ranking prediction, revenue estimate, causal effect, or human enjoyment claim.",
+    "Synthetic cohorts are separated and never treated as observed players."
+  ],
+  "input_sha256": "c9119beb7244a94d756f83900087e6ef2f67208c5d3100cfb7baa966a1c2a58a"
+}

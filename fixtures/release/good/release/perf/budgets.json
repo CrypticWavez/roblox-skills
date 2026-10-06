@@ -1,0 +1,17 @@
+{
+  "schema": "perf/1",
+  "kind": "budgets",
+  "note": "Synthetic fixture values; they are not recommended budgets.",
+  "classes": {
+    "desktop": {
+      "frame_ms_p95": 16.7,
+      "memory_mb": 1500,
+      "instances": 50000
+    },
+    "phone": {
+      "frame_ms_p95": 33.3,
+      "memory_mb": 700,
+      "instances": 20000
+    }
+  }
+}

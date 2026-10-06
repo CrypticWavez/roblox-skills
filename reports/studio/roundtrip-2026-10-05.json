@@ -1,0 +1,198 @@
+{
+  "date": "2026-10-05",
+  "studio": {
+    "version": "0.741.19",
+    "place": "SETUP_ONLY_Factory_Diagnostic (unpublished, placeId 0, never saved to Roblox)"
+  },
+  "driver": "Studio MCP execute_luau from a Claude Code session on the owner's PC; imports done by hand with Import 3D",
+  "inspector": "packages/Pipeline/ImportInspector.luau at 9c024fb, default EditableMesh triangle reader (no options)",
+  "importer_settings": {
+    "Scale Unit": "Stud",
+    "Insert In Workspace": true,
+    "Insert Using Scene Position": "requested on; v1 landed 4.8 studs up, so unconfirmed for v1",
+    "CollisionFidelity": "Default",
+    "other": "defaults"
+  },
+  "importer_output": "Model named after the file (SM_RoundTripMarker_vN) containing MeshPart SM_RoundTripMarker",
+  "uploads": "Each Import 3D created a private mesh asset on the owner's account (2 so far, approved for this marker). Asset ids are kept out of this public repo.",
+  "v1": {
+    "file": "build/roundtrip/SM_RoundTripMarker_v1.fbx (built at 9c12091, geometry identical to 9c024fb/1eee84a v1)",
+    "expectation": "roblox_expectation_v1.json from 9c024fb",
+    "report": {
+      "pass": false,
+      "checks": [
+        {
+          "value": 1,
+          "expected": ">=1",
+          "name": "mesh_present",
+          "pass": true
+        },
+        {
+          "name": "scale",
+          "value": [
+            4,
+            7,
+            3.5000007152557373
+          ],
+          "expected": [
+            4,
+            7,
+            3.5
+          ],
+          "pass": true
+        },
+        {
+          "name": "orientation_unrotated",
+          "value": false,
+          "expected": false,
+          "pass": true,
+          "detail": "imported parts should arrive with identity rotation"
+        },
+        {
+          "name": "pivot_base_centre",
+          "value": [
+            0,
+            4.800004959106445,
+            0.9999567270278931
+          ],
+          "expected": [
+            0,
+            4.800004959106445,
+            0.24995756149291992
+          ],
+          "pass": false,
+          "detail": "set PivotOffset or fix origin in Blender"
+        },
+        {
+          "name": "orientation_front",
+          "value": {
+            "front": -0.6203700797874993,
+            "up": 3.5597224723460386e-08
+          },
+          "expected": {
+            "front": -0.62,
+            "up": 0
+          },
+          "pass": true
+        },
+        {
+          "name": "collision_fidelity",
+          "value": 0,
+          "expected": 0,
+          "pass": true,
+          "detail": "Box/Hull/Default for props"
+        },
+        {
+          "value": 0,
+          "pass": true,
+          "name": "appearance_bound",
+          "detail": "informational: vertex/material colours may import as part colour only"
+        }
+      ]
+    },
+    "notes": [
+      "pivot sits 0.75 studs behind the base centre: Studio puts the model pivot at the file origin and the marker's origin was at Blender y=-0.75; fixed in 1eee84a by exporting at the world origin",
+      "MeshPart colour is plain grey; MAT_Front orange is lost (no TextureID, no SurfaceAppearance)",
+      "screen_capture from -Z shows the nose facing the camera (capture kept on the owner's PC)"
+    ]
+  },
+  "v2": {
+    "file": "build/roundtrip/SM_RoundTripMarker_v2.fbx (pre-fix export: object at Blender y=-1.25)",
+    "expectation": "roblox_expectation_v2.json from 1eee84a",
+    "report": {
+      "pass": false,
+      "checks": [
+        {
+          "value": 1,
+          "expected": ">=1",
+          "name": "mesh_present",
+          "pass": true
+        },
+        {
+          "name": "scale",
+          "value": [
+            4,
+            8,
+            4.500000953674316
+          ],
+          "expected": [
+            4,
+            8,
+            4.5
+          ],
+          "pass": true
+        },
+        {
+          "name": "orientation_unrotated",
+          "value": false,
+          "expected": false,
+          "pass": true,
+          "detail": "imported parts should arrive with identity rotation"
+        },
+        {
+          "name": "pivot_base_centre",
+          "value": [
+            0,
+            0,
+            0
+          ],
+          "expected": [
+            0,
+            -2.384185791015625e-07,
+            -1.2499990463256836
+          ],
+          "pass": false,
+          "detail": "set PivotOffset or fix origin in Blender"
+        },
+        {
+          "name": "orientation_front",
+          "value": {
+            "front": -1.0262850551951157,
+            "up": -0.049714239792852055
+          },
+          "expected": {
+            "front": -1.026,
+            "up": -0.05
+          },
+          "pass": true
+        },
+        {
+          "name": "collision_fidelity",
+          "value": 0,
+          "expected": 0,
+          "pass": true,
+          "detail": "Box/Hull/Default for props"
+        },
+        {
+          "value": 0,
+          "pass": true,
+          "name": "appearance_bound",
+          "detail": "informational: vertex/material colours may import as part colour only"
+        }
+      ]
+    },
+    "notes": [
+      "pivot fails by +1.25 studs on Z, matching the pre-fix file exactly (Blender read of that FBX: object y=-1.25, world Y -3.5..1.0); the 1eee84a file has the object at the origin with world Y -2.25..2.25, Z 0..8",
+      "MeshPart colour grey again"
+    ]
+  },
+  "compare_revisions": {
+    "changed": true,
+    "sizeBefore": [
+      4,
+      7,
+      3.5000007152557373
+    ],
+    "sizeAfter": [
+      4,
+      8,
+      4.500000953674316
+    ]
+  },
+  "conclusions": [
+    "Default FBX export (bkit.ops.export_fbx) plus Import 3D with Scale Unit = Stud maps 1 Blender unit to 1 stud and Blender -Y (front) to Roblox -Z: facing matched the mesh measurement for both revisions.",
+    "Studio sets an imported model's pivot at the FBX file origin, not at the object origin: assets must be exported with their origin at the world origin.",
+    "Per-material base colours do not survive Import 3D: colour needs a baked texture (or SurfaceAppearance) to carry over.",
+    "Import 3D uploads the mesh; there is no local-only import path."
+  ]
+}

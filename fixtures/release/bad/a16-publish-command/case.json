@@ -1,0 +1,4 @@
+{
+  "expect": "A16",
+  "why": "a committed script holds a publish-capable command (files/scripts/ship.sh.tmpl)"
+}

@@ -1,0 +1,10 @@
+{
+  "expect": "A17",
+  "why": "the store icon is 500x500; the icon template is 512x512",
+  "images": {
+    "art/icon.png": [
+      500,
+      500
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "roblox-factory",
+  "owner": {
+    "name": "Roblox factory maintainers"
+  },
+  "metadata": {
+    "description": "Repo-local Claude Code plugins for the Roblox production factory. Add with `/plugin marketplace add ./` from the repository root (docs/pc-setup.md)."
+  },
+  "plugins": [
+    {
+      "name": "luau-lsp",
+      "source": "./plugins/luau-lsp",
+      "description": "Luau diagnostics and navigation through luau-lsp 1.70.1, with the Roblox definitions pinned in luau-defs.lock.json.",
+      "category": "development"
+    }
+  ]
+}

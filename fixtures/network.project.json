@@ -1,0 +1,22 @@
+{
+  "name": "SETUP_ONLY_Workbench_Network_Diagnostic",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "WorkbenchNetwork": {
+        "$className": "Folder",
+        "FaultQueue": { "$path": "../packages/Diagnostics/FaultQueue.luau" },
+        "Settings": { "$path": "network/Settings.luau" },
+        "SourceManifest": { "$path": "../build/network/SourceManifest.luau" }
+      }
+    },
+    "ServerScriptService": {
+      "WorkbenchNetworkEcho": { "$path": "network/Echo.server.luau" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "WorkbenchNetworkEcho": { "$path": "network/Echo.client.luau" }
+      }
+    }
+  }
+}

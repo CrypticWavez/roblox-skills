@@ -1,0 +1,9 @@
+# Toolchain pins (rokit 1.2): `rokit install` in the repository root installs them.
+# luau-lsp 1.70.1 (2026-09-27). In the factory, tools/luau_analyze.py and the plugins/luau-lsp
+# Claude plugin run this binary with the Roblox definitions pinned in luau-defs.lock.json.
+[tools]
+rojo = "rojo-rbx/rojo@7.7.0"
+lune = "lune-org/lune@0.10.5"
+stylua = "JohnnyMorganz/StyLua@2.5.2"
+selene = "Kampfkarren/selene@0.31.0"
+luau-lsp = "JohnnyMorganz/luau-lsp@1.70.1"

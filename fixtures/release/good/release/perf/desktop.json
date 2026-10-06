@@ -1,0 +1,19 @@
+{
+  "schema": "perf/1",
+  "kind": "stats",
+  "device_class": "desktop",
+  "frame_ms": {
+    "p50": 8,
+    "p95": 12,
+    "p99": 15
+  },
+  "memory_mb": {
+    "total": 900
+  },
+  "counts": {
+    "instances": 20000
+  },
+  "source": {
+    "place": "synthetic fixture"
+  }
+}

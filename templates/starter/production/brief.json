@@ -1,0 +1,48 @@
+{
+  "schema": "game-brief/1",
+  "name": "{{NAME}}",
+  "pitch": "TBD",
+  "pillars": "TBD",
+  "genre": {
+    "primary": "TBD",
+    "subgenre": "TBD"
+  },
+  "theme_and_setting": "TBD",
+  "world": "TBD",
+  "characters": "TBD",
+  "core_loop": "TBD",
+  "progression": "TBD",
+  "economy": "TBD",
+  "monetization": "TBD",
+  "social": "TBD",
+  "ui_direction": "TBD",
+  "art_direction": "TBD",
+  "audio_direction": "TBD",
+  "audience": {
+    "age_target": "TBD",
+    "maturity_label": "TBD"
+  },
+  "devices": "TBD",
+  "players_per_server": {
+    "max": "TBD",
+    "preferred": "TBD"
+  },
+  "session_minutes": "TBD",
+  "locales": {
+    "source": "TBD",
+    "targets": "TBD"
+  },
+  "kits": "TBD",
+  "engine": {
+    "authority_mode": "TBD",
+    "streaming_enabled": "TBD",
+    "signal_behavior": "TBD",
+    "lighting_style": "TBD",
+    "prioritize_lighting_quality": "TBD",
+    "avatar_type": "TBD",
+    "default_listener_location": "TBD"
+  },
+  "references": [],
+  "success_metrics": "TBD",
+  "open_questions": []
+}
