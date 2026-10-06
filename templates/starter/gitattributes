@@ -1,0 +1,6 @@
+# LF everywhere (StyLua and the gate expect Unix line endings, also on Windows checkouts).
+* text=auto eol=lf
+*.rbxl binary
+*.rbxm binary
+*.fbx binary
+*.png binary

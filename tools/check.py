@@ -181,6 +181,55 @@ def check_fixtures(gate, update):
     gate.add("fixture-hashes", "FAIL" if detail else "PASS", detail)
 
 
+def check_starter(gate, strict):
+    """starter-smoke: scaffold a game repo with tools/new_project.py into a temp dir and run that repo's
+    own gate there (StyLua, JSON, secrets, skills, hooks, Selene, Lune specs, Rojo build), then check
+    the starter's refusals (dest inside the factory, non-empty dest) and --update (no-op on a fresh
+    copy, refused after a package was edited in the game repo)."""
+    import tempfile
+
+    missing = [tool for tool in ("lune", "stylua", "rojo") if shutil.which(tool) is None]
+    if missing:
+        gate.add("starter-smoke", "SKIPPED", f"{', '.join(missing)} not installed")
+        return
+    start, problems, inner = time.time(), [], ""
+    new_project = [sys.executable, "tools/new_project.py"]
+
+    def expect(args, code, text):
+        got, out, _ = run(new_project + args)
+        if got != code or text not in out:
+            problems.append(f"FAIL new_project.py {' '.join(args)}: wanted exit {code} and '{text}', got {got}: {headline(out)}")
+
+    with tempfile.TemporaryDirectory(prefix="starter-smoke-") as tmp:
+        dest = Path(tmp) / "StarterSmoke"
+        code, out, _ = run(new_project + [str(dest)])
+        if code != 0:
+            problems.append(f"FAIL scaffold: {headline(out)}\n{out}")
+        else:
+            if (ROOT / "roblox.yml").exists():  # Selene's generated Roblox std (CI); avoids a second download
+                shutil.copy(ROOT / "roblox.yml", dest / "roblox.yml")
+            cmd = [sys.executable, "tools/check.py", "--tier", "pre-commit"] + (["--strict"] if strict else [])
+            try:
+                proc = subprocess.run(cmd, cwd=dest, capture_output=True, text=True, timeout=300)
+                code, inner = proc.returncode, (proc.stdout + proc.stderr).strip()
+            except subprocess.TimeoutExpired as err:
+                code, inner = 124, f"game-repo gate timed out after {err.timeout}s"
+            report_path = dest / "build" / "check-report.json"
+            report = json.loads(report_path.read_text()) if report_path.exists() else {}
+            status = {r["name"]: r["status"] for r in report.get("results", [])}
+            not_passed = [s for s in ("stylua", "skills-sync", "lune-specs", "rojo-build") if status.get(s) != "PASS"]
+            if code != 0 or not_passed:
+                problems.append(f"FAIL game-repo gate: failed={report.get('failed')} not passed={not_passed}")
+            expect([str(ROOT / "build" / "starter-inside")], 2, "overlaps the factory")
+            expect([str(dest)], 2, "is not empty")
+            expect(["--update", str(dest)], 0, "unchanged")
+            rng = dest / "packages" / "ProcGen" / "Rng.luau"
+            rng.write_text(rng.read_text() + "-- local edit\n")
+            expect(["--update", str(dest)], 2, "edited here")
+    detail = "\n".join(problems + ([inner] if inner else []))
+    gate.add("starter-smoke", "FAIL" if problems else "PASS", detail, round(time.time() - start, 1))
+
+
 def blender_cmd():
     if importlib.util.find_spec("bpy") is not None:
         return [sys.executable, "tools/blender/factory.py"]
@@ -217,6 +266,7 @@ def main():
         for script in INHERITED_SPECS:  # the first pass's own Lune suites, re-run here
             gate.cmd(f"inherited-{Path(script).parent.name}-{Path(script).stem}", ["lune", "run", script], needs="lune")
         check_fixtures(gate, args.update_golden)
+        check_starter(gate, args.strict)
     if args.tier == "pre-release":
         blender = blender_cmd()
         if blender is None:

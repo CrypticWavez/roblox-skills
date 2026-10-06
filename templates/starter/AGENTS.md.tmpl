@@ -1,0 +1,48 @@
+# {{NAME}}: agent instructions
+
+Shared by Claude Code (via `CLAUDE.md`) and Codex. Keep this file short. This repository was created by the Roblox production factory's project starter for an explicit game-build request; `starter.json` records the factory commit and the packages copied.
+
+## Boundary
+- Production skills apply here: this is the game repository the build request asked for.
+- Game content follows the decisions below. A field that is still TBD is not decided: ask the owner and do not build content for it.
+- Never publish a place, upload assets, create or change live products (passes, developer products, subscriptions, prices), spend Robux, buy tools or assets, run ads, or write production data stores without the owner's explicit approval of that specific action. The owner performs approved publishes.
+- Studio work targets an unpublished test place (the skills call it the diagnostic place) unless the owner names another place for the task.
+- No secrets, tokens, cookies or machine-specific paths in files, logs or commits.
+
+## Game decisions
+Filled from the game-build request and the owner's later answers, never guessed. Log every decision (date, decision, who decided, source) in `docs/decisions.md`, then update the row here.
+
+| Field | Decision |
+|---|---|
+| Genre | TBD |
+| Theme and setting | TBD |
+| World, maps and levels | TBD |
+| Characters, NPCs and enemies | TBD |
+| Core loop and progression | TBD |
+| Economy and monetization | TBD |
+| UI direction | TBD |
+| Art direction and asset sources | TBD |
+| Target devices and players per server | TBD |
+
+## Where things are
+| Need | Go to |
+|---|---|
+| Game code | `src/server`, `src/client`, `src/shared` (Rojo: `default.project.json`) |
+| Factory packages (scene authoring, procedural generation, import checks) | `packages/`, synced to `ReplicatedStorage.Workbench` |
+| Specs | `tests/*.spec.luau`, run by `lune run tests/run.luau` |
+| Gate | `python3 tools/check.py [--tier fast] [--strict]` |
+| Skills | `.agents/skills/` (Codex), mirrored to `.claude/skills/` by `python3 tools/sync_skills.py` |
+| Decisions | `docs/decisions.md` |
+
+## Factory packages and references
+- `packages/` are copies of the factory's packages. Fix package bugs in the factory, then pull them here: on a clean branch, run the factory's `python3 tools/new_project.py --update <this repo>` and review `git diff`. It refuses when a package was edited here (its hash no longer matches `starter.json`).
+- The copied skills also name factory-only paths (`tools/blender/`, `tools/lune/`, `fixtures/`, `docs/`, `knowledge/`). Those live in the factory repository at the commit in `starter.json`; do Blender asset and research work there. Where a skill says `fixtures/factory.project.json`, use `default.project.json` here.
+
+## Working rules
+- Read the skill for the task, not the whole repo. Retrieve with `rg`.
+- New Luau logic gets a Lune spec in `tests/`. Never skip or weaken a test or validation rule to get green.
+- Before committing: `python3 tools/check.py`. CI runs it with `--strict`.
+- One writer per Studio session and per file set.
+
+## Verification language
+VERIFIED_STRONG, VERIFIED_ACCEPTABLE, WEAK, PARTIAL, BROKEN, MISSING, OUTDATED, REDUNDANT, BLOCKED_EXTERNAL, INTENTIONALLY_EXCLUDED. Verified means a representative execution produced observed output. Files, docs, configs or screenshots alone are not verification.

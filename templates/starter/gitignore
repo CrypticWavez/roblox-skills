@@ -1,0 +1,9 @@
+build/
+__pycache__/
+*.pyc
+.venv/
+roblox.yml
+sourcemap.json
+*.rbxl.lock
+*.rbxlx.lock
+.claude/settings.local.json

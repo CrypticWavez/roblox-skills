@@ -1,0 +1,8 @@
+@AGENTS.md
+
+## Claude Code specifics
+- Skills: `.claude/skills/` (generated from `.agents/skills/`; edit the source and run `python3 tools/sync_skills.py`, which also enforces the ten `##` sections every SKILL.md has).
+- Hooks (`.claude/settings.json`, scripts in `tools/hooks/`, copied from the factory): FAST_ON_EDIT checks the touched file (format, JSON, secrets, SKILL.md); PreToolUse guards deny publishing, uploads, completed purchases, Roblox web-API/Open Cloud writes and force-pushes to main, and ask before asset-creating Studio tools, purchase prompts and DataStore writes. `node tools/hooks/selftest.mjs` (part of the gate) tests them. Node is required for hooks.
+- MCP (`.mcp.json`): `Roblox_Studio` (built-in Studio server). Blender work happens in the factory.
+- First run in a new checkout: accept the workspace trust prompt and approve the project MCP server.
+- Keep replies compact: cite report paths and commands instead of pasting large output.

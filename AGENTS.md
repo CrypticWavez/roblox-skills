@@ -22,6 +22,7 @@ This repo builds reusable tools, neutral fixtures and research. It does not star
 | Capability status and open gaps | `reports/gap-matrix.json` (canonical: edit this, then `python3 tools/gap_matrix.py`); `docs/gap-matrix.md` is generated, never hand-edited |
 | Inherited first-pass runtime/creator/diagnostic modules | `packages/Runtime`, `packages/Creator`, `packages/Diagnostics`, `fixtures/` |
 | Research | `docs/research/`, `knowledge/records/` |
+| New game repository (explicit game-build request only) | skill `project-bootstrap`, `tools/new_project.py`, `docs/starter.md` |
 
 Skills live in `.agents/skills/` (Codex) and are mirrored to `.claude/skills/` (Claude) by `python3 tools/sync_skills.py`. Edit only `.agents/skills/`.
 
