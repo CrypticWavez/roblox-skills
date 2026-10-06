@@ -8,6 +8,7 @@ Record scope `repo`: every path the record cites exists in this repository. Scop
 
 | Doc | Title |
 |---|---|
+| [tooling-2026-10-addendum.md](../docs/research/tooling-2026-10-addendum.md) | Tooling research addendum (verified 2026-10-06) |
 | [tooling-2026-10.md](../docs/research/tooling-2026-10.md) | Roblox Game-Production Workbench: Tooling Research (verified 2026-10-05) |
 
 ## Knowledge records

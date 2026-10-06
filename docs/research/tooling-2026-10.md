@@ -205,7 +205,7 @@ Corrections and resolved UNVERIFIEDs:
 - https://learn.chatgpt.com/docs/build-skills , https://learn.chatgpt.com/docs/agent-configuration/agents-md
 
 Back-fill sources (fetched 2026-10-06):
-- https://crates.io/api/v1/crates/{rojo,stylua,selene,wally,pesde,rokit,lune,aftman,foreman,run-in-roblox}
+- `https://crates.io/api/v1/crates/<name>` for rojo, stylua, selene, wally, pesde, rokit, lune, aftman, foreman and run-in-roblox
 - https://github.com/UpliftGames/wally/releases , https://github.com/JohnnyMorganz/luau-lsp , https://github.com/JohnnyMorganz/luau-lsp/releases , https://github.com/jsdotlua/jest-lua/releases , https://github.com/Roblox/testez , https://github.com/rojo-rbx/run-in-roblox , https://github.com/rojo-rbx/rokit/releases , https://github.com/Roblox/studio-rust-mcp-server
 - https://pypi.org/project/mcp-for-blender/
 - https://registry.npmjs.org/-/v1/search?text=%40anthropic-ai%2Fclaude-code , https://registry.npmjs.org/-/v1/search?text=%40openai%2Fcodex
