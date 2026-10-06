@@ -1492,4 +1492,50 @@ test("chooseBackend keeps Studio on memory and builds DataStore and ProfileStore
 	end)
 end)
 
+test("chooseBackend fails closed: an unknown place builds no DataStore or ProfileStore", function(t)
+	local env = FakeEnv.new()
+	local requested = {}
+	local service = {
+		GetDataStore = function(_self: any, name: string): any
+			table.insert(requested, name)
+			return FakeDataStore.new()
+		end,
+	}
+	local world = FakeProfileStore.world(env)
+	for _, place in { false, { gameId = 5, placeId = 6 }, { isStudio = "no", gameId = 5, placeId = 6 } } do
+		env.place = if place == false then nil else place :: any
+		local ds, dsKind = PlayerDataRoblox.chooseBackend({
+			storeName = "PlayerData",
+			kind = "datastore",
+			dataStoreService = service,
+			serverId = "job",
+			now = env.clock,
+		}, env)
+		t.eq({ dsKind, ds.name }, { "memory", "memory" }, "a place that is not known to be live is Studio")
+		local _, psKind = PlayerDataRoblox.chooseBackend(
+			{ storeName = "PlayerData", profileStore = world:server("x") },
+			env
+		)
+		t.eq(psKind, "memory")
+	end
+	t.eq(requested, {}, "no DataStore is opened when the place is unknown")
+	-- the explicit opt-in still reaches DataStores; a known live place needs none
+	env.place = nil
+	local _, optInKind = PlayerDataRoblox.chooseBackend({
+		storeName = "PlayerData",
+		dataStoreService = service,
+		allowStudioDataStores = true,
+		serverId = "job",
+		now = env.clock,
+	}, env)
+	t.eq(optInKind, "datastore")
+	env.place = { isStudio = false, gameId = 5, placeId = 6 }
+	local _, liveKind = PlayerDataRoblox.chooseBackend(
+		{ storeName = "PlayerData", dataStoreService = service, serverId = "job", now = env.clock },
+		env
+	)
+	t.eq(liveKind, "datastore")
+	t.eq(requested, { "PlayerData", "PlayerData" })
+end)
+
 return cases

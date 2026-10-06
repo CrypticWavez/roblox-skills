@@ -5,7 +5,8 @@
 -- join (cancelled if they leave first), releases it on leave, kicks a player whose data could
 -- not load or whose session was lost (another server took it), runs the autosave scheduler and
 -- flushes every session in game:BindToClose. chooseBackend() picks the storage: memory in Studio
--- unless DataStores are explicitly allowed, else DataStores or an injected ProfileStore.
+-- or an unknown place unless DataStores are explicitly allowed, else DataStores or an injected
+-- ProfileStore.
 -- The probe proves the wiring against the real task scheduler and Players with the memory
 -- backend; real DataStore and ProfileStore sessions only run in a published game (T4, owner).
 local PlayerData = require("./PlayerData")
@@ -32,7 +33,7 @@ end
 export type BackendChoice = {
 	storeName: string,
 	kind: ("auto" | "memory" | "datastore" | "profilestore")?,
-	allowStudioDataStores: boolean?, -- Studio uses memory unless this is true
+	allowStudioDataStores: boolean?, -- Studio (or an unknown place) uses memory unless this is true
 	dataStoreService: any?, -- default env.services.DataStoreService
 	profileStore: any?, -- the ProfileStore module (required for kind profilestore)
 	serverId: string?, -- game.JobId (empty in Studio: a random id is used)
@@ -44,6 +45,8 @@ export type BackendChoice = {
 -- Picks and builds a PlayerData backend. Returns (backend, kindUsed). kind "auto" means
 -- profilestore when a ProfileStore module is given, else datastore; Studio falls back to memory
 -- unless allowStudioDataStores (so a Studio play test never writes to the game's DataStores).
+-- Only a known live place (env.place.isStudio == false) builds a store without that opt-in: a
+-- missing env.place counts as Studio (fail closed; EnvRoblox fills it from RunService).
 function PlayerDataRoblox.chooseBackend(choice: BackendChoice, env: any): (any, string)
 	assert(type(choice) == "table", "PlayerDataRoblox.chooseBackend: options required")
 	assert(
@@ -54,7 +57,7 @@ function PlayerDataRoblox.chooseBackend(choice: BackendChoice, env: any): (any, 
 	if kind == "auto" then
 		kind = if choice.profileStore ~= nil then "profilestore" else "datastore"
 	end
-	local inStudio = env.place ~= nil and env.place.isStudio == true
+	local inStudio = not (type(env.place) == "table" and env.place.isStudio == false)
 	if kind == "memory" or (inStudio and not choice.allowStudioDataStores) then
 		return PlayerData.memoryBackend({ serverId = "studio" }), "memory"
 	end

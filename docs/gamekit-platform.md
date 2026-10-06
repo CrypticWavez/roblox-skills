@@ -48,7 +48,7 @@ local GameKit = game:GetService("ReplicatedStorage").Packages.GameKit
 local Env = require(GameKit.Env)
 local env = Env.studio() -- EnvRoblox: task.*, time(), GetService; also correct on live servers
 
--- 1. Player data: memory in Studio, DataStores or an injected ProfileStore live.
+-- 1. Player data: memory in Studio (or with no env.place), DataStores or an injected ProfileStore live.
 local backend = PlayerDataRoblox.chooseBackend({ storeName = "player_data", kind = "auto", profileStore = ProfileStore }, env)
 local store = PlayerData.new({ template = { currencies = {}, settings = {} }, version = 1, backend = backend }, env)
 local data = PlayerDataRoblox.bind(store, { game = game }, env)
@@ -121,7 +121,7 @@ Backends:
 
 `store:load(userId, { cancel })` refuses with a closed reason (`locked`, `corrupt`, `newer_schema`, `migration_failed`, `too_large`, ...) and leaves stored data untouched. A newer schema is never downgraded.
 
-`PlayerDataRoblox.chooseBackend({ storeName, kind, profileStore, allowStudioDataStores, ... }, env)` picks storage: memory in Studio unless DataStores are explicitly allowed. `PlayerDataRoblox.bind(store, { game, kickOnFailure?, kickMessage? }, env)` loads on join, releases on leave, kicks a player whose data could not load or whose session was lost, runs autosave and flushes in `BindToClose`. It returns `loaded` and `failed` signals, `sessionFor(player)`, `waitForSession(player, timeout?)` and `unbind()`.
+`PlayerDataRoblox.chooseBackend({ storeName, kind, profileStore, allowStudioDataStores, ... }, env)` picks storage: memory in Studio unless DataStores are explicitly allowed. Only a known live place (`env.place.isStudio == false`, which EnvRoblox reads from RunService) builds a DataStore or ProfileStore backend without that opt-in; an env with no `place` counts as Studio and gets memory. `PlayerDataRoblox.bind(store, { game, kickOnFailure?, kickMessage? }, env)` loads on join, releases on leave, kicks a player whose data could not load or whose session was lost, runs autosave and flushes in `BindToClose`. It returns `loaded` and `failed` signals, `sessionFor(player)`, `waitForSession(player, timeout?)` and `unbind()`.
 
 `PlayerData.eraseKeys(userId, stores)` lists the DataStore keys holding a user's data, for the owner's manual handling of an erasure request. It deletes nothing.
 
