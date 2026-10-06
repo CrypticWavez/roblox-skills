@@ -33,6 +33,8 @@ SCHEMA = "release-check/1"
 META_SCHEMA = "release-meta/1"
 OWNER_SCHEMA = production.OWNER_SCHEMA
 WALLY_DIRS = {"Packages", "ServerPackages", "DevPackages"}
+# GameKit Commerce.RANDOM_TAG: Commerce.canPrompt needs PolicyGate paidRandomItems for a product with this tag.
+RANDOM_TAG = "paid_random_item"
 LABEL = production.LABEL
 STANDARD_TRANSACTION_TYPES = {"IAP", "Shop", "Gameplay", "ContextualPurchase", "TimedReward", "Onboarding"}
 CLIENT_REALMS = {"client", "gui"}
@@ -73,7 +75,7 @@ ITEMS = [
      "spec": "Developer products are granted only from one receipt handler (MarketplaceService.ProcessReceipt or BindReceiptHandler) in server code; none in client or shared code; no server grant keyed on PromptProductPurchaseFinished.",
      "source": DOCS + "production/monetization/developer-products"},
     {"id": "A05", "tier": "A", "title": "Paid random items disclosed and policy-gated",
-     "spec": "Every paid random item (release.json paid_random_items; catalog products tagged paid_random) shows odds that sum to exactly 100% at display precision (2 decimals) through a localisation key before purchase, and the server applies a PolicyGate treatment for ArePaidRandomItemsRestricted (feature paidRandomItems). Trading of paid items is gated on IsPaidItemTradingAllowed (feature trading).",
+     "spec": "Every paid random item (release.json paid_random_items) is tagged " + RANDOM_TAG + " in the catalog (the tag GameKit Commerce gates on PolicyGate paidRandomItems), and every catalog product with that tag is declared there. Each shows odds that sum to exactly 100% at display precision (2 decimals) through a localisation key before purchase, and the server applies a PolicyGate treatment for ArePaidRandomItemsRestricted (feature paidRandomItems). Trading of paid items is gated on IsPaidItemTradingAllowed (feature trading).",
      "source": DOCS + "production/monetization/paid-random-items (2026-10-02)"},
     {"id": "A06", "tier": "A", "title": "Player text is filtered",
      "spec": "When the game takes typed text (a TextBox), server code filters it through GameKit/TextFilter (TextService:FilterStringAsync); the client never filters. Roblox removes games that do not filter.",
@@ -575,9 +577,9 @@ def check_a05(ctx):
     if not isinstance(entries, list):
         return ["release.json paid_random_items must be a list"], []
     declared = {e.get("product") for e in entries if isinstance(e, dict)}
-    for product in ctx.products():
-        if "paid_random" in (product.get("tags") or []) and product.get("key") not in declared:
-            problems.append(f"catalog product {product.get('key')} is tagged paid_random but has no release.json paid_random_items entry")
+    tagged = {p.get("key") for p in ctx.products() if RANDOM_TAG in (p.get("tags") or [])}
+    for key in sorted(tagged - declared, key=str):
+        problems.append(f"catalog product {key} is tagged {RANDOM_TAG} but has no release.json paid_random_items entry")
     keys = {p.get("key") for p in ctx.products()}
     for index, entry in enumerate(entries):
         where = f"paid_random_items[{index}]"
@@ -586,6 +588,8 @@ def check_a05(ctx):
             continue
         if ctx.catalog is not None and entry.get("product") not in keys:
             problems.append(f"{where}: product {entry.get('product')!r} is not in the catalog")
+        elif ctx.catalog is not None and entry.get("product") not in tagged:
+            problems.append(f"{where}: catalog product {entry.get('product')!r} is not tagged {RANDOM_TAG}, so Commerce prompts it without the PolicyGate paidRandomItems check")
         odds = entry.get("odds")
         if isinstance(odds, str):
             odds, err = read_json(ctx.root / odds)

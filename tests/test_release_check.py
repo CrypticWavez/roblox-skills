@@ -11,6 +11,7 @@ outside the synthetic range and no literal publish command.
 import contextlib
 import io
 import json
+import re
 import shutil
 import struct
 import sys
@@ -182,6 +183,47 @@ class BadFixtures(ReleaseFixtureCase):
                 self.assertFalse(report["summary"]["agent_checks_pass"])
                 with contextlib.redirect_stdout(io.StringIO()):
                     self.assertEqual(release_check.main(["--root", str(dest), "--out", str(dest / "r.json")]), 1)
+
+
+class PaidRandomTag(ReleaseFixtureCase):
+    """A05 and GameKit Commerce read one tag: a product Commerce gates on paidRandomItems is one A05 checks."""
+
+    def edit_json(self, path, change):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        change(data)
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+    def test_the_tag_is_gamekit_commerce_random_tag(self):
+        source = (ROOT / "packages" / "GameKit" / "Commerce.luau").read_text(encoding="utf-8")
+        match = re.search(r'^Commerce\.RANDOM_TAG = "([^"]+)"', source, re.MULTILINE)
+        self.assertIsNotNone(match, "Commerce.RANDOM_TAG not found in packages/GameKit/Commerce.luau")
+        self.assertEqual(release_check.RANDOM_TAG, match.group(1))
+        a05 = next(i for i in release_check.ITEMS if i["id"] == "A05")
+        self.assertIn(f"tagged {match.group(1)} ", a05["spec"])
+        good = FIXTURES / "good"
+        catalog = json.loads((good / "src" / "shared" / "catalog.json").read_text(encoding="utf-8"))
+        declared = [e["product"] for e in json.loads((good / "release" / "release.json").read_text(encoding="utf-8"))["paid_random_items"]]
+        self.assertTrue(declared)
+        for product in catalog["products"]:
+            self.assertEqual(match.group(1) in product.get("tags", []), product["key"] in declared, product["key"])
+
+    def test_a_declared_item_without_the_tag_fails(self):
+        dest, _ = self.tree()
+        catalog = dest / "src" / "shared" / "catalog.json"
+        self.edit_json(catalog, lambda d: d["products"][1].update(tags=["paid_random"]))  # the runbook's former tag
+        report = release_check.run_checks(dest)
+        self.assertEqual(failing(report), ["A05"])
+        self.assertTrue(any("random_pack_a' is not tagged paid_random_item" in p for p in problems_of(report, "A05")),
+                        problems_of(report, "A05"))
+
+    def test_a_tagged_product_without_a_declaration_fails(self):
+        dest, _ = self.tree()
+        self.edit_json(dest / "src" / "shared" / "catalog.json",
+                       lambda d: d["products"][0].setdefault("tags", []).append(release_check.RANDOM_TAG))
+        report = release_check.run_checks(dest)
+        self.assertEqual(failing(report), ["A05"])
+        self.assertIn("catalog product currency_pack_a is tagged paid_random_item but has no release.json paid_random_items entry",
+                      problems_of(report, "A05"))
 
 
 class OwnerItems(ReleaseFixtureCase):

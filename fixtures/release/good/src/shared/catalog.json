@@ -1,7 +1,6 @@
 {
   "schema": "catalog/1",
   "mode": "game",
-  "note": "Synthetic ids (900000101-900000104); they name no real product.",
   "products": [
     {
       "key": "currency_pack_a",
@@ -18,7 +17,7 @@
       "id": 900000102,
       "enabled": true,
       "ownershipVerified": true,
-      "tags": ["paid_random"],
+      "tags": ["paid_random_item"],
       "grants": [{ "type": "custom", "handler": "roll_random_pack" }],
       "display": { "nameKey": "shop.random_pack_a.name" }
     },
