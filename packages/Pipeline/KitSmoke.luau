@@ -208,7 +208,8 @@ function KitSmoke.fromFiles(
 	sides: { string }?
 ): { Source }
 	local sources: { Source } = {}
-	for _, side in sides or KitSmoke.SIDES do
+	local sideList: { string } = sides or KitSmoke.SIDES
+	for _, side in sideList do
 		local dir = root .. "/fixtures/kits/" .. side
 		if not files.isDir(dir) then
 			continue

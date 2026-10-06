@@ -72,9 +72,9 @@ local function roundV(v: V3): V3
 end
 
 function CaptureSet.angles(): { string }
-	local names = {}
+	local names: { string } = {}
 	for name in Camera.ANGLES do
-		table.insert(names, name)
+		table.insert(names, tostring(name))
 	end
 	table.sort(names)
 	return names
@@ -109,13 +109,13 @@ function CaptureSet.plan(input: Input): Plan
 	elseif bounds.min.x > bounds.max.x or bounds.min.y > bounds.max.y or bounds.min.z > bounds.max.z then
 		table.insert(problems, "bounds min must not exceed max")
 	end
-	local angles = input.angles or CaptureSet.angles()
+	local angles: { string } = input.angles or CaptureSet.angles()
 	for _, angle in angles do
 		if Camera.ANGLES[angle] == nil then
 			table.insert(problems, "unknown angle " .. tostring(angle))
 		end
 	end
-	local profiles = input.profiles or { "inspection-flat" }
+	local profiles: { string } = input.profiles or { "inspection-flat" }
 	for _, profile in profiles do
 		if not label(profile) then
 			table.insert(problems, "profile " .. tostring(profile) .. " must be a lower-case label")

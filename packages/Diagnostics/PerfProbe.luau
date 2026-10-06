@@ -171,19 +171,16 @@ function PerfProbe.validate(stats: any): { string }
 	end
 	for key in stats do
 		if
-			not known(
-				{
-					"schema",
-					"kind",
-					"device_class",
-					"frame_ms",
-					"memory_mb",
-					"counts",
-					"texture_mb_estimate",
-					"source",
-				},
-				key
-			)
+			not known({
+				"schema",
+				"kind",
+				"device_class",
+				"frame_ms",
+				"memory_mb",
+				"counts",
+				"texture_mb_estimate",
+				"source",
+			}, key)
 		then
 			add("unknown key " .. tostring(key))
 		end
@@ -308,7 +305,7 @@ end
 function PerfProbe.categoryName(name: string): string
 	local spaced = string.gsub(name, "(%l)(%u)", "%1_%2")
 	spaced = string.gsub(spaced, "(%u)(%u%l)", "%1_%2")
-	local lowered = string.lower(string.gsub(spaced, "[^%w_]", "_"))
+	local lowered = string.lower((string.gsub(spaced, "[^%w_]", "_")))
 	return lowered
 end
 

@@ -131,16 +131,14 @@ test("validate names problems in a manifest read back from disk", function(t)
 		t.ok(mentions(problems, needle), needle .. " in " .. table.concat(problems, "; "))
 	end
 	t.eq(CaptureSet.validate(nil), { "manifest must be a table" })
-	t.ok(
-		mentions(
-			CaptureSet.validate({
-				schema = "capture-manifest/1",
-				scene = { name = "x", hash = "ab", source = "fixture" },
-				shots = {},
-			}),
-			"non-empty"
-		)
-	)
+	t.ok(mentions(
+		CaptureSet.validate({
+			schema = "capture-manifest/1",
+			scene = { name = "x", hash = "ab", source = "fixture" },
+			shots = {},
+		}),
+		"non-empty"
+	))
 end)
 
 test("apply points a camera with the injected datatypes", function(t)

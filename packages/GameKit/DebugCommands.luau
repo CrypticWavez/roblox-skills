@@ -272,7 +272,7 @@ function DebugCommands.new(env: any, options: { allow: ((caller: any) -> boolean
 		if command == nil then
 			return false, "unknown_command: " .. tostring(name)
 		end
-		local specs = command.args or {}
+		local specs: { ArgSpec } = command.args or {}
 		local given = words :: { string }
 		if #given > #specs then
 			return false, string.format("too_many_args: %s takes at most %d", name, #specs)
