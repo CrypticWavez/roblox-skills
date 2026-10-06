@@ -325,12 +325,38 @@ def box_uv(obj, scale=0.25):
     return obj
 
 
+def node_tree(mat):
+    """The material's node tree. Blender 5.x creates one for every new material (and deprecates
+    `use_nodes`, to be removed in 6.0), so `use_nodes` is only set when a tree is missing."""
+    if mat.node_tree is None:
+        mat.use_nodes = True
+    return mat.node_tree
+
+
+def principled(mat, create=True):
+    """The material's Principled BSDF, found by node type (node names are localised). With
+    create, a missing one is added and wired to the material output (also created if missing)."""
+    tree = node_tree(mat)
+    bsdf = next((n for n in tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    if bsdf is None and create:
+        bsdf = tree.nodes.new("ShaderNodeBsdfPrincipled")
+        tree.links.new(bsdf.outputs[0], material_output(mat).inputs["Surface"])
+    return bsdf
+
+
+def material_output(mat):
+    """The active Material Output node (by type), created when missing."""
+    tree = node_tree(mat)
+    outputs = [n for n in tree.nodes if n.type == "OUTPUT_MATERIAL"]
+    active = next((n for n in outputs if n.is_active_output), outputs[0] if outputs else None)
+    return active or tree.nodes.new("ShaderNodeOutputMaterial")
+
+
 def pbr_material(name, color=(0.8, 0.8, 0.8, 1), roughness=0.6, metallic=0.0, emission=None):
     mat = bpy.data.materials.get(name)
     if mat is None:
         mat = bpy.data.materials.new(name)
-        mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    bsdf = principled(mat)
     bsdf.inputs["Base Color"].default_value = color
     bsdf.inputs["Roughness"].default_value = roughness
     bsdf.inputs["Metallic"].default_value = metallic
@@ -629,8 +655,11 @@ def _selection(objects):
 
 def export_fbx(path, objects=None):
     """Roblox-oriented FBX: studs as units (scale 1, apply FBX_SCALE_UNITS), no leaf bones,
-    -Z forward / Y up, textures embedded, animation only when actions exist. objects: export
-    exactly these (hidden ones included); None exports the whole scene."""
+    -Z forward / Y up, textures embedded, colour attributes as sRGB (active one first), animation
+    only when actions exist. Animation follows Roblox's Blender recipe: the active action baked
+    over the scene frame range with NLA strips, all-actions and forced start/end keys off and
+    simplify 0.0 (every frame kept). objects: export exactly these (hidden ones included); None
+    exports the whole scene. Per-clip files: `clips.export_clip_fbx`."""
     has_anim = any(o.animation_data and o.animation_data.action for o in (bpy.context.scene.objects if objects is None else objects))
     with _selection(objects):
         bpy.ops.export_scene.fbx(
@@ -643,6 +672,10 @@ def export_fbx(path, objects=None):
             bake_anim=has_anim,
             bake_anim_use_all_actions=False,  # one clip per export (Roblox imports one track)
             bake_anim_use_nla_strips=False,  # bake the active action over the scene range
+            bake_anim_force_startend_keying=False,  # Roblox recipe; the clip's own keys bound it
+            bake_anim_simplify_factor=0.0,  # keep every baked frame (Roblox recipe)
+            colors_type="SRGB",  # vertex colours (palette fallback, vertex_colors route) ship
+            prioritize_active_color=True,
             path_mode="COPY",
             embed_textures=True,
             object_types={"MESH", "ARMATURE", "EMPTY"},
@@ -651,8 +684,124 @@ def export_fbx(path, objects=None):
     return path
 
 
-def export_glb(path, objects=None):
-    """GLB, Y up, modifiers applied, custom properties as extras. objects: as export_fbx."""
+def export_glb(path, objects=None, animation_mode="ACTIONS"):
+    """GLB, Y up, modifiers applied, custom properties as extras, the active colour attribute as
+    COLOR_0 (the glTF default only writes colours a material reads). animation_mode: ACTIONS
+    (every action) or NLA_TRACKS (one glTF animation per NLA track, named after the track; what
+    `clips.export_clips` uses). objects: as export_fbx."""
     with _selection(objects):
-        bpy.ops.export_scene.gltf(filepath=str(path), export_format="GLB", use_selection=objects is not None, export_yup=True, export_extras=True, export_apply=True)
+        bpy.ops.export_scene.gltf(
+            filepath=str(path),
+            export_format="GLB",
+            use_selection=objects is not None,
+            export_yup=True,
+            export_extras=True,
+            export_apply=True,
+            export_vertex_color="ACTIVE",
+            export_animation_mode=animation_mode,
+        )
     return path
+
+
+# ---------- collision ----------
+
+def _kdop_directions():
+    """The 26 directions of a 26-DOP: axes, edge diagonals and corner diagonals."""
+    dirs = []
+    for x in (-1, 0, 1):
+        for y in (-1, 0, 1):
+            for z in (-1, 0, 1):
+                if (x, y, z) != (0, 0, 0):
+                    dirs.append(Vector((x, y, z)).normalized())
+    return dirs
+
+
+def _kdop(name, points, coll):
+    """Smallest 26-DOP around `points`: a box clipped by the 20 diagonal planes, each pushed out to
+    the farthest point. Always contains every point, at most 26 faces."""
+    mn = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
+    mx = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=mx - mn, verts=bm.verts)
+    bmesh.ops.translate(bm, vec=(mn + mx) / 2, verts=bm.verts)
+    for d in _kdop_directions():
+        if sum(1 for c in d if abs(c) > 1e-6) == 1:
+            continue  # the box faces already bound the axes
+        reach = max(p.dot(d) for p in points)
+        geom = list(bm.verts) + list(bm.edges) + list(bm.faces)
+        cut = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=d * reach, plane_no=d, clear_outer=True)
+        edges = [e for e in cut["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        if edges:
+            bmesh.ops.contextual_create(bm, geom=edges)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+    bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(0.1), verts=bm.verts, edges=bm.edges)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _new_object(name, _mesh_from_bmesh(name, bm), coll)
+
+
+def collision_proxy(obj, kind="hull", max_tris=256, coll=None):
+    """An invisible collision stand-in for `obj` (Roblox imports neither collision meshes nor
+    LODs: research blender-animation-pipeline section 6). kind "hull": the convex hull of obj's
+    evaluated vertices; when it has more than `max_tris` triangles, a 26-DOP (box clipped by its
+    diagonal planes, at most 26 faces) replaces it, which still contains every vertex. kind "box":
+    the axis-aligned bounds (12 triangles). The proxy is `<name>_Collision` at obj's transform,
+    in obj's collections, tagged `rbx_collision = {role: proxy, fidelity: Hull|Box, method}`; obj
+    is tagged `{role: visual, can_collide: false, fidelity: Box}`. Whether FBX custom properties
+    become Roblox attributes is UNVERIFIED, so the expectation and kit/1 carry these tags and a
+    Studio helper sets CanCollide, Transparency and CollisionFidelity from them."""
+    if kind not in ("hull", "box"):
+        raise ValueError(f"collision_proxy: kind must be 'hull' or 'box', got {kind!r}")
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    points = [v.co.copy() for v in mesh.vertices]
+    evaluated.to_mesh_clear()
+    if not points:
+        raise ValueError(f"collision_proxy: {obj.name} has no vertices")
+    name = obj.name + "_Collision"
+    target = coll or (obj.users_collection[0] if obj.users_collection else None)
+    method = kind
+    if kind == "box":
+        mn = Vector((min(p.x for p in points), min(p.y for p in points), min(p.z for p in points)))
+        mx = Vector((max(p.x for p in points), max(p.y for p in points), max(p.z for p in points)))
+        proxy = box(name, size=tuple(mx - mn), location=((mn.x + mx.x) / 2, (mn.y + mx.y) / 2, mn.z), coll=target)
+        apply_transforms(proxy)
+    else:
+        bm = bmesh.new()
+        verts = [bm.verts.new(p) for p in points]
+        hull = bmesh.ops.convex_hull(bm, input=verts)
+        unused = set(hull["geom_unused"]) | set(hull["geom_interior"])
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if v in unused and not v.link_faces], context="VERTS")
+        bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(0.1), verts=bm.verts, edges=bm.edges)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        tris = sum(len(f.verts) - 2 for f in bm.faces)
+        if tris > max_tris:
+            bm.free()
+            proxy = _kdop(name, points, target)
+            method = "kdop26"
+        else:
+            proxy = _new_object(name, _mesh_from_bmesh(name, bm), target)
+    proxy.matrix_world = obj.matrix_world.copy()
+    tris = sum(len(p.vertices) - 2 for p in proxy.data.polygons)
+    if tris > max_tris:
+        raise ValueError(f"collision_proxy: {name} has {tris} triangles, over max_tris {max_tris}")
+    fidelity = "Box" if kind == "box" else "Hull"
+    env.set_meta(proxy, collision={"role": "proxy", "fidelity": fidelity, "method": method, "of": obj.name}, qa_role="collision")
+    env.set_meta(obj, collision={"role": "visual", "can_collide": False, "fidelity": "Box", "proxy": name})
+    return proxy
+
+
+def proxy_contains(proxy, obj, tol=1e-4):
+    """Largest signed distance (studs) of obj's evaluated vertices outside proxy's face planes
+    (world space); <= tol means every vertex is inside or on the proxy."""
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    points = [obj.matrix_world @ v.co for v in mesh.vertices]
+    evaluated.to_mesh_clear()
+    planes = []
+    for poly in proxy.data.polygons:
+        normal = (proxy.matrix_world.to_3x3() @ poly.normal).normalized()
+        planes.append((normal, normal.dot(proxy.matrix_world @ poly.center)))
+    return max(n.dot(p) - d for p in points for n, d in planes)

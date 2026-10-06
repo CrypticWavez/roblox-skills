@@ -15,7 +15,7 @@ def _material_for(color, transparency, cache):
         rgba = (color[0] / 255, color[1] / 255, color[2] / 255, 1)
         mat = ops.pbr_material("c_%02x%02x%02x_%d" % (*color, int((transparency or 0) * 100)), rgba, roughness=0.7)
         if transparency:
-            bsdf = mat.node_tree.nodes["Principled BSDF"]
+            bsdf = ops.principled(mat)
             bsdf.inputs["Alpha"].default_value = max(0.05, 1 - transparency)
         cache[key] = mat
     return cache[key]
@@ -50,6 +50,20 @@ def _look_at(obj, target):
     obj.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
 
+def world_background(world):
+    """The world's Background node, found by type (node names are localised); created and wired
+    to a World Output when missing. Blender 5.x worlds get a node tree when created."""
+    if world.node_tree is None:
+        world.use_nodes = True
+    tree = world.node_tree
+    background = next((n for n in tree.nodes if n.type == "BACKGROUND"), None)
+    if background is None:
+        background = tree.nodes.new("ShaderNodeBackground")
+        output = next((n for n in tree.nodes if n.type == "OUTPUT_WORLD"), None) or tree.nodes.new("ShaderNodeOutputWorld")
+        tree.links.new(background.outputs[0], output.inputs["Surface"])
+    return background
+
+
 def setup_stage(ground=True, size=2000, sun_angle=(50, 0, 35), clearance=0.02):
     """Sun, sky and a ground slab. Call after the scene's meshes exist: the ground's top sits
     `clearance` studs below the lowest of them (and below 0), never coplanar with a face. Cycles
@@ -68,9 +82,9 @@ def setup_stage(ground=True, size=2000, sun_angle=(50, 0, 35), clearance=0.02):
     scene.collection.objects.link(sun_obj)
     sun_obj.rotation_euler = [math.radians(a) for a in sun_angle]
     world = bpy.data.worlds.new("World")
-    world.use_nodes = True
-    world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.55, 0.65, 0.8, 1)
-    world.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.45
+    background = world_background(world)
+    background.inputs["Color"].default_value = (0.55, 0.65, 0.8, 1)
+    background.inputs["Strength"].default_value = 0.45
     scene.world = world
     return scene
 

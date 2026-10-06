@@ -1,0 +1,94 @@
+{
+  "materials": [
+    {
+      "base_material": "Concrete",
+      "maps": {
+        "color": "fixture_source/concrete_a#Color",
+        "emissive": null,
+        "metalness": null,
+        "normal": "fixture_source/concrete_a#NormalGL",
+        "roughness": "fixture_source/concrete_a#Roughness"
+      },
+      "name": "concrete_a",
+      "override_base": false,
+      "pattern": "Regular",
+      "provenance": "fixture_source",
+      "resolution": 1024,
+      "roblox": {
+        "color": 0,
+        "metalness": 0,
+        "normal": 0,
+        "roughness": 0
+      },
+      "studs_per_tile": 8
+    },
+    {
+      "base_material": "DiamondPlate",
+      "maps": {
+        "color": "fixture_source/metal_plate_a#Color",
+        "emissive": null,
+        "metalness": "fixture_source/metal_plate_a#Metalness",
+        "normal": "fixture_source/metal_plate_a#NormalGL",
+        "roughness": "fixture_source/metal_plate_a#Roughness"
+      },
+      "name": "metal_plate_a",
+      "override_base": false,
+      "pattern": "Regular",
+      "provenance": "fixture_source",
+      "resolution": 1024,
+      "roblox": {
+        "color": 0,
+        "metalness": 0,
+        "normal": 0,
+        "roughness": 0
+      },
+      "studs_per_tile": 4
+    },
+    {
+      "base_material": "Grass",
+      "maps": {
+        "color": "fixture_source/ground_a#Color",
+        "emissive": null,
+        "metalness": null,
+        "normal": "fixture_source/ground_a#NormalGL",
+        "roughness": "fixture_source/ground_a#Roughness"
+      },
+      "name": "ground_a",
+      "override_base": false,
+      "pattern": "Organic",
+      "provenance": "fixture_source",
+      "resolution": 512,
+      "roblox": {
+        "color": 0,
+        "metalness": 0,
+        "normal": 0,
+        "roughness": 0
+      },
+      "studs_per_tile": 12
+    },
+    {
+      "base_material": "SmoothPlastic",
+      "maps": {
+        "color": "build:build/qa-selftest/bake_library/bake_library_Color.png",
+        "emissive": null,
+        "metalness": null,
+        "normal": "build:build/qa-selftest/bake_library/bake_library_Normal.png",
+        "roughness": "build:build/qa-selftest/bake_library/bake_library_Roughness.png"
+      },
+      "name": "bake_library",
+      "override_base": false,
+      "pattern": "Regular",
+      "provenance": "local",
+      "resolution": 256,
+      "roblox": {
+        "color": 0,
+        "metalness": 0,
+        "normal": 0,
+        "roughness": 0
+      },
+      "studs_per_tile": 4
+    }
+  ],
+  "note": "Test fixture in material-library/1 form (docs/runtime-kits.md 9.6) for when G5's assets/material-library.json is absent. fixture_source refs are never on disk; bake_library is written by the qa-selftest bake case.",
+  "schema": "material-library/1"
+}

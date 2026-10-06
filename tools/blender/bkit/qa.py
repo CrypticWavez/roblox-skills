@@ -17,7 +17,7 @@ import bmesh
 import bpy
 from mathutils import Vector, kdtree
 
-from . import env
+from . import clips, env, r15, textures
 
 ROBLOX_MAX_TRIS = 20000
 ROBLOX_MAX_INFLUENCES = 4
@@ -39,6 +39,8 @@ BUDGETS = {  # triangles, materials (per mesh) - workbench defaults, override wi
     "vegetation": (3000, 2),
     "environment": (15000, 6),
     "test": (20000, 8),
+    "gameplay": (3000, 4),
+    "accessory": (4000, 1),  # Roblox accessory rule: at most 4k triangles
 }
 
 
@@ -203,11 +205,15 @@ def _weld_seams(bm, dist):
     return len(targetmap)
 
 
-def mesh_checks(obj, meta, weld=0.0):
+def mesh_checks(obj, meta, weld=0.0, imported=None):
     """weld > 0 joins glTF seams (`_weld_seams`, vertices closer than `weld`) on a copy before
     the edge and normals checks (use GLTF_WELD for glTF input); triangle counts, degenerate faces
-    and loose vertices always use the mesh as stored."""
+    and loose vertices always use the mesh as stored. imported: ".fbx"/".glb"/".gltf" when the
+    mesh came from that file (colour-space tags are then the importer's guess, not the file's).
+    A collision proxy (`rbx_qa_role = "collision"`, `ops.collision_proxy`) is invisible: no UV,
+    material or appearance checks, a triangle cap instead."""
     checks = []
+    proxy = meta.get("qa_role") == "collision"
     mesh = obj.data
     category = meta.get("category", "test")
     tri_budget, mat_budget = BUDGETS.get(category, BUDGETS["test"])
@@ -254,9 +260,16 @@ def mesh_checks(obj, meta, weld=0.0):
     checks.append(_check("normals_consistent", flipped == 0, flipped, 0, detail=welded))
     bm.free()
 
-    # UVs
+    # Materials, textures and UVs. Roblox reads one UV set inside 0..1 for textures (research
+    # blender-animation-pipeline section 2) and drops plain material colours (gap B06).
+    mats = [s.material for s in obj.material_slots]
+    roles = {}
+    for mat in filter(None, mats):
+        for image, image_roles in textures.image_roles(mat).items():
+            roles.setdefault(image, set()).update(image_roles)
+    textured = bool(roles)
     uv_ok = len(mesh.uv_layers) > 0
-    zero_uv = 0
+    zero_uv = outside = 0
     if uv_ok:
         layer = mesh.uv_layers.active.data
         for poly in mesh.polygons:
@@ -267,16 +280,23 @@ def mesh_checks(obj, meta, weld=0.0):
                 area += a.x * b.y - b.x * a.y
             if abs(area) < 1e-9:
                 zero_uv += 1
+        outside = sum(1 for d in layer if not (-UV_EPS <= d.uv[0] <= 1 + UV_EPS and -UV_EPS <= d.uv[1] <= 1 + UV_EPS))
+    if proxy:
+        cap = meta.get("collision_max_tris", 256)
+        checks.append(_check("collision_proxy_tris", tris <= cap, tris, cap, detail="invisible collision stand-in"))
+        return checks + _skin_checks(obj, meta)
     checks.append(_check("uv_present", uv_ok, len(mesh.uv_layers), ">=1"))
     checks.append(_check("uv_zero_area_faces", zero_uv == 0, zero_uv, 0, level="warning"))
+    checks.append(_check("uv_single_set", len(mesh.uv_layers) <= 1, len(mesh.uv_layers), 1, level="error" if textured else "warning",
+                         detail="Roblox reads one UV set" + ("" if textured else " (untextured mesh: warning)")))
+    if textured:
+        checks.append(_check("uv_unit_square", outside == 0, outside, 0, detail="UV corners outside 0..1 on a textured mesh"))
 
-    # Materials and textures
-    mats = [s.material for s in obj.material_slots]
     checks.append(_check("material_assigned", len(mats) > 0 and all(mats), len(mats), ">=1"))
     checks.append(_check("material_count", len(mats) <= mat_budget, len(mats), mat_budget, level="warning"))
     missing = []
     for mat in filter(None, mats):
-        if mat.use_nodes:
+        if mat.node_tree is not None:
             for node in mat.node_tree.nodes:
                 if node.type == "TEX_IMAGE" and node.image and not node.image.packed_file:
                     # Lexical normalisation, as Blender resolves "//../x": a copy reopened from a
@@ -285,6 +305,15 @@ def mesh_checks(obj, meta, weld=0.0):
                     if not os.path.exists(path):
                         missing.append(node.image.filepath)
     checks.append(_check("texture_paths", not missing, len(missing), 0, detail=", ".join(missing[:5])))
+    max_size = meta.get("texture_max", textures.PBR_MAX)
+    if max_size > textures.PBR_MAX and not meta.get("texture_justify"):
+        max_size = textures.PBR_MAX  # 2048 needs a written reason (avatar bodies, accessories)
+    for image, image_roles in sorted(roles.items(), key=lambda kv: kv[0].name):
+        for c in textures.image_checks(image, image_roles, min(max_size, textures.JUSTIFIED_MAX)):
+            if c["name"] == "texture_colorspace" and imported == ".fbx" and not c["pass"]:
+                c.update({"pass": True, "detail": c["detail"] + "; FBX stores no colour space (the importer guessed; the Roblox slot decides)"})
+            checks.append(_check(c["name"], c["pass"], c["value"], c["limit"], level=c["level"], detail=c["detail"]))
+    checks.append(appearance_check(obj, mats, roles, meta))
 
     # Pivot at base centre (world-space bounds vs origin), dimensions vs expectation.
     mn, mx = _world_bounds(obj)
@@ -304,7 +333,13 @@ def mesh_checks(obj, meta, weld=0.0):
     if up:
         checks.append(_check("orientation_up", dims[2] >= max(dims[0], dims[1]) * 0.9, dims, "Z tallest"))
 
-    # Skinning: only vertex groups named after a deform bone of the bound armature are bone weights.
+    return checks + _skin_checks(obj, meta)
+
+
+def _skin_checks(obj, meta):
+    """Skinning: only vertex groups named after a deform bone of the bound armature are bone
+    weights. A mesh bound to an r15_avatar rig may not weight Root (avatar specification)."""
+    checks = []
     arm_mod = next((m for m in obj.modifiers if m.type == "ARMATURE"), None)
     if arm_mod or meta.get("rigged"):
         rig = arm_mod.object if arm_mod else None
@@ -313,7 +348,35 @@ def mesh_checks(obj, meta, weld=0.0):
         checks.append(_check("unweighted_vertices", stats["unweighted"] == 0, stats["unweighted"], 0, detail="no weight on any deform bone"))
         checks.append(_check("weights_normalized", stats["unnormalized"] == 0, stats["unnormalized"], 0, level="warning", detail=f"deform weights per vertex sum to 1 +- {WEIGHT_SUM_TOL}"))
         checks.append(_check("armature_bound", rig is not None, bool(arm_mod), True))
+        profile = env.get_meta(rig).get("rig_profile") if rig is not None else None
+        if profile in r15.PROFILES and r15.PROFILES[profile]["no_weights"]:
+            count = r15.root_weighted(obj, rig, profile)
+            checks.append(_check("rig_root_weights", count == 0, count, 0, detail=f"{profile}: no vertex may be weighted to {', '.join(r15.PROFILES[profile]['no_weights'])}"))
     return checks
+
+
+UV_EPS = 1e-4
+
+
+def appearance_check(obj, mats, roles, meta):
+    """`appearance_declared`: how the mesh's look reaches Studio. Declared: a colour map on the
+    material (texture route), a colour attribute (vertex-colour route) or library materials
+    (`rbx_library`: SceneKit applies the MaterialVariant). Studio drops plain material colours
+    (2026-10-05 round trip, gap B06), so several flat materials are an error (bake with
+    `bake.palette_atlas`) and one flat material is a warning (it imports with the default grey
+    unless the MeshPart Color is set)."""
+    color_map = any("color" in r for r in roles.values())
+    vertex = len(obj.data.color_attributes) > 0
+    library = bool(mats) and all(m is not None and m.get("rbx_library") for m in mats)
+    kind = (meta.get("appearance") or {}).get("kind")
+    routes = [name for name, ok in (("texture", color_map), ("vertex_colors", vertex), ("library", library)) if ok]
+    flat = [m.name for m in mats if m is not None]
+    if routes:
+        return _check("appearance_declared", True, routes, "texture, vertex colours or library", detail=kind)
+    level = "error" if len(flat) > 1 else "warning"
+    detail = (f"{len(flat)} flat materials and no texture or vertex colours: Studio imports them grey (B06); bake with bake.palette_atlas"
+              if len(flat) > 1 else "one flat material: Studio imports it grey unless the MeshPart Color is set; bake or record the colour")
+    return _check("appearance_declared", False, flat, "texture, vertex colours or library", level=level, detail=detail)
 
 
 WEIGHT_EPS = 1e-4  # a weight at or below this is not an influence
@@ -352,6 +415,10 @@ def armature_checks(obj, meta):
         checks.append(_check("bone_names", not missing, len(missing), 0, detail=", ".join(missing[:8])))
     # Rigs import with their object transform frozen (scale 1, rotation 0), parents included.
     checks += transform_checks(obj, prefix="armature", rotation_level="error")
+    profile = meta.get("rig_profile")
+    if profile:
+        checks += r15.check(obj, profile)
+    checks += clips.clip_checks(obj)
     action = obj.animation_data.action if obj.animation_data else None
     if meta.get("animated") or action:
         frames = 0
@@ -377,7 +444,7 @@ def summarize(report):
     return report
 
 
-def run(export_probe=True, objects=None, weld=0.0):
+def run(export_probe=True, objects=None, weld=0.0, imported=None):
     """Check every scene mesh, armature and empty except cutters, `rbx_qa = "skip"` objects and
     bone display shapes, plus the Studio pivot rule (`studio_pivot_check`) on the roots of
     `objects` (an export set) or, by default, of the scene (`pivot_pool`): a .blend without
@@ -394,7 +461,7 @@ def run(export_probe=True, objects=None, weld=0.0):
             if obj.get("rbx_cutter") or meta.get("qa") == "skip" or obj in shapes:
                 continue
             if obj.type == "MESH":
-                checks = mesh_checks(obj, meta, weld)
+                checks = mesh_checks(obj, meta, weld, imported)
             elif obj.type == "ARMATURE":
                 checks = armature_checks(obj, meta)
             elif obj.type == "EMPTY":
@@ -459,7 +526,7 @@ def check_file(path):
         bpy.ops.import_scene.fbx(filepath=str(path))
     else:
         bpy.ops.import_scene.gltf(filepath=str(path))
-    report = run(export_probe=False, weld=0.0 if suffix == ".fbx" else GLTF_WELD)
+    report = run(export_probe=False, weld=0.0 if suffix == ".fbx" else GLTF_WELD, imported=suffix)
     report["file"] = str(path)
     return report
 

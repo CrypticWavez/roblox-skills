@@ -12,7 +12,12 @@ any disagreement.
 Skin-weight defects are the one place the formats legitimately differ: Blender's glTF exporter
 keeps each vertex's 4 strongest influences (export_influence_nb) and re-imports a vertex with no
 weight as fully bound to one bone, so a .glb of an over-influenced or unweighted skin passes.
-Those cases expect the error from every format but GLB; check weights on the .blend or .fbx."""
+Those cases expect the error from every format but GLB; check weights on the .blend or .fbx.
+
+The pipeline cases (`selftest_pipeline.CASES`) follow: palette atlas, vertex colours and map
+bakes, texture and library-name rules, the bake command's maps and tile modes, icons, clips/1
+export and clip QA, R15 profiles, collision proxies, the ten gameplay templates (QA, glTF
+validation, compare-export), kit/1 and the offline intake chain."""
 import hashlib
 import json
 import re
@@ -22,7 +27,9 @@ import bmesh
 import bpy
 from mathutils import Vector
 
-from . import env, ops, qa, templates
+from . import bake, env, ops, qa, selftest_pipeline, templates
+
+_WORK = {"dir": Path(".")}  # run() points it at its out_dir (bakes write maps there)
 
 
 def _box(name, size=(4, 4, 4), loc=(0, 0, 0), smooth=False, material=True):
@@ -129,10 +136,12 @@ def _column(name):
 
 def _smooth_humanoid():
     """The humanoid blockout fused by voxel remesh, then bone-heat weighted to its R15 rig: raw
-    heat gives some vertices more than 4 influences, so `limit_weights` must cut them."""
+    heat gives some vertices more than 4 influences, so `limit_weights` must cut them. Its two
+    flat materials are palette-baked (two flat materials are an appearance_declared error)."""
     body, rig = templates.humanoid()
     ops.voxel_remesh(body, voxel_size=0.25)
     ops.bind_auto(body, rig)
+    bake.palette_atlas([body], _WORK["dir"] / "maps", "smooth_humanoid")
 
 
 def _two_shells(name):
@@ -337,8 +346,9 @@ def _agrees(summary, error):
 
 
 def run(out_dir):
-    out = Path(out_dir)
+    out = Path(out_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
+    _WORK["dir"] = out
     report = {"blender": bpy.app.version_string, "cases": [], "pass": True}
     for name, build, expected, *verify in CASES:
         env.reset()
@@ -383,5 +393,10 @@ def run(out_dir):
         report["pass"] = report["pass"] and ok
         report["cases"].append({"case": name, "expected": error or "pass", "pass": ok, "errors": {"gate": result["summary"]["errors"]}, "shipped": shipped})
         print(f"qa-selftest {name:22s} {'OK  ' if ok else 'FAIL'} expected={error or 'pass'} gate={result['summary']['errors'] or 'pass'} shipped={shipped}")
+    for case in selftest_pipeline.run(out / "pipeline"):
+        report["pass"] = report["pass"] and case["pass"]
+        report["cases"].append(case)
+    failed = [c["case"] for c in report["cases"] if not c["pass"]]
+    print(f"qa-selftest: {len(report['cases']) - len(failed)}/{len(report['cases'])} cases OK" + (f"; FAILED {failed}" if failed else ""))
     (out / "qa-selftest-report.json").write_text(json.dumps(report, indent=2))
     return report
