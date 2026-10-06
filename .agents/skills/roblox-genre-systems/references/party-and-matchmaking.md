@@ -1,122 +1,68 @@
-<!-- Legacy checklist from roblox-party-and-matchmaking-pass (original repo root), cleaned of escaped Markdown. -->
+# Playbook: Parties, queues and matchmaking (cross-cutting)
 
-name: roblox-party-and-matchmaking-pass
+Kind: cross-cutting
+Also: Party & Casual > Minigame; Shooter > Battle Royale; Sports & Racing > Sports; Survival > 1 vs All
 
-# Roblox Party and Matchmaking Pass
+A neutral systems reference for any genre with matches: it maps parties, queues, team balance and server hand-off to kit modules, risks and checks. It picks no mode, team size or rules; every TBD belongs to the game's owner.
 
-## Purpose
+## Core loop as systems
+- **Party**: players group up (Roblox Party API or an in-game party), with a leader, invites, leave and kick.
+- **Queue**: a party or a solo player joins a queue for a mode; the queue groups tickets into matches by size, skill and wait time.
+- **Team split**: the match assigns teams, keeping parties together and balancing skill.
+- **Hand-off**: the match moves to a reserved server (teleport) or starts in place; players who fail to arrive are handled.
+- **Return**: after the match, players go back to the lobby with results; queue and party state is cleaned up.
+- **Private matches**: invite-only matches with custom settings (TBD).
 
-Use this skill when a Roblox game needs robust friend play, party management, queue handling, matchmaking flow, or private match support.
+## Kit modules
+- `GameKit/Queue`, `GameKit/MemoryQueueRoblox` (T4): ticket queue core and its cross-server MemoryStore adapter.
+- `GameKit/TeamBalance`: deterministic skill- and party-aware split with a size difference limit and swap passes.
+- `GameKit/PartyRoblox`: Roblox Party API reads (`Player.PartyId`, party members).
+- `GameKit/TeleportRoblox` (T4): reserved servers and teleport with retry; not testable in Studio.
+- `GameKit/RoundLoop`, `GameKit/RoundLoopRoblox`: match phases on the match server.
+- `GameKit/Fsm`: party and ticket state machines with serialisable state.
+- `GameKit/Retry`, `GameKit/RemoteGuard`, `GameKit/RateLimit`: retries on cross-server calls; validated, rate-limited party and queue remotes.
+- `UIKit/Components/TeleportTransition`, `UIKit/Components/LoadingScreen`, `UIKit/Components/Modal`: queue status and hand-off screens.
 
-This skill focuses on:
+## Data to author
+- Modes: team count, team size, fill rules, whether partial parties may join (TBD).
+- Queue rules: skill bands, widening over wait time, maximum wait (TBD).
+- Team balance options: `maxSizeDiff`, swap rounds, party handling (TBD).
+- Hand-off rules: arrival timeout, what happens to no-shows, backfill (TBD).
 
-- party creation and invites
-- party membership state
-- leader controls
-- queue join/leave logic
-- queue state replication
-- matchmaking assembly
-- private match support
-- team balancing and fill logic
-- ready states if relevant
-- match launch and teardown
+## Authority and abuse risks
+- **Leader actions**: only the leader can queue or kick; the server checks membership on every request.
+- **Queue flooding**: rate-limit join and leave per player.
+- **Stale tickets**: a ticket for a player who left must be removed before matching (MemoryStore entries expire, but not instantly).
+- **Duplicate matches**: a ticket is consumed by exactly one match (atomic remove from the queue).
+- **Skill manipulation**: skill values come from server-side ratings, never from the client.
 
-## When to use
+## Performance pitfalls
+- Polling MemoryStore too often: queue operations count against MemoryStore quotas, which scale with users; batch and back off with `GameKit/Retry`.
+- Teleporting a whole party in separate calls: teleport the group together where the API allows.
+- Lobby UI updated on every queue change for every player: send state changes, not periodic full snapshots.
 
-Use this skill when the user asks to:
+## Policy notes
+- Teleports and MemoryStore are T4 here: TeleportService does not run in Studio playtests, and MemoryStore is isolated between Studio and production (genre coverage research, section 5).
+- The Party API was simulated in Studio only through the Party Simulator beta (Server & Clients mode); treat party behaviour as unverified until tested there.
+- Private-match codes that players type are user text: filter before showing to others.
 
-- add or fix party play
-- add matchmaking
-- fix queue bugs
-- fix invite flow
-- support private matches
-- stabilize queue -> match transitions
+## Test checklist
+- [ ] Party lifecycle: create, invite, join, leave, leader leave with reassignment, kick.
+- [ ] Queue: join, cancel, partial party, full party, disconnect while queued; no stranded tickets.
+- [ ] Team split: parties stay together, size difference within the limit, same input gives the same teams.
+- [ ] A ticket is never placed in two matches (fake queue with concurrent matchers).
+- [ ] Hand-off timeout: no-shows are removed and the match still starts or cancels per the rule.
+- [ ] Return to lobby leaves no party or queue UI stale.
+- [ ] Party Simulator run in Server & Clients mode once a game repo exists (T3); real teleports only in a test universe (T4).
 
-## Core behavior
+## Design questions (TBD)
+- TBD: Which modes exist, with which team sizes?
+- TBD: Is skill used for matching, and from which rating?
+- TBD: Does the match run on the lobby server or on a reserved server?
+- TBD: Are private matches offered, and with which settings?
+- TBD: Is backfill allowed for players who leave?
 
-Start by auditing:
-
-- party services/modules
-- matchmaking services/queues
-- team assignment logic
-- remotes used for party and queue updates
-- UI state related to party and queue flow
-- match launch logic
-- cancellation flow
-- leave/rejoin behavior
-- cleanup behavior
-
-Then plan and implement deterministic fixes.
-
-## Quality standards
-
-Party and matchmaking systems should be:
-
-- authoritative
-- easy to understand
-- resilient to leaves and disconnects
-- free of duplicate processing
-- free of stranded queue states
-- cleanly integrated with lobby and match flow
-
-## Required checks
-
-Validate:
-
-- create party
-- invite member
-- join party
-- leave party
-- leader leave
-- leader reassignment
-- kick/remove member if supported
-- party ready state if supported
-- queue join
-- queue cancel
-- queue with partial party
-- queue with full party
-- disconnect during queue
-- queue cleanup after match launch
-- private match flow
-- team balancing/fair assignment
-- no stale party UI after transitions
-
-## Execution flow
-
-### Pass 1: Audit
-
-- identify broken party state
-- identify queue state issues
-- identify launch and cleanup issues
-
-### Pass 2: Functional fixes
-
-- fix party creation/join/leave
-- fix queue join/cancel
-- fix leader controls
-- fix launch gating and validation
-
-### Pass 3: Hardening
-
-- fix disconnect/rejoin edge cases
-- fix duplicate processing
-- fix stale UI and replicated state
-- improve private match handling
-
-### Pass 4: Final validation
-
-- retest party and queue lifecycle end to end
-- ensure no major multiplayer blockers remain
-
-## Output expectations
-
-Summarize:
-
-- files modified
-- party/matchmaking bugs fixed
-- edge cases hardened
-- remaining blockers if any
-
-## Success condition
-
-This skill succeeds when parties and matchmaking are reliable, deterministic, and stable across queue, launch, match, and return flows.
+## Reference systems
+- Roblox Party API, Party Simulator, MatchmakingService, TeleportService and MemoryStore facts in the [genre coverage research](../../../../docs/research/genre-coverage-2026-10.md), section 5.
+- Roblox templates "Team/FFA Arena" and "Capture the Flag" as read-only references (same research, section 5).
+- Slice tests: `tests/gamekit_world_teams.spec.luau`; system X16 in the genre coverage research.

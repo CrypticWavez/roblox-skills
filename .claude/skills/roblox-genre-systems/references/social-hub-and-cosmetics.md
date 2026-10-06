@@ -1,90 +1,71 @@
-<!-- Legacy checklist from roblox-social-hub-and-cosmetics-pass (original repo root), cleaned of escaped Markdown. -->
+# Playbook: Social hub and cosmetics
 
-name: roblox-social-hub-and-cosmetics-pass
+Kind: genre
+Covers: Social > (none)
+Also: Entertainment > Showcase & Hub; Roleplay & Avatar Sim > Life
 
-# Roblox Social Hub and Cosmetics Pass
+A neutral systems reference: it maps the genre to kit modules, data, risks and checks. It picks no theme, items, numbers or monetization; every TBD belongs to the game's owner.
 
-## Purpose
+## Core loop as systems
+- **Hangout space**: a hub with spots to gather, sit, pose and talk; small shared activities.
+- **Self-expression**: emotes, poses, cosmetics, name tags or titles, photo spots.
+- **Social actions**: friend finding, invites, gifting, shared activities, reactions.
+- **Cosmetic progression**: unlocks from time, activities, events or purchases.
+- **Moderation surface**: chat, reports, blocking, personal space.
 
-Use this skill for hub-based, social, or cosmetics-heavy Roblox games where shared-space UX, self-expression, and navigation matter.
+## Kit modules
+- `GameKit/Outfits`, `GameKit/OutfitsRoblox`: avatar customisation and saved looks.
+- `GameKit/Inventory`, `GameKit/ItemDefs`: owned cosmetics and titles.
+- `GameKit/Interact`, `GameKit/Zones`: seats, pose spots, activity areas.
+- `GameKit/AnimSet`, `GameKit/AnimSetRoblox`: emotes and poses in the standard slots plus `action_1..action_8`.
+- `GameKit/LiveOps`, `GameKit/Streaks`: timed cosmetics and return rewards.
+- `GameKit/TextFilter`, `GameKit/TextFilterRoblox` (T4): any player-written text (names, signs, bios).
+- `GameKit/Moderation`, `GameKit/ModerationRoblox` (T4): owner-run bans in live games.
+- `GameKit/PartyRoblox`: party-aware joins.
+- `UIKit/Components/Grid`, `UIKit/Components/Tabs`, `UIKit/Components/Toast`: wardrobe, menus, notifications.
+- `SceneKit/Layout`, `SceneKit/Props`: hub layout and seating.
 
-This skill focuses on:
+## Data to author
+- Hub layout: zones, seating, activity spots, photo spots (TBD).
+- Cosmetic catalogue: item keys, slots, unlock sources (TBD; catalog/1 for anything sold).
+- Emote and pose list mapped to `action_1..action_8` slots (TBD).
+- Title and badge rules (TBD).
+- Event calendar for timed cosmetics (TBD).
 
-- social hub layout
-- onboarding and navigation
-- profile/cosmetic panels
-- cosmetic ownership and equip flow
-- shared-space readability
-- performance in crowded hubs
-- social interaction affordances
+## Authority and abuse risks
+- **Cosmetic spoofing**: equipped items are checked against server-owned inventory; the client cannot equip unowned items.
+- **Text**: every player-written string is filtered before others see it (`GameKit/TextFilter`); unfiltered text is a removal risk.
+- **Harassment**: blocking hides the blocked player's text and interactions; personal-space options (TBD).
+- **Gifting**: gifts are server transactions with rate limits and checks against `IsPaidItemTradingAllowed` when paid items move.
+- **Emote spam**: rate-limit social actions per player (`GameKit/RateLimit`).
 
-## When to use
+## Performance pitfalls
+- Many detailed avatars in one place: cap server size for the hub, use level-of-detail for distant characters.
+- Per-player name tags and effects: pool billboards, hide beyond a distance.
+- Animations: at most 8 playing tracks per Animator under Server Authority; layered emotes must respect that.
 
-Use this skill when the user wants to:
+## Policy notes
+- "Social hangouts" is a Maturity & Compliance questionnaire category; romance and dating content are not allowed (Community Standards).
+- External links are not allowed in-game; only the Social Links feature (release research, section 1).
+- Voice and camera are experience settings under Communication; age and eligibility rules apply (check before relying on them).
+- Text filtering is mandatory for user text that others can see.
 
-- improve a social hub
-- fix cosmetics
-- improve profile/locker flow
-- polish shared spaces
-- improve cosmetic presentation
+## Test checklist
+- [ ] Equipping an unowned cosmetic through a forged remote is refused.
+- [ ] Every player text field passes through the filter path before display (static grep plus a spec of the routing).
+- [ ] Blocking hides the blocked player's messages and interactions on the blocker's client.
+- [ ] Seats and pose spots release correctly when a player leaves or resets.
+- [ ] A full server of avatars stays inside the frame-time budget on a low-end device profile (`Diagnostics/PerfProbe`, T3).
+- [ ] Timed cosmetics appear and expire at the configured UTC times (`GameKit/LiveOps` spec).
 
-## Core behavior
+## Design questions (TBD)
+- TBD: Which shared activities exist inside the hub?
+- TBD: How are cosmetics obtained: time, activities, events, purchases?
+- TBD: Is there player-written content (signs, bios, names)?
+- TBD: Are voice or camera features part of the experience?
+- TBD: Server size and whether friends are placed together?
 
-Audit:
-
-- hub scene and navigation
-- cosmetic inventory/equip logic
-- profile surfaces
-- social UI entry points
-- hub performance hotspots
-- shared-space clarity and onboarding
-
-Then improve usability and presentation.
-
-## Quality standards
-
-Social/cosmetic systems should be:
-
-- easy to use
-- visually clear
-- persistent and safe
-- not cluttered
-- friendly to new players
-- performant in shared spaces
-
-## Required checks
-
-Validate:
-
-- cosmetic ownership and equip flow
-- profile surface correctness
-- hub navigation
-- no broken or stale locker state
-- no cosmetic duplication or invalid equip states
-- social hub readability and movement clarity
-
-## Execution flow
-
-### Pass 1: Audit
-
-- identify hub/cosmetic pain points
-
-### Pass 2: Functional fixes
-
-- fix equip/unequip/ownership issues
-- fix profile and locker state
-- fix navigation issues
-
-### Pass 3: Polish
-
-- improve hub readability
-- improve cosmetic presentation
-- improve onboarding and first-use clarity
-
-### Pass 4: Final validation
-
-- retest social and cosmetic flow
-
-## Success condition
-
-This skill succeeds when the hub and cosmetic systems are clean, engaging, and reliable.
+## Reference systems
+- Roblox developer modules Emote Bar, Profile Card, Photo Booth, Selfie Mode, Friends Locator, Spawn With Friends and Social Interactions as read-only references ([genre coverage](../../../../docs/research/genre-coverage-2026-10.md), section 5).
+- Text filtering, chat and social links in the [release research](../../../../docs/research/release-monetization-analytics-2026-10.md), section 1.
+- Systems X22, X27 and X33 in the genre coverage research.
