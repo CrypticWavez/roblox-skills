@@ -106,6 +106,14 @@ CASES = [
     ("no_material", lambda: _box("SM_NoMat", material=False), "material_assigned"),
 ]
 
+# Export gate (qa.gated_export, what `template` ships): Studio puts an imported model's pivot at the
+# file origin, so a single-root asset off the world origin must be blocked; kit pieces may be offset.
+GATE_CASES = [
+    ("gate_at_origin", lambda: [_box("SM_AtOrigin")], None),
+    ("gate_off_origin", lambda: [_box("SM_OffOrigin", loc=(0, -0.75, 0))], "studio_pivot_at_origin"),
+    ("gate_kit_offsets", lambda: [_box("SM_KitA"), _box("SM_KitB", loc=(8, 0, 0))], None),
+]
+
 
 def _agrees(summary, error):
     if error is None:
@@ -129,5 +137,14 @@ def run(out_dir):
         report["cases"].append({"case": name, "expected": error or "pass", "pass": ok, "errors": {fmt: v["errors"] for fmt, v in verdicts.items()}})
         got = "; ".join(f"{fmt}={v['errors'] or 'pass'}" for fmt, v in verdicts.items())
         print(f"qa-selftest {name:22s} {'OK  ' if ok else 'FAIL'} expected={error or 'pass'} {got}")
+    for name, build, error in GATE_CASES:
+        env.reset()
+        objects = build()
+        result = qa.gated_export(objects, out / f"{name}.fbx", out / f"{name}.glb")
+        shipped = bool(result["export"].get("files"))
+        ok = _agrees(result["summary"], error) and shipped == (error is None)
+        report["pass"] = report["pass"] and ok
+        report["cases"].append({"case": name, "expected": error or "pass", "pass": ok, "errors": {"gate": result["summary"]["errors"]}, "shipped": shipped})
+        print(f"qa-selftest {name:22s} {'OK  ' if ok else 'FAIL'} expected={error or 'pass'} gate={result['summary']['errors'] or 'pass'} shipped={shipped}")
     (out / "qa-selftest-report.json").write_text(json.dumps(report, indent=2))
     return report

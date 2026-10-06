@@ -373,9 +373,27 @@ def run(export_probe=True, objects=None, weld=0.0):
             else:
                 continue
             report["objects"].append({"name": obj.name, "type": obj.type, "category": meta.get("category"), "checks": checks})
+    if objects:
+        report["objects"].append(studio_pivot_check(objects))
     if export_probe:
         report["export"] = export_roundtrip_probe(objects)
     return summarize(report)
+
+
+def studio_pivot_check(objects):
+    """Studio's Import 3D sets the imported Model's pivot at the file origin, not at the object's
+    origin (observed 2026-10-05, reports/studio/roundtrip-2026-10-05.json). So a single-root asset
+    must sit at the world origin; kit pieces laid out side by side keep their offsets."""
+    objects = list(objects)
+    roots = [o for o in objects if o.parent not in objects]
+    offsets = {o.name: [round(v, 3) for v in o.matrix_world.translation] for o in roots}
+    if len(roots) == 1:
+        offset = next(iter(offsets.values()))
+        ok = all(abs(v) <= 0.01 for v in offset)
+        check = _check("studio_pivot_at_origin", ok, offset, [0, 0, 0], detail="Studio puts the imported model's pivot at the file origin")
+    else:
+        check = _check("studio_pivot_at_origin", True, offsets, "kit pieces keep their offsets", level="warning", detail=f"{len(roots)} roots; the imported Model's pivot is the file origin")
+    return {"name": "export-set", "type": "SET", "category": None, "checks": [check]}
 
 
 ASSET_SUFFIXES = (".blend", ".fbx", ".glb", ".gltf")
@@ -515,7 +533,7 @@ def gated_export(objects, fbx_path, glb_path):
     for path in paths.values():
         path.unlink(missing_ok=True)
     objects = list(objects)
-    report = run(export_probe=False)
+    report = run(export_probe=False, objects=objects)
     if not objects:
         report["export"] = {"pass": False, "files": {}, "detail": "nothing to export: no objects in a <Kind>/Export collection (in the view layer)"}
         return summarize(report)

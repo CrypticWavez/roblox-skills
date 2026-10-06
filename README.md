@@ -12,7 +12,7 @@ rokit install                                  # rojo, lune, stylua, selene, lua
 python3 tools/check.py                         # pre-commit gate (format, JSON, secrets, skills, hooks, lint, specs, fixtures)
 lune run tools/lune/build_fixtures.luau build/fixtures   # five SETUP_ONLY places + manifests + report.json
 python3 tools/blender/factory.py templates build/blender  # needs `pip install bpy` (3.13) or an installed Blender
-python3 tools/check.py --tier pre-release      # adds Blender templates, round trip and preview renders
+python3 tools/check.py --tier pre-release      # adds Blender templates, round trip, QA self-test and previews
 ```
 
 | Path | What |

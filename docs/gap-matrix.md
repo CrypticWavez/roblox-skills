@@ -1,6 +1,6 @@
 # Second-pass gap matrix
 
-Generated from `reports/gap-matrix.json` by `python3 tools/gap_matrix.py`; edit the JSON, not this file. As of 2026-10-05.
+Generated from `reports/gap-matrix.json` by `python3 tools/gap_matrix.py`; edit the JSON, not this file. As of 2026-10-06.
 
 Second-pass audit of the Roblox production factory (this repo plus a read-only audit of Ethan's local workbench). Machine-specific security details are kept in the project's private notes, not in this public repo. SETUP_ONLY: no game content, publishing, uploads or spending.
 
@@ -8,10 +8,10 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 | Status | Count |
 |---|---|
-| VERIFIED_STRONG | 8 |
-| VERIFIED_ACCEPTABLE | 8 |
+| VERIFIED_STRONG | 9 |
+| VERIFIED_ACCEPTABLE | 10 |
 | WEAK | 4 |
-| PARTIAL | 7 |
+| PARTIAL | 4 |
 | BROKEN | 1 |
 | MISSING | 3 |
 | OUTDATED | 1 |
@@ -23,20 +23,20 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 | ID | Area | Capability | Status | Priority | Verification |
 |---|---|---|---|---|---|
-| [T01](#t01) | Agent tooling | Skills discoverable by Claude Code | VERIFIED_STRONG | P0 | Fresh Claude session init lists 19 repo skills; skills-sync gate step. |
+| [T01](#t01) | Agent tooling | Skills discoverable by Claude Code | VERIFIED_STRONG | P0 | Fresh Claude session init lists 19 repo skills; skills-sync gate step fails on a removed heading or renamed skill (checked in a scratch copy). |
 | [T02](#t02) | Agent tooling | Skills discoverable by Codex | BLOCKED_EXTERNAL | P2 | Codex lists 19 repo skills. |
 | [T03](#t03) | Agent tooling | Small permanent instructions shared by Claude and Codex | VERIFIED_STRONG | P2 | Fresh-session recall of imported content. |
 | [T04](#t04) | Agent tooling | Tiered hooks (FAST_ON_EDIT, PRE_COMMIT, PRE_RELEASE) and publish/spend guards | VERIFIED_ACCEPTABLE | P1 | Self-test in the pre-commit gate and CI; live denials observed. |
 | [T05](#t05) | Agent tooling | Permission rules apply on a fresh checkout | BLOCKED_EXTERNAL | P3 | Warnings observed; deny protection still covered by `Edit(weppy-project-sync/**)`. |
-| [T06](#t06) | Agent tooling | Specialist subagents with explicit ownership | VERIFIED_ACCEPTABLE | P3 | Discovery observed. |
-| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_STRONG | P1 | Executed locally in the cloud container and in CI. |
-| [T08](#t08) | Agent tooling | Continuous integration | PARTIAL | P1 | Green CI on the PR head. |
+| [T06](#t06) | Agent tooling | Specialist subagents with explicit ownership | VERIFIED_STRONG | P3 | Real parallel task completed and merged. |
+| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_STRONG | P1 | Executed in the cloud container (pre-release) and in GitHub Actions (pre-commit). |
+| [T08](#t08) | Agent tooling | Continuous integration | VERIFIED_ACCEPTABLE | P1 | Green CI on the PR head (runs 3 to 5); strict jobs to be confirmed on the next run. |
 | [T09](#t09) | Agent tooling | Pinned Luau toolchain | WEAK | P2 | `rojo --version` prints 7.7.0 from a new terminal. |
-| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | PARTIAL | P2 | Selene step green in CI. |
+| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_ACCEPTABLE | P2 | Selene step green in CI. |
 | [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | PARTIAL | P2 | All four projects build in CI. |
 | [L01](#l01) | Local workbench (PC) | Local workbench gate | BROKEN | P1 | `./.venv/Scripts/python.exe tools/check.py` passes on a quiet tree. |
 | [L02](#l02) | Local workbench (PC) | Version control and rollback for the workbench | MISSING | P1 | `git log` shows a commit. |
-| [M01](#m01) | MCP and Studio | Built-in Roblox Studio MCP connection | PARTIAL | P1 | `list_roblox_studios` and `get_studio_state` return the diagnostic place. |
+| [M01](#m01) | MCP and Studio | Built-in Roblox Studio MCP connection | VERIFIED_ACCEPTABLE | P1 | Live tool calls returned the expected results in Studio. |
 | [M02](#m02) | MCP and Studio | Claude user-level Blender MCP | OUTDATED | P1 | `get_scene_info` answers from Claude in the repo. |
 | [M03](#m03) | MCP and Studio | Blender MCP inside Codex | BLOCKED_EXTERNAL | P2 | `codex mcp get blender_workbench --json` lists the server after reload. |
 | [M04](#m04) | MCP and Studio | Blender MCP add-on telemetry off | WEAK | P1 | Preference unchecked and saved. |
@@ -47,13 +47,13 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [S03](#s03) | Scene authoring | Scene-authoring API as data (buildings, props, paths, roads, fences, vegetation, terrain plans, lighting, cameras, seeds, dry-run, bounds, compare, style profiles, provenance) | VERIFIED_STRONG | P0 | Specs, fixture hashes, previews. |
 | [S04](#s04) | Scene authoring | Measurement and player-scale helpers | VERIFIED_ACCEPTABLE | P2 | Specs. |
 | [S05](#s05) | Scene authoring | Terrain and lighting applied in Studio | PARTIAL | P2 | Screen captures per lighting profile. |
-| [P01](#p01) | Procedural generation | Seeded generators (dungeon, cave, arena, settlement) | VERIFIED_STRONG | P0 | Specs and fixture hashes. |
+| [P01](#p01) | Procedural generation | Seeded generators (dungeon, cave, arena, settlement) | VERIFIED_STRONG | P0 | Specs and fixture hashes in the gate and CI. |
 | [P02](#p02) | Procedural generation | Layout validators (connectivity, reachability, redundant paths, dead ends, purposeless branches, spawn fairness, player scale, camera clearance, sightlines, encounter space, performance) | VERIFIED_ACCEPTABLE | P2 | Specs and fixture reports. |
 | [P03](#p03) | Procedural generation | Determinism and manifests | VERIFIED_STRONG | P1 | Gate. |
-| [B01](#b01) | Blender | Blender asset templates and QA reports (13 kinds) | VERIFIED_STRONG | P0 | Template runs on three bpy versions; CI matrix. |
+| [B01](#b01) | Blender | Blender asset templates and QA reports (13 kinds) | VERIFIED_STRONG | P0 | Template and QA runs on three bpy versions; CI matrix; self-test proves known-bad assets fail. |
 | [B02](#b02) | Blender | Blender built-ins in the factory (Geometry Nodes, Asset Browser catalogs, texture baking, Rigify) | MISSING | P2 | n/a |
 | [B03](#b03) | Blender | Preview renders for visual QA | VERIFIED_ACCEPTABLE | P2 | Renders reviewed in this pass. |
-| [B04](#b04) | Blender | Round trip, Blender half (create, revise, export, reimport, diff, expectation) | VERIFIED_STRONG | P0 | Runs in pre-release gate and CI. |
+| [B04](#b04) | Blender | Round trip, Blender half (create, revise, export, reimport, diff, expectation) | VERIFIED_STRONG | P0 | Runs in the pre-release gate and CI. |
 | [B05](#b05) | Blender | Round trip, Studio half (3D Importer, then ImportInspector against the expectation) | PARTIAL | P0 | ImportInspector in Studio: 6 of 7 checks pass for v1 and v2 and the revision is detected; pivot pending the fixed file. |
 | [B06](#b06) | Blender | Material colour survives the Studio import | MISSING | P1 | A Studio import shows the baked colours, and the inspector's appearance_bound reports a texture. |
 | [R01](#r01) | Inherited modules | Inherited pure-Luau modules (ReceiptLedger, CommerceCatalog, Lifetime, Motion, AudioMixer, AudioDirector, EffectsPool, MovementProfile, AnimationInspector and WorldInspector maths, UI logic, FaultQueue) | VERIFIED_ACCEPTABLE | P2 | Inherited suites and new specs pass in the gate. |
@@ -61,7 +61,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [D01](#d01) | Research | Fresh tooling research with select/reject decisions | VERIFIED_ACCEPTABLE | P3 | Decisions applied: built-in Studio MCP, Rokit over Aftman, mcp-for-blender 2.1.8, bpy 5.2 LTS in CI. |
 | [D02](#d02) | Research | Deep observational game dossiers | PARTIAL | P3 | n/a |
 | [D03](#d03) | Research | In-engine test runner in CI (Jest Lua via Open Cloud Luau Execution) | BLOCKED_EXTERNAL | P2 | CI job green. |
-| [X01](#x01) | Boundary | Publishing, asset upload, purchases, live products, ads | INTENTIONALLY_EXCLUDED | P0 | Self-test in gate and CI. |
+| [X01](#x01) | Boundary | Publishing, asset upload, purchases, live products, ads | INTENTIONALLY_EXCLUDED | P0 | Self-test in the gate and CI. |
 | [X02](#x02) | Boundary | Commercial game content (genre, theme, world, characters, economy, UI) | INTENTIONALLY_EXCLUDED | P0 | Review. |
 
 ## Steps that need Ethan's machine or decision
@@ -134,12 +134,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** GitHub repo: 25 Roblox pass skills. Workbench: 7 Codex skills discovered.
 - **ACTUAL STATE:** The repo held 25 loose `roblox-*/skill.md` files (lowercase name, escaped markdown, 11 genre checklists; 2 of them, multiplayer-state-fix and persistence-and-rewards-audit, were empty). Neither Claude nor Codex looked in those folders. Now 19 skills live in `.agents/skills/` and are mirrored to `.claude/skills/`.
-- **EVIDENCE:** Commit 054af82 tree. A fresh headless Claude Code 2.1.289 session in this repo listed all 19 repo skills in its init event. `python3 tools/sync_skills.py --check` passes in the gate.
+- **EVIDENCE:** Commit 054af82 tree. A fresh headless Claude Code 2.1.289 session in this repo listed all 19 repo skills in its init event. `python3 tools/sync_skills.py --check` (pre-commit gate, CI) reports 19 skills, 0 errors.
 - **DEFECT:** No agent ever loaded the old guidance.
 - **ROOT CAUSE:** Uploaded without the SKILL.md / skills-directory conventions.
 - **IMPACT:** All earlier skill guidance was dead text.
-- **FIX:** Rewrote into 19 focused skills (PURPOSE, TRIGGERS, INPUTS, CONTEXT, TOOLS, PROCEDURE, OUTPUTS, ACCEPTANCE, FAILURE, RELATED). Legacy checklists moved to `references/`; old root folders removed. The validator enforces frontmatter, name, description length, size and line endings.
-- **VERIFICATION:** Fresh Claude session init lists 19 repo skills; skills-sync gate step.
+- **FIX:** Rewrote into 19 focused skills, each with the ten sections Purpose, Triggers, Inputs, Required context, Tools, Procedure, Outputs, Acceptance, Failure and Related. `sync_skills.py --check` enforces them plus frontmatter, name = directory, description, size and line endings; a skill missing a heading fails the gate. Legacy checklists moved to `references/`; old root folders removed.
+- **VERIFICATION:** Fresh Claude session init lists 19 repo skills; skills-sync gate step fails on a removed heading or renamed skill (checked in a scratch copy).
 
 ### T02
 
@@ -172,12 +172,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Tiered hooks (FAST_ON_EDIT, PRE_COMMIT, PRE_RELEASE) and publish/spend guards** · Agent tooling · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** First pass shipped no hooks ("no fabricated hooks").
-- **ACTUAL STATE:** PostToolUse `fast_on_edit` (format, JSON, secrets, SKILL.md rules); PreToolUse `guard_bash` and `guard_mcp` deny publish/upload/Open Cloud writes/force-push to main and ask before asset-creating Studio tools, purchase prompts and DataStore writes. `tools/check.py` provides the pre-commit and pre-release tiers and installs a git pre-commit hook.
-- **EVIDENCE:** `node tools/hooks/selftest.mjs` 13/13. Live: in this session the Bash guard denied a heredoc that contained a publish command, and the edit hook flagged an unformatted spec.
-- **DEFECT:** Guards are string matchers. They stop accidental or obvious publish/upload calls, not deliberately obfuscated code.
-- **ROOT CAUSE:** Hooks inspect text, not runtime behaviour.
-- **IMPACT:** Residual risk if an agent is manipulated into obfuscating a publish call; deny rules and Studio's own prompts remain.
-- **FIX:** Implemented; no hook can publish or spend (they only return allow/ask/deny).
+- **ACTUAL STATE:** PostToolUse `fast_on_edit` (format, JSON, secrets from `tools/hooks/secret-patterns.json`, SKILL.md rules). PreToolUse `guard_bash` parses commands (argv, runners such as npx, variables, PowerShell parameter prefixes, inline script bodies) and denies publish/upload tools, Open Cloud and DataStore/Messaging writes, write requests whose URL is hidden in a variable, force pushes or deletions of main/master in any argument order, and anything but known read-only commands on a line that names `weppy-project-sync/`. `guard_mcp` denies publishing or asset/place-creating Luau and completed purchases, and asks before asset-creating Studio tools, purchase prompts and DataStore/MemoryStore writes. `tools/check.py` provides the pre-commit and pre-release tiers and installs a git pre-commit hook.
+- **EVIDENCE:** `node tools/hooks/selftest.mjs`: 170/170 hook cases in both directions (including false-positive cases such as `feature/main-menu` and plain reads) and 17 secret samples checked against both the edit hook and `tools/check.py`; a corpus of 1514 real commands was replayed for false positives. Live in this session: the guard denied an earlier heredoc containing a publish command and, after the rewrite, a Python heredoc that named the protected folder.
+- **DEFECT:** Text guards cannot see scripts run from files, shell aliases, or paths and URLs produced by other programs (documented in the guard header). The folder rule is deliberately conservative: an interpreter command line that merely mentions the folder name is denied, so text about it is edited with the Edit tool.
+- **ROOT CAUSE:** Hooks inspect command text, not runtime behaviour.
+- **IMPACT:** Residual risk if an agent is manipulated into hiding a publish call in a script file; deny rules and Studio's own prompts remain.
+- **FIX:** Rewritten after review findings (curl form/data uploads, DataStore writes, flag-order force pushes, CreateAssetVersionAsync, purchase prompts, folder redirects, rojo global flags). No hook can publish or spend: they only return allow/ask/deny.
 - **VERIFICATION:** Self-test in the pre-commit gate and CI; live denials observed.
 
 ### T05
@@ -195,42 +195,42 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T06
 
-**Specialist subagents with explicit ownership** · Agent tooling · VERIFIED_ACCEPTABLE · P3
+**Specialist subagents with explicit ownership** · Agent tooling · VERIFIED_STRONG · P3
 
 - **PREVIOUS CLAIM:** None.
 - **ACTUAL STATE:** `.claude/agents/`: roblox-engineer (packages, tests), technical-artist (Blender), qa-reviewer (read-only), researcher (docs/research). File ownership table in `docs/architecture.md`; Codex follows the same table via AGENTS.md.
-- **EVIDENCE:** Fresh Claude session init lists all four agents; the session named the Blender owner correctly.
-- **DEFECT:** Not yet exercised on a real parallel task.
+- **EVIDENCE:** Fresh Claude session init lists all four agents. On 2026-10-05 a workflow ran roblox-engineer (ProcGen, SceneKit), technical-artist (Blender QA) and general-purpose engineers in five isolated worktrees with disjoint file sets, each checked by a read-only qa-reviewer; all five merged without code conflicts (only the regenerated golden hash file overlapped).
+- **DEFECT:** None open.
 - **ROOT CAUSE:** n/a
 - **IMPACT:** Low.
 - **FIX:** n/a
-- **VERIFICATION:** Discovery observed.
+- **VERIFICATION:** Real parallel task completed and merged.
 
 ### T07
 
 **Repo gate (fast / pre-commit / pre-release)** · Agent tooling · VERIFIED_STRONG · P1
 
 - **PREVIOUS CLAIM:** Workbench `tools/check.py` 43 checks passed at 19:43Z.
-- **ACTUAL STATE:** This repo's `tools/check.py` runs StyLua, JSON, secret scan, skills sync, hook self-test, Selene, Lune specs, fixture builds with golden hashes, and (pre-release) Blender templates, round trip and previews. Missing tools report SKIPPED, never PASS.
-- **EVIDENCE:** `build/check-report.json` from the pre-release run in this pass (see PR).
-- **DEFECT:** Selene is SKIPPED in the cloud (see T10).
+- **ACTUAL STATE:** `tools/check.py` runs StyLua, JSON, the shared-pattern secret scan over every committable file, skills sync, gap matrix, hook self-test, Selene, Lune specs, the inherited suites and fixture builds with golden hashes (added, removed and changed fixtures all fail); pre-release adds Blender templates, round trip, QA self-test and previews. Missing tools report SKIPPED, never PASS, and `--strict` (used in CI) counts SKIPPED as a failure.
+- **EVIDENCE:** Pre-release tier passed in the cloud container on the merged branch (Selene SKIPPED there: no network for its std). Pre-commit tier passed in GitHub Actions with Selene running and nothing skipped (runs 3 to 5 on 1eee84a, 492ebfc, ab9487d).
+- **DEFECT:** Selene cannot run in the cloud container (see T10).
 - **ROOT CAUSE:** n/a
 - **IMPACT:** n/a
 - **FIX:** n/a
-- **VERIFICATION:** Executed locally in the cloud container and in CI.
+- **VERIFICATION:** Executed in the cloud container (pre-release) and in GitHub Actions (pre-commit).
 
 ### T08
 
-**Continuous integration** · Agent tooling · PARTIAL · P1
+**Continuous integration** · Agent tooling · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** None.
-- **ACTUAL STATE:** `.github/workflows/factory.yml`: pre-commit job (Rokit toolchain, Rojo builds, gate incl. Selene) and a Blender job on bpy 5.1.2 (the PC's version) and 5.2.2 LTS.
-- **EVIDENCE:** Workflow file; first run happens on the draft PR.
-- **DEFECT:** Unverified until the first run is green.
+- **ACTUAL STATE:** `.github/workflows/factory.yml`: a pre-commit job (Rokit toolchain, Selene std generation, Rojo builds of three projects, `--tier pre-commit --strict`) and a Blender matrix on bpy 5.1.2 (the PC's version) and 5.2.2 LTS that runs `--tier pre-release --strict`.
+- **EVIDENCE:** The first run never got a hosted runner and was cancelled. Runs 3 to 5 passed: pre-commit gate with Selene and no skipped steps, Blender templates and round trip on both bpy versions. The strict pre-release jobs run from the integration commit onward.
+- **DEFECT:** Strict mode and the in-CI pre-release tier are new; their first run is pending at this commit.
 - **ROOT CAUSE:** n/a
 - **IMPACT:** First real test of `rokit install` and Selene's Roblox std in a clean environment.
-- **FIX:** Drive the PR's CI to green.
-- **VERIFICATION:** Green CI on the PR head.
+- **FIX:** Keep CI green on the PR head.
+- **VERIFICATION:** Green CI on the PR head (runs 3 to 5); strict jobs to be confirmed on the next run.
 
 ### T09
 
@@ -247,15 +247,15 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T10
 
-**Selene lint with the Roblox standard library** · Agent tooling · PARTIAL · P2
+**Selene lint with the Roblox standard library** · Agent tooling · VERIFIED_ACCEPTABLE · P2
 
 - **PREVIOUS CLAIM:** Selene in the workbench gate.
-- **ACTUAL STATE:** `selene generate-roblox-std` cannot fetch the API dump through the cloud proxy, so the gate reports SKIPPED here. CI runs it.
-- **EVIDENCE:** Gate output `selene SKIPPED` with the reason.
+- **ACTUAL STATE:** `selene generate-roblox-std` cannot fetch the API dump through the cloud proxy, so the container reports SKIPPED. CI generates the std first and lints `packages` with it.
+- **EVIDENCE:** GitHub Actions run 3 (1eee84a): `[ok  ] selene`; container gate output `selene SKIPPED` with the reason.
 - **DEFECT:** Not linted in the cloud container.
 - **ROOT CAUSE:** Network policy of the cloud environment.
 - **IMPACT:** Lint regressions would only show in CI.
-- **FIX:** CI pre-commit job.
+- **FIX:** CI pre-commit job (strict, so a skip fails it).
 - **VERIFICATION:** Selene step green in CI.
 
 ### T11
@@ -299,16 +299,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### M01
 
-**Built-in Roblox Studio MCP connection** · MCP and Studio · PARTIAL · P1
+**Built-in Roblox Studio MCP connection** · MCP and Studio · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** Native Studio connection partially verified (sync/readback, Play, screenshots, simulated input).
-- **ACTUAL STATE:** User-level `Roblox_Studio` entry is connected on the PC (Studio 0.741.19, `mcp.bat` present). The repo's `.mcp.json` adds the same command with hook gating. The cloud session cannot reach Studio.
-- **EVIDENCE:** Local audit `claude mcp list`; config review against Roblox's documented command.
-- **DEFECT:** No live tool call in this pass.
+- **ACTUAL STATE:** The built-in Studio MCP (user-level `Roblox_Studio`, Studio 0.741.19) was driven live from a Claude Code session on the PC: `list_roblox_studios`, `execute_luau`, `search_game_tree`, `screen_capture` and `start_stop_play`. The repo's `.mcp.json` declares the same command with hook gating.
+- **EVIDENCE:** `reports/studio/smoke-2026-10-05.json`, `reports/studio/roundtrip-2026-10-05.json`.
+- **DEFECT:** The repo's own `.mcp.json` entry was not the one used (the PC session ran from the workbench folder); reading console output in Run mode was blocked by the PC's permission prompt.
 - **ROOT CAUSE:** Studio runs only on the PC.
 - **IMPACT:** Studio-side claims below stay blocked until run there.
-- **FIX:** Run the Studio proof steps (S02).
-- **VERIFICATION:** `list_roblox_studios` and `get_studio_state` return the diagnostic place.
+- **FIX:** Open Claude Code in this repo on the PC once, approve the project server, and approve the console read.
+- **VERIFICATION:** Live tool calls returned the expected results in Studio.
 
 ### M02
 
@@ -380,9 +380,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Studio testing modes (Test, Test Here, Run, Server & Clients)** · MCP and Studio · BLOCKED_EXTERNAL · P1
 
 - **PREVIOUS CLAIM:** Play and local one/two-client RemoteEvent/leave fixtures passed.
-- **ACTUAL STATE:** The gate's "native" passes replay hashes of saved receipts; they do not open Studio. Per Roblox's docs, MCP `start_stop_play` covers Test and Run; Test Here and Server & Clients (F7) are started from the Studio UI. The skill documents which mode to use for what.
-- **EVIDENCE:** Workbench `tools/check.py` source and receipts; research section 2.
-- **DEFECT:** No live mode exercised in this pass; first-pass evidence is retained, not re-run.
+- **ACTUAL STATE:** The gate's "native" passes replay hashes of saved receipts; they do not open Studio. MCP `start_stop_play` covers Test and Run; Test Here and Server & Clients are started from the Studio UI. On 2026-10-05 Run mode was started on the PC but the FACTORY_SMOKE console line could not be read (permission prompt).
+- **EVIDENCE:** `reports/studio/smoke-2026-10-05.json` (run_mode field); research section 2.
+- **DEFECT:** No play mode has produced observed output in this pass.
 - **ROOT CAUSE:** Studio only on the PC.
 - **IMPACT:** Replication and play behaviour of new code is unproven.
 - **FIX:** Run S02 in Run mode, and one Server & Clients session with 2 clients on the network fixture.
@@ -406,12 +406,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Scene-authoring API as data (buildings, props, paths, roads, fences, vegetation, terrain plans, lighting, cameras, seeds, dry-run, bounds, compare, style profiles, provenance)** · Scene authoring · VERIFIED_STRONG · P0
 
 - **PREVIOUS CLAIM:** Not present (metadata graphs only).
-- **ACTUAL STATE:** `packages/SceneKit`: plans are data, built from seeds and style profiles, validated (part budget, door/room clearance, stair rise and headroom, prop clipping and support), hashed into manifests, compared between revisions, and rendered.
-- **EVIDENCE:** Lune specs (walls, floor holes, buildings 1-4 storeys x 3 roofs, Vec vs CFrame rotation parity, terrain, cameras, lighting). Five SETUP_ONLY fixture places build and validate with stable hashes. Blender previews caught and fixed a flipped gable roof, a mis-oriented wedge/ramp and a front camera that faced the back.
-- **DEFECT:** Fixed: stair headroom of 1 stud at 3+ storeys (now alternating lanes); gable roof slopes inverted; ramp yaw; front camera.
+- **ACTUAL STATE:** `packages/SceneKit`: plans are data, built from seeds and style profiles, validated (part budget, door clear width against every wall, room clearance, stair rise, headroom and oriented-box obstruction at any yaw, prop clipping and support), hashed into manifests, compared between revisions, rendered, and applied in Studio with undo; `Apply.scene` replaces the previous model of the same name unless `{replace = false}`.
+- **EVIDENCE:** Lune specs (`tests/scenekit.spec.luau`, `tests/scenekit_layout.spec.luau`: 600 subdivided buildings with no bisected doorway, railing vs next flight at 3 to 5 storeys, yawed stairs, the fixture ramp clear of the Annex). Five SETUP_ONLY fixture places build and validate with stable hashes. Studio parity of the smoke scenes (S02).
+- **DEFECT:** Fixed in this pass: stair headroom at 3+ storeys, inverted gable slopes, ramp yaw, front camera; after review: Apply not replacing with no options, partitions cutting doorways, railing clipping the next flight, the fixture ramp buried in a foundation, AABB stair checks failing at non-axis yaw.
 - **ROOT CAUSE:** Rotation-convention errors, caught by validators and renders.
 - **IMPACT:** n/a after fixes.
-- **FIX:** Regression tests added for each.
+- **FIX:** Regression specs for each.
 - **VERIFICATION:** Specs, fixture hashes, previews.
 
 ### S04
@@ -437,7 +437,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **DEFECT:** Voxel output and the look of lighting profiles are unverified.
 - **ROOT CAUSE:** Engine-only behaviour.
 - **IMPACT:** Terrain plans may need adjustment once seen.
-- **FIX:** Apply the settlement fixture's terrain ops in the diagnostic place during S02 and capture it.
+- **FIX:** Apply a `Terrain.heightmap` plan (as in `tests/scenekit.spec.luau`) and each lighting profile in the diagnostic place and capture them; no fixture emits terrain ops yet.
 - **VERIFICATION:** Screen captures per lighting profile.
 
 ### P01
@@ -445,21 +445,21 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Seeded generators (dungeon, cave, arena, settlement)** · Procedural generation · VERIFIED_STRONG · P0
 
 - **PREVIOUS CLAIM:** Not present.
-- **ACTUAL STATE:** `packages/ProcGen`: BSP + MST + guaranteed loops, cellular-automata caves joined into one region, symmetric arenas with cover and spawn shields, road/lot settlements.
-- **EVIDENCE:** Seed sweeps in specs; golden fixture hashes in the gate.
-- **DEFECT:** Fixed during the pass: seed 303 had no loop, a cramped encounter room, 4-stud caves, 1-cell arena lanes.
+- **ACTUAL STATE:** `packages/ProcGen`: BSP + MST dungeons whose loops are walkable on the carved grid and wrap real wall (`minLoopWallStuds`), goals and encounters placed in rooms big enough for them on the best shortest route (shortfalls fail `encounters_placed`), cellular-automata caves re-joined until exactly one region, symmetric arenas with the objective on the true centre, road/lot settlements.
+- **EVIDENCE:** `tests/procgen.spec.luau` (every validator asserted, no exclusions) and `tests/procgen_regressions.spec.luau` (independent grid loop check on seeds 1 to 40, 200-seed sweeps for loops, encounters and run length, caves at four sizes, arenas at 7 sizes x 2 symmetries); golden fixture hashes in the gate.
+- **DEFECT:** Fixed during the pass: seed 303 had no loop, 4-stud caves, 1-cell arena lanes. After review: graph-only loops (47 of seeds 1 to 200 had no walkable loop), cramped goal rooms failing encounter_space on 12 of 25 spec seeds while the spec skipped that check, cave seed 87 split in two, NaN spawn fairness, off-centre arena objective.
 - **ROOT CAUSE:** Generator parameters; caught by validators.
 - **IMPACT:** n/a after fixes.
-- **FIX:** minLoops guarantee, roomy encounter selection, 8-stud cave cells, cover gaps and protected spawn radius.
-- **VERIFICATION:** Specs and fixture hashes.
+- **FIX:** RoomGraph loop measure, capacity-aware placement, region re-join loop, unreachable spawns fail, centred objective; goldens regenerated (dungeon 06ace82c, arena 20898139, Studio smoke dungeon 927f2db4).
+- **VERIFICATION:** Specs and fixture hashes in the gate and CI.
 
 ### P02
 
 **Layout validators (connectivity, reachability, redundant paths, dead ends, purposeless branches, spawn fairness, player scale, camera clearance, sightlines, encounter space, performance)** · Procedural generation · VERIFIED_ACCEPTABLE · P2
 
 - **PREVIOUS CLAIM:** Not present.
-- **ACTUAL STATE:** Implemented on the layout grid and room graph with machine-readable checks.
-- **EVIDENCE:** Every fixture's checks in `build/fixtures/report.json`; failing cases in specs.
+- **ACTUAL STATE:** Implemented on the layout grid and room graph with machine-readable checks, including encounters_placed and walkable-loop redundant_paths.
+- **EVIDENCE:** Every fixture's checks in `build/fixtures/report.json`; failing cases in the specs for each validator (unreachable spawn, graph-only loop, pillar loop, encounter shortfall, split cave).
 - **DEFECT:** Grid-level reasoning, not PathfindingService or Humanoid physics.
 - **ROOT CAUSE:** Headless by design.
 - **IMPACT:** A layout can pass the grid and still snag a character on geometry.
@@ -472,7 +472,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Hash-drift blocking for planning records.
 - **ACTUAL STATE:** Same seed gives the same manifest hash; canonical sorted JSON; golden hashes for fixtures and the Studio smoke.
-- **EVIDENCE:** `fixture-hashes` gate step; CI.
+- **EVIDENCE:** `fixture-hashes` gate step locally and in CI (runs 3 to 5).
 - **DEFECT:** None found.
 - **ROOT CAUSE:** n/a
 - **IMPACT:** n/a
@@ -484,13 +484,13 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Blender asset templates and QA reports (13 kinds)** · Blender · VERIFIED_STRONG · P0
 
 - **PREVIOUS CLAIM:** Blender direct authoring/export verified (68-triangle 2-bone fixture, 128px bake, FBX+GLB, reimport, turntable).
-- **ACTUAL STATE:** `tools/blender/factory.py templates`: humanoid, npc, enemy, creature, weapon, prop, vehicle, building, modular kit, environment, material/rig/animation tests. Each writes .blend, FBX, GLB and `qa.json` (topology, normals, UVs, materials, pivot, scale, budgets, 4 influences, export reimport probe).
-- **EVIDENCE:** All 13 pass on bpy 5.0.1, 5.1.2 and 5.2.2 LTS in this pass.
-- **DEFECT:** Found: on Blender 5.1.2 (installed on the PC) and 5.2.2, an EXACT boolean adds an empty material slot, so building and modular templates failed material QA. Also fixed: FBX dropped animation clips, join lost material indices, mirror self-merge, inset shrank bounds.
+- **ACTUAL STATE:** `tools/blender/factory.py templates`: humanoid, npc, enemy, creature, weapon, prop, vehicle, building, modular kit, environment, material/rig/animation tests. QA runs before export and a failing asset writes no FBX/GLB (exit 1, `qa.json` kept). Checks use world transforms, count only deform-bone weights, block single-root assets off the world origin (Studio pivot), and re-import the shipped FBX and GLB against a signature of the export set. `qa <file>` works on .blend, .fbx, .glb and .gltf, with seam-aware glTF welding.
+- **EVIDENCE:** All 13 templates and QA of all 26 shipped FBX/GLB files pass on bpy 5.0.1, 5.1.2 and 5.2.2 in the container; 13/13 on Ethan's Blender 5.1.2 (at 9c12091); CI Blender jobs on 5.1.2 and 5.2.2. `factory.py qa-selftest`: 19 known-good/known-bad cases agree across source, FBX and GLB and the export gate.
+- **DEFECT:** Fixed: Blender 5.1+/5.2 boolean empty material slot, FBX animation loss, join material indices, mirror self-merge, inset bounds. After review: the probe tested a different export than the shipped files, QA never blocked export, local-only transform checks, non-deform groups counted as weights, false GLB errors, stale matrix_world in set_origin_base_center.
 - **ROOT CAUSE:** Blender 5.1+ boolean behaviour change; exporter defaults.
 - **IMPACT:** The factory would have failed QA on Ethan's installed Blender.
-- **FIX:** `ops.prune_material_slots` after applying modifiers; CI runs bpy 5.1.2 and 5.2.2.
-- **VERIFICATION:** Template runs on three bpy versions; CI matrix.
+- **FIX:** `prune_material_slots`; `qa.gated_export`; shipped-file probe; world-space and deform-bone checks; `_weld_seams`; `studio_pivot_at_origin`; `qa-selftest` in the pre-release tier.
+- **VERIFICATION:** Template and QA runs on three bpy versions; CI matrix; self-test proves known-bad assets fail.
 
 ### B02
 
@@ -510,7 +510,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Preview renders for visual QA** · Blender · VERIFIED_ACCEPTABLE · P2
 
 - **PREVIOUS CLAIM:** Turntable and comparison images.
-- **ACTUAL STATE:** `render-manifest` renders SceneKit manifests from their cameras (Cycles CPU); templates render front and three-quarter views.
+- **ACTUAL STATE:** `render-manifest` renders SceneKit manifests (Cycles CPU) from their cameras, or frames cameras from the part bounds when a manifest has none, so plain `scene:manifest()` output renders; templates render front and three-quarter views.
 - **EVIDENCE:** `build/previews/*.png` reviewed; they exposed three geometry bugs.
 - **DEFECT:** Small CPU renders; not Studio lighting.
 - **ROOT CAUSE:** Headless.
@@ -523,13 +523,13 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Round trip, Blender half (create, revise, export, reimport, diff, expectation)** · Blender · VERIFIED_STRONG · P0
 
 - **PREVIOUS CLAIM:** Baseline/revision exports and reimport hashes.
-- **ACTUAL STATE:** `roundtrip` builds SM_RoundTripMarker v1 and v2, exports FBX and GLB, reimports both, checks triangles, dimensions, pivot, front direction, materials and names, and writes `roblox_expectation_v*.json` for the Studio side.
-- **EVIDENCE:** `build/roundtrip/roundtrip-report.json` pass on bpy 5.0.1, 5.1.2, 5.2.2.
-- **DEFECT:** None open.
+- **ACTUAL STATE:** `roundtrip` builds SM_RoundTripMarker v1 and v2 (no export if source QA fails, stale outputs removed first), exports FBX and GLB at the world origin, reimports both, checks triangles, dimensions, origin at the base centre and at the world origin, front direction, surface offsets, materials and names, and writes `roblox_expectation_v*.json` (with `front_offset`/`up_offset`) for the Studio side.
+- **EVIDENCE:** `roundtrip-report.json` passes on bpy 5.0.1, 5.1.2, 5.2.2 in the container, on Ethan's Blender 5.1.2 (9c12091, 9c024fb, 1eee84a) and in CI.
+- **DEFECT:** Fixed after the Studio import: the marker's origin sat off the world origin (Studio pivot), and the pivot check only looked at minimum Z.
 - **ROOT CAUSE:** n/a
 - **IMPACT:** n/a
 - **FIX:** n/a
-- **VERIFICATION:** Runs in pre-release gate and CI.
+- **VERIFICATION:** Runs in the pre-release gate and CI.
 
 ### B05
 
@@ -627,13 +627,13 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Publishing, asset upload, purchases, live products, ads** · Boundary · INTENTIONALLY_EXCLUDED · P0
 
 - **PREVIOUS CLAIM:** Intentionally excluded.
-- **ACTUAL STATE:** Excluded and enforced: hooks deny publish/upload commands and publishing Luau, and ask before asset creation, purchase prompts and DataStore writes.
-- **EVIDENCE:** Hook self-test cases for each class.
+- **ACTUAL STATE:** Excluded and enforced: hooks deny publish/upload commands, Open Cloud and DataStore/Messaging writes, publishing or asset-creating Luau and completed purchases, and ask before asset-creating Studio tools, purchase prompts and DataStore/MemoryStore writes. The one exception, approved by Ethan on 2026-10-05: Import 3D of the neutral round-trip marker into the unpublished diagnostic place, which uploaded two private mesh assets (ids kept out of the repo).
+- **EVIDENCE:** Hook self-test (170 cases) including every Prompt*Purchase, CreateAssetVersionAsync and CreatePlaceInPlayerInventoryAsync; `reports/studio/roundtrip-2026-10-05.json`.
 - **DEFECT:** n/a
 - **ROOT CAUSE:** n/a
 - **IMPACT:** n/a
 - **FIX:** n/a
-- **VERIFICATION:** Self-test in gate and CI.
+- **VERIFICATION:** Self-test in the gate and CI.
 
 ### X02
 

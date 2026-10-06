@@ -4,7 +4,7 @@ Conceptual operation -> implementation (all deterministic; seeds where randomnes
 
 | Concept | Call |
 |---|---|
-| world.inspect / measure / validate | `Scene:bounds()`, `Scene:counts()`, `Measure.*`, `Validate.scene` |
+| world.inspect / measure / validate | `Scene:bounds()`, `Scene:counts()`, `Measure.*`, `Validate.scene`, `Validate.penetration(a, b)` (oriented-box overlap depth) |
 | terrain.generate / sculpt / carve / paint / smooth / biome / validate | `Terrain.heightmap`, `Terrain.sculpt`, `Terrain.flatten`, `Terrain.carve`, `Terrain.paint` (height bands + slope), `Terrain.smooth`, `Terrain.validate`, `Terrain.toOps` -> `Apply.terrain` |
 | building.create / floor / wall / window / door / roof / stairs / trim / interior / validate | `Building.create`, `.floor` (holes), `.wall` (openings: door/window/gap), `.windowRun`, `.roof` (gable/shed/flat+parapet), `.stairs`, `.ramp`, `.railing`, `.column`, `.arch`, `.trim`, `.foundation`, `.subdivide` |
 | prop.place / scatter / align / snap / distribute | `Props.place`, `.scatter` (Poisson disc), `.alignToWall`, `.snap`, `.distribute` |

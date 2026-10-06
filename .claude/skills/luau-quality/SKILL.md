@@ -23,7 +23,7 @@ The working tree, the tier to run, and whether a golden-hash change is intended.
 | FAST_ON_EDIT | automatic Claude PostToolUse hook after Edit/Write/MultiEdit (`.claude/settings.json`) | `node tools/hooks/fast_on_edit.mjs` | touched file only: secret scan, JSON parse, `stylua --check` for Luau, SKILL.md frontmatter, reminder when `.claude/skills` is edited; < 1 s |
 | fast | on demand | `python3 tools/check.py --tier fast` | `stylua --check`, JSON validity, secret scan of the working tree |
 | PRE_COMMIT | before every commit; CI job `pre-commit` | `python3 tools/check.py` (default tier) | fast + `tools/sync_skills.py --check` + `tools/gap_matrix.py --check` + `node tools/hooks/selftest.mjs` + selene + `lune run tests/run.luau` + inherited Lune suites + fixture build against golden hashes; ~10 s |
-| PRE_RELEASE | before a PR is marked ready; CI job `blender` (bpy 5.1.2 and 5.2.2) | `python3 tools/check.py --tier pre-release` | pre-commit + Blender `templates`, `roundtrip` and `render-manifest` previews of modular_building, dungeon and settlement; minutes |
+| PRE_RELEASE | before a PR is marked ready; CI job `blender` (bpy 5.1.2 and 5.2.2) | `python3 tools/check.py --tier pre-release` | pre-commit + Blender `templates`, `roundtrip`, `qa-selftest` and `render-manifest` previews of modular_building, dungeon and settlement; minutes |
 
 - `--strict` counts every SKIPPED step (tool missing) as FAIL. CI runs `--tier pre-commit --strict` and the Blender job `--tier pre-release --strict`. Without it a missing tool shows as SKIPPED, never as PASS.
 - The secret scan reads the working-tree copy of every file git would commit (tracked and untracked, not ignored), not the staged index, so unstaged edits count too.

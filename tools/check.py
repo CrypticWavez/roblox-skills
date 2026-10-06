@@ -1,7 +1,7 @@
 """Factory gate. Tiers:
   fast        format check + JSON validity + secret scan                      (seconds)
   pre-commit  fast + skills sync + gap matrix + hook self-test + selene + Lune specs + fixture hashes (~10 s)
-  pre-release pre-commit + Blender templates/QA + round trip + previews       (minutes)
+  pre-release pre-commit + Blender templates/QA + round trip + QA self-test + previews (minutes)
 
   python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden] [--install-git-hook]
 
@@ -224,6 +224,7 @@ def main():
         else:
             gate.cmd("blender-templates", blender + ["templates", "build/blender"], timeout=3000)
             gate.cmd("blender-roundtrip", blender + ["roundtrip", "build/roundtrip"], timeout=900)
+            gate.cmd("blender-qa-selftest", blender + ["qa-selftest", "build/qa-selftest"], timeout=900)
             for fixture in ("modular_building", "dungeon", "settlement"):
                 manifest = f"build/fixtures/{fixture}.manifest.json"
                 gate.cmd(f"preview-{fixture}", blender + ["render-manifest", manifest, "build/previews"], timeout=900)
