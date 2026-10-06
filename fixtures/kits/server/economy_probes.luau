@@ -10,29 +10,58 @@
 --   economy_trade_two_client     a trade between the first two real players (Server and Clients
 --                                test mode with two clients), in memory only: no DataStore
 -- No requires: kits come from ctx.kit, the Env from ctx.env. Run on the unpublished diagnostic
--- place built from fixtures/kits.project.json (runners: tests/engine/economy_<probe>.luau).
+-- place built from fixtures/kits.project.json (runners: tests/engine/economy_<probe>.luau); every
+-- probe refuses any other place (Env.assertDiagnostic), builds what it needs far above the place's
+-- content (y = 800, a convention) and removes it, also when the probe raises.
 -- In Lune the same registry runs against FakeEnv and tests/fakes/FakeEconomyEngine.luau
 -- (tests/gamekit_economy_probes.spec.luau), which proves wiring, not the engine.
 local probes = {}
 
-local function folder(ctx: any, name: string): any
+local STAGING_Y = 800 -- above the place's content (the G2 probes' convention)
+
+type Defer = (fn: () -> ()) -> ()
+
+-- A folder in Workspace for the probe's parts, destroyed by the probe's cleanups.
+local function folder(ctx: any, name: string, defer: Defer): any
 	local r = ctx.env.roblox
 	local made = r.Instance.new("Folder")
 	made.Name = name
+	defer(function()
+		made:Destroy()
+	end)
 	made.Parent = ctx.env.services.Workspace
 	return made
 end
 
-function probes.economy_followers_formation(ctx: any)
+-- Wraps a probe body: refuses a non-diagnostic place first, then always runs the body's deferred
+-- cleanups (in reverse, each pcall-protected), so a probe that raises leaves nothing built or
+-- bound. The error is re-raised for Probe.runAll to record as check "error".
+local function guarded(body: (ctx: any, defer: Defer) -> ...any)
+	return function(ctx: any)
+		ctx.kit("GameKit/Env").assertDiagnostic(ctx.env, ctx.probe)
+		local cleanups = {}
+		local ok, err = pcall(body, ctx, function(fn: () -> ())
+			table.insert(cleanups, fn)
+		end)
+		for index = #cleanups, 1, -1 do
+			pcall(cleanups[index])
+		end
+		if not ok then
+			error(err, 0)
+		end
+	end
+end
+
+probes.economy_followers_formation = guarded(function(ctx: any, defer: Defer)
 	local Followers = ctx.kit("GameKit/Followers")
 	local FollowersRoblox = ctx.kit("GameKit/FollowersRoblox")
 	local env = ctx.env
 	local r = env.roblox
-	local root = folder(ctx, "EconomyProbeFollowers")
+	local root = folder(ctx, "EconomyProbeFollowers", defer)
 	local leader = r.Instance.new("Part")
 	leader.Name = "Leader"
 	leader.Anchored = true
-	leader.CFrame = r.CFrame.new(0, 60, 0)
+	leader.CFrame = r.CFrame.new(0, STAGING_Y, 0)
 	leader.Parent = root
 	local core = Followers.new({ formation = "grid", spacing = 3, distance = 5, columns = 2 })
 	local handles = {}
@@ -41,7 +70,7 @@ function probes.economy_followers_formation(ctx: any)
 		part.Name = "Follower" .. index
 		part.Size = r.Vector3.new(1, 1, 1)
 		part.CanCollide = false
-		part.Position = r.Vector3.new(index * 8, 60, 20)
+		part.Position = r.Vector3.new(index * 8, STAGING_Y, 20)
 		part.Parent = root
 		local id = "f" .. index
 		core:add(id, { x = part.Position.X, y = part.Position.Y, z = part.Position.Z })
@@ -60,6 +89,7 @@ function probes.economy_followers_formation(ctx: any)
 	local stop = FollowersRoblox.start(core, handles, function(): any
 		return leader.CFrame
 	end, env)
+	defer(stop)
 	env.wait(3)
 	local leaderState = FollowersRoblox.leaderFrom(leader.CFrame)
 	local targets = core:targets(leaderState)
@@ -71,30 +101,31 @@ function probes.economy_followers_formation(ctx: any)
 		worst = math.max(worst, gap)
 	end
 	ctx.check("followers_reach_slots", worst < 1.5, { worstGap = math.floor(worst * 100) / 100 })
-	leader.CFrame = r.CFrame.new(500, 60, 0)
+	leader.CFrame = r.CFrame.new(500, STAGING_Y, 0)
 	env.wait(0.5)
 	local jumped = handles.f1.part.Position
 	ctx.check("far_leader_teleports", math.abs(jumped.X - 500) < 20, { x = math.floor(jumped.X) })
-	stop()
-	root:Destroy()
-end
+end)
 
-function probes.economy_outfits_apply(ctx: any)
+probes.economy_outfits_apply = guarded(function(ctx: any, defer: Defer)
 	local Outfits = ctx.kit("GameKit/Outfits")
 	local OutfitsRoblox = ctx.kit("GameKit/OutfitsRoblox")
 	local env = ctx.env
 	local r = env.roblox
 	local players = env.services.Players
-	local root = folder(ctx, "EconomyProbeOutfits")
+	local root = folder(ctx, "EconomyProbeOutfits", defer)
 	local base = OutfitsRoblox.toInstance(Outfits.toDescription({ scales = { height = 1 } }), env)
 	local made, model = pcall(function(): any
 		return players:CreateHumanoidModelFromDescription(base, r.Enum.HumanoidRigType.R15)
 	end)
 	ctx.check("rig_created", made, if made then nil else tostring(model))
 	if not made then
-		root:Destroy()
 		return
 	end
+	if model.PrimaryPart then
+		model.PrimaryPart.Anchored = true
+	end
+	model:PivotTo(r.CFrame.new(0, STAGING_Y, 0))
 	model.Parent = root
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	ctx.check("rig_has_humanoid", humanoid ~= nil)
@@ -116,10 +147,9 @@ function probes.economy_outfits_apply(ctx: any)
 	ctx.check("color_round_trip", torso.r == 10 and torso.g == 20 and torso.b == 30, torso)
 	local refused = OutfitsRoblox.apply(humanoid, { scales = { height = 9 } }, nil, env)
 	ctx.check("out_of_range_refused", refused == false)
-	root:Destroy()
-end
+end)
 
-function probes.economy_plots_claim_race(ctx: any)
+probes.economy_plots_claim_race = guarded(function(ctx: any)
 	local Plots = ctx.kit("GameKit/Plots")
 	local env = ctx.env
 	local list = {}
@@ -151,9 +181,9 @@ function probes.economy_plots_claim_race(ctx: any)
 		owners[owner] = true
 	end
 	ctx.check("no_plot_shared", not shared, plots:snapshot())
-end
+end)
 
-function probes.economy_trade_two_client(ctx: any)
+probes.economy_trade_two_client = guarded(function(ctx: any)
 	local ItemDefs = ctx.kit("GameKit/ItemDefs")
 	local Inventory = ctx.kit("GameKit/Inventory")
 	local Wallet = ctx.kit("GameKit/Wallet")
@@ -209,6 +239,6 @@ function probes.economy_trade_two_client(ctx: any)
 		again == true and note == "already_committed" and b.inventory:count("material_a") == 4,
 		note
 	)
-end
+end)
 
 return probes
