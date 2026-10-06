@@ -120,4 +120,8 @@ test("platform_remoteguard_flood passes against fakes", function(t)
 	expectPass(t, "platform_remoteguard_flood", probeEnv())
 end)
 
+test("platform_playerdata_memory passes against fakes", function(t)
+	expectPass(t, "platform_playerdata_memory", probeEnv())
+end)
+
 return cases

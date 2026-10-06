@@ -98,4 +98,102 @@ function probes.platform_remoteguard_flood(ctx: any)
 	end
 end
 
+-- PlayerData on the real task scheduler with the memory backend (never DataStores): a v1 to v2
+-- migration, an update, a second server refused while the session is held, a durable save, the
+-- autosave scheduler, a receipt granted once, release and re-load on the other server, then
+-- PlayerDataRoblox.bind loading the play session's player and the BindToClose-style flush.
+function probes.platform_playerdata_memory(ctx: any)
+	if not diagnostic(ctx) then
+		return
+	end
+	local player = firstPlayer(ctx)
+	if player == nil then
+		return
+	end
+	local PlayerData = ctx.kit("GameKit/PlayerData")
+	local PlayerDataRoblox = ctx.kit("GameKit/PlayerDataRoblox")
+	local env = ctx.env
+	local shared = { values = {}, locks = {} }
+	local function options(serverId: string, sharedStore: any): any
+		return {
+			template = { visits = 0, flags = {} },
+			version = 2,
+			migrations = {
+				[1] = function(data: any): any
+					data.visits = data.count
+					data.count = nil
+					return data
+				end,
+			},
+			backend = PlayerData.memoryBackend({ serverId = serverId, shared = sharedStore }),
+			autosave = { interval = 1, jitter = 0, seed = 1 },
+		}
+	end
+	local storeA = PlayerData.new(options("probe_a", shared), env)
+	local storeB = PlayerData.new(options("probe_b", shared), env)
+	local userId = 1 -- a synthetic user for the core checks; the real player is used by bind below
+	shared.values.player_1 = { schemaVersion = 1, count = 4 }
+
+	local session, reason = storeA:load(userId)
+	ctx.check(
+		"load_migrates_v1",
+		session ~= nil
+			and session:get("visits") == 4
+			and session:get("count") == nil
+			and session:get("schemaVersion") == 2,
+		reason
+	)
+	if session == nil then
+		return
+	end
+	ctx.check("update_commits", session:update(function(data: any)
+		data.visits += 1
+		return nil
+	end) and session:get("visits") == 5)
+	local _, conflict = storeB:load(userId)
+	ctx.check("second_server_locked", conflict == "locked", conflict)
+	local saved = session:saveAsync()
+	ctx.check("save_durable", saved and shared.values.player_1.visits == 5)
+	env.wait(1.5)
+	local due = storeA:tick()
+	ctx.check("autosave_due", #due == 1 and due[1] == userId, due)
+	local first = session:grantReceipt("probe_receipt_1", function(data: any)
+		data.visits += 10
+		return nil
+	end)
+	local again = session:grantReceipt("probe_receipt_1", function(data: any)
+		data.visits += 10
+		return nil
+	end)
+	ctx.check(
+		"receipt_granted_once",
+		first == "granted" and again == "granted" and session:get("visits") == 15,
+		{ first = first, again = again, visits = session:get("visits") }
+	)
+	ctx.check("release_unlocks", session:release() and shared.locks.player_1 == nil)
+	local other = storeB:load(userId)
+	ctx.check("other_server_loads_after_release", other ~= nil and other:get("visits") == 15)
+	if other then
+		other:release()
+	end
+
+	local storeC = PlayerData.new(options("probe_c", { values = {}, locks = {} }), env)
+	local binding = PlayerDataRoblox.bind(
+		storeC,
+		{ players = env.services.Players, bindToClose = false, kickOnFailure = false, autosaveStep = 0.5 },
+		env
+	)
+	local bound = binding:waitForSession(player, 5)
+	ctx.check("bind_loads_player", bound ~= nil and bound.userId == player.UserId)
+	binding:unbind()
+	local summary = storeC:releaseAll({ deadline = 5 })
+	ctx.check(
+		"release_all_flushes",
+		#summary.released == 1 and #summary.failed == 0 and #summary.timedOut == 0,
+		summary
+	)
+	local _, closed = storeC:load(player.UserId)
+	ctx.check("closed_store_refuses_loads", closed == "closed", closed)
+end
+
 return probes
