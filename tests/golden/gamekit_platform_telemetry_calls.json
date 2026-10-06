@@ -1,0 +1,402 @@
+[
+  {
+    "args": [
+      "player:1",
+      "load_finished",
+      4,
+      "nil"
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      1,
+      "spawned",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "first_session",
+      "fs_1_a",
+      1,
+      "joined",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      2,
+      "moved",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "first_session",
+      "fs_1_a",
+      2,
+      "tutorial_done",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      3,
+      "first_core_action",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "first_session",
+      "fs_1_a",
+      3,
+      "first_core_action",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "Enum.AnalyticsEconomyFlowType.Source",
+      "currency_a",
+      10,
+      10,
+      "Gameplay",
+      "nil",
+      "nil"
+    ],
+    "method": "LogEconomyEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Start",
+      1,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Complete",
+      1,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Start",
+      2,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Fail",
+      2,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "purchase_offer_viewed",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "purchase_prompted",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "purchase_granted",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "Enum.AnalyticsEconomyFlowType.Sink",
+      "currency_a",
+      4,
+      6,
+      "Shop",
+      "nil",
+      "nil"
+    ],
+    "method": "LogEconomyEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "first_session",
+      "fs_1_a",
+      4,
+      "second_core_action",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "first_session",
+      "fs_1_b",
+      1,
+      "joined",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:1",
+      "session_end",
+      300,
+      {
+        "CustomField01": "left"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "load_finished",
+      6,
+      "nil"
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      1,
+      "spawned",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "first_session",
+      "fs_2_a",
+      1,
+      "joined",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      2,
+      "moved",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "first_session",
+      "fs_2_a",
+      2,
+      "tutorial_done",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "Enum.AnalyticsEconomyFlowType.Source",
+      "currency_b",
+      5,
+      5,
+      "quest_reward",
+      "nil",
+      "nil"
+    ],
+    "method": "LogEconomyEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Start",
+      1,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Complete",
+      1,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "purchase_offer_viewed",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "purchase_prompted",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "purchase_prompt_closed",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:2",
+      "session_end",
+      120,
+      {
+        "CustomField01": "left"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:3",
+      1,
+      "spawned",
+      "nil"
+    ],
+    "method": "LogOnboardingFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:3",
+      "first_session",
+      "fs_3_a",
+      1,
+      "joined",
+      "nil"
+    ],
+    "method": "LogFunnelStepEvent"
+  },
+  {
+    "args": [
+      "player:3",
+      "main_path",
+      "Enum.AnalyticsProgressionType.Start",
+      1,
+      "nil",
+      "nil"
+    ],
+    "method": "LogProgressionEvent"
+  },
+  {
+    "args": [
+      "player:3",
+      "purchase_offer_viewed",
+      "nil",
+      {
+        "CustomField01": "product_a",
+        "CustomField02": "devproduct",
+        "CustomField03": "shop_panel"
+      }
+    ],
+    "method": "LogCustomEvent"
+  },
+  {
+    "args": [
+      "player:3",
+      "session_end",
+      20,
+      {
+        "CustomField01": "left"
+      }
+    ],
+    "method": "LogCustomEvent"
+  }
+]

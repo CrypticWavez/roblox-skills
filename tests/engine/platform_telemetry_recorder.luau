@@ -1,5 +1,5 @@
 --!strict
--- Studio entry for probe platform_playerdata_memory (G1, PlayerData and PlayerDataRoblox).
+-- Studio entry for probe platform_telemetry_recorder (G1, Telemetry and TelemetryRoblox).
 -- Run on the server of a play session (Play or Server & Clients) on the unpublished diagnostic
 -- place built from fixtures/kits.project.json: kits come from ReplicatedStorage.Workbench, the
 -- registry from ServerScriptService.KitFixtures.platform_probes. Prints ENGINE_CHECK lines and
@@ -22,4 +22,4 @@ local registry = (require :: any)(
 	ServerScriptService:WaitForChild("KitFixtures"):WaitForChild("platform_probes")
 )
 
-Probe.runAll(registry, { env = EnvRoblox.studio(), kit = kit, only = { "platform_playerdata_memory" } })
+Probe.runAll(registry, { env = EnvRoblox.studio(), kit = kit, only = { "platform_telemetry_recorder" } })

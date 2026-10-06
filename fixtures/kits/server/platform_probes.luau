@@ -196,4 +196,89 @@ function probes.platform_playerdata_memory(ctx: any)
 	ctx.check("closed_store_refuses_loads", closed == "closed", closed)
 end
 
+-- Telemetry through the Studio recorder: one event of each category for the play session's
+-- player, TELEMETRY_JSON lines stamped synthetic, order and limit rejects, the AnalyticsService
+-- argument mapping with the engine's Enum, and forPlace choosing the recorder in Studio. Never
+-- calls AnalyticsService (Studio cannot send; live sending is the owner's published-game step).
+function probes.platform_telemetry_recorder(ctx: any)
+	if not diagnostic(ctx) then
+		return
+	end
+	local player = firstPlayer(ctx)
+	if player == nil then
+		return
+	end
+	local Events = ctx.kit("GameKit/Events")
+	local Telemetry = ctx.kit("GameKit/Telemetry")
+	local TelemetryRoblox = ctx.kit("GameKit/TelemetryRoblox")
+	local env = ctx.env
+	local lines = {}
+	local sink = TelemetryRoblox.recorder(function(line: string)
+		table.insert(lines, line)
+	end)
+	local telemetry = Telemetry.new({
+		sink = sink,
+		budget = false,
+		envelope = { synthetic = true, environment = "studio" },
+		catalog = {
+			custom = { probe_custom = { fields = { "slot" } } },
+			onboarding = { "probe_start", "probe_done" },
+			funnels = { probe_funnel = { steps = { "probe_a", "probe_b" } } },
+			economy = { currencies = { "currency_a" } },
+			progression = { probe_path = true },
+		},
+	}, env)
+	ctx.check("custom", telemetry:custom(player, "probe_custom", 1, { slot = "a" }))
+	ctx.check("economy", telemetry:economy(player, "source", "currency_a", 5, 5, "Gameplay"))
+	ctx.check("progression", telemetry:progression(player, "probe_path", "complete", 1))
+	local session = telemetry:funnelStart(player, "probe_funnel")
+	ctx.check("funnel", session ~= nil and telemetry:funnelStep(player, "probe_funnel", session, "probe_b"))
+	ctx.check(
+		"onboarding",
+		telemetry:onboarding(player, "probe_start") and telemetry:onboarding(player, "probe_done")
+	)
+	ctx.check("purchase_intent", telemetry:purchase(player, "offer_viewed", "product_a", "devproduct"))
+	local prefixed = #lines == 8
+	for _, line in lines do
+		prefixed = prefixed
+			and string.sub(line, 1, #TelemetryRoblox.PREFIX) == TelemetryRoblox.PREFIX
+			and string.find(line, '"synthetic":true', 1, true) ~= nil
+			and string.find(line, '"environment":"studio"', 1, true) ~= nil
+	end
+	ctx.check("recorder_lines", prefixed, { lines = #lines })
+	local _, repeatReason = telemetry:onboarding(player, "probe_start")
+	ctx.check("onboarding_order_enforced", repeatReason == "onboarding_out_of_order", repeatReason)
+	local _, fieldReason =
+		telemetry:custom(player, "probe_custom", nil, { a = "1", b = "2", c = "3", d = "4" })
+	ctx.check("field_limit_enforced", fieldReason == "invalid", fieldReason)
+	local Enum = env.roblox.Enum
+	local method, args = TelemetryRoblox.toCall(
+		Events.economy(
+			"x",
+			{ flow = "source", currency = "currency_a", amount = 1, balance = 1, transaction_type = "Shop" }
+		),
+		{ enums = Enum, player = player }
+	)
+	ctx.check(
+		"economy_mapping",
+		method == "LogEconomyEvent" and args[2] == Enum.AnalyticsEconomyFlowType.Source and args[6] == "Shop"
+	)
+	local progressionMethod, progressionArgs = TelemetryRoblox.toCall(
+		Events.progression("x", { path = "probe_path", status = "fail", level = 2 }),
+		{ enums = Enum, player = player }
+	)
+	ctx.check(
+		"progression_mapping",
+		progressionMethod == "LogProgressionEvent"
+			and progressionArgs[3] == Enum.AnalyticsProgressionType.Fail
+	)
+	local fields = TelemetryRoblox.customFields({ slot = "a" }, nil, Enum)
+	ctx.check(
+		"custom_field_key",
+		fields ~= nil and fields[Enum.AnalyticsCustomFieldKeys.CustomField01.Name] == "a"
+	)
+	local placeSink, envelope = TelemetryRoblox.forPlace(env, { print = function() end })
+	ctx.check("for_place_studio_recorder", placeSink.kind == "recorder" and envelope.synthetic == true)
+end
+
 return probes

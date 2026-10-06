@@ -124,4 +124,8 @@ test("platform_playerdata_memory passes against fakes", function(t)
 	expectPass(t, "platform_playerdata_memory", probeEnv())
 end)
 
+test("platform_telemetry_recorder passes against fakes", function(t)
+	expectPass(t, "platform_telemetry_recorder", probeEnv())
+end)
+
 return cases

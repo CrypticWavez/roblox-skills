@@ -1,0 +1,145 @@
+{
+  "format": "kit-event-report/1",
+  "status": "partially_verified",
+  "mode": "offline_report",
+  "window": null,
+  "synthetic_opt_in": true,
+  "events_read": 36,
+  "events_used": 36,
+  "players_observed": 3,
+  "duplicate_events_ignored": 0,
+  "excluded_events": {},
+  "funnels": {
+    "first_session": {
+      "steps": [
+        {
+          "step": 1,
+          "step_name": "joined",
+          "sessions": 4,
+          "conversion_from_previous": null,
+          "conversion_from_first": 1.0
+        },
+        {
+          "step": 2,
+          "step_name": "tutorial_done",
+          "sessions": 2,
+          "conversion_from_previous": 0.5,
+          "conversion_from_first": 0.5
+        },
+        {
+          "step": 3,
+          "step_name": "first_core_action",
+          "sessions": 1,
+          "conversion_from_previous": 0.5,
+          "conversion_from_first": 0.25
+        },
+        {
+          "step": 4,
+          "step_name": "second_core_action",
+          "sessions": 1,
+          "conversion_from_previous": 1.0,
+          "conversion_from_first": 0.25
+        }
+      ]
+    }
+  },
+  "onboarding": {
+    "steps": [
+      {
+        "step": 1,
+        "step_name": "spawned",
+        "players": 3,
+        "conversion_from_previous": null,
+        "conversion_from_first": 1.0
+      },
+      {
+        "step": 2,
+        "step_name": "moved",
+        "players": 2,
+        "conversion_from_previous": 0.6667,
+        "conversion_from_first": 0.6667
+      },
+      {
+        "step": 3,
+        "step_name": "first_core_action",
+        "players": 1,
+        "conversion_from_previous": 0.5,
+        "conversion_from_first": 0.3333
+      }
+    ]
+  },
+  "economy": {
+    "currency_a": {
+      "sources": {
+        "Gameplay": 10
+      },
+      "sinks": {
+        "Shop": 4
+      },
+      "source_total": 10,
+      "sink_total": 4,
+      "net": 6,
+      "events": 2
+    },
+    "currency_b": {
+      "sources": {
+        "quest_reward": 5
+      },
+      "sinks": {},
+      "source_total": 5,
+      "sink_total": 0,
+      "net": 5,
+      "events": 1
+    }
+  },
+  "progression": {
+    "main_path": {
+      "levels": [
+        {
+          "level": 1,
+          "started": 3,
+          "completed": 2,
+          "failed": 0,
+          "drop_off": 0.3333
+        },
+        {
+          "level": 2,
+          "started": 1,
+          "completed": 0,
+          "failed": 1,
+          "drop_off": 1.0
+        }
+      ]
+    }
+  },
+  "custom": {
+    "load_finished": {
+      "count": 2,
+      "value_sum": 10
+    },
+    "session_end": {
+      "count": 3,
+      "value_sum": 440
+    }
+  },
+  "purchase_intent": {
+    "product_a": {
+      "offer_viewed": 3,
+      "prompted": 2,
+      "prompt_closed": 1,
+      "granted": 1,
+      "failed": 0,
+      "offer_to_prompt": 0.6667,
+      "prompt_to_grant": 0.5
+    }
+  },
+  "limitations": [
+    "Counts what the export holds; it cannot detect events dropped by the Telemetry budget, sink errors or a partial export.",
+    "Funnel and onboarding conversion count distinct funnel sessions and players that reached each step; Roblox dashboards may treat skipped steps differently.",
+    "Purchase intent is an observed prompt funnel, not purchase accounting; grants come from processed receipts that may land in other sessions.",
+    "Economy totals are the logged amounts, not a ledger reconciliation.",
+    "No retention, revenue estimate, discovery ranking prediction, causal effect, or human enjoyment claim.",
+    "Synthetic, Lune and Studio rows are excluded unless --include-synthetic, and are never treated as observed players."
+  ],
+  "input_sha256": "321a7dd57e8b62545e4b77d6f5e567a4247adf8f05022d222045a7a1af98598a"
+}
