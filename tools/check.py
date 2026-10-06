@@ -313,7 +313,7 @@ def check_starter(gate, strict):
             expect([str(ROOT / "build" / "starter-inside")], 2, "overlaps the factory")
             expect([str(dest)], 2, "is not empty")
             expect(["--update", str(dest)], 0, "unchanged")
-            rng = dest / "packages" / "ProcGen" / "Rng.luau"
+            rng = dest / "factory" / "ProcGen" / "Rng.luau"
             rng.write_text(rng.read_text() + "-- local edit\n")
             expect(["--update", str(dest)], 2, "edited here")
     detail = "\n".join(problems + ([inner] if inner else []))
