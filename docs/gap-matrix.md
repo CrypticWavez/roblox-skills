@@ -8,10 +8,10 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 | Status | Count |
 |---|---|
-| VERIFIED_STRONG | 9 |
-| VERIFIED_ACCEPTABLE | 27 |
+| VERIFIED_STRONG | 12 |
+| VERIFIED_ACCEPTABLE | 25 |
 | WEAK | 4 |
-| PARTIAL | 41 |
+| PARTIAL | 40 |
 | BROKEN | 1 |
 | MISSING | 2 |
 | OUTDATED | 1 |
@@ -29,15 +29,15 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [T04](#t04) | Agent tooling | Tiered hooks (FAST_ON_EDIT, PRE_COMMIT, PRE_RELEASE) and publish/spend guards | VERIFIED_ACCEPTABLE | P1 | Self-test in the pre-commit gate and CI (435/435 on the integrated branch); live denials observed; `guard_mcp` on a real Studio event pending (owner step). |
 | [T05](#t05) | Agent tooling | Permission rules apply on a fresh checkout | BLOCKED_EXTERNAL | P3 | Warnings observed; deny protection still covered by `Edit(weppy-project-sync/**)`. |
 | [T06](#t06) | Agent tooling | Specialist subagents with explicit ownership | VERIFIED_STRONG | P3 | Real parallel tasks completed and merged (5 workers, then 10 groups). |
-| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_ACCEPTABLE | P1 | Both tiers on the integrated head in the container (nothing skipped); strict CI on 367cd72; strict CI on the integrated head pending. |
-| [T08](#t08) | Agent tooling | Continuous integration | VERIFIED_ACCEPTABLE | P1 | Green strict CI on 367cd72; the integrated head is pending. |
+| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_STRONG | P2 | Both tiers in strict CI on the integrated head (run 37456628604 on 096658b, nothing skipped) and in the container on bpy 5.0.1, 5.1.2 and 5.2.2; planted broken inputs each failed the gate. |
+| [T08](#t08) | Agent tooling | Continuous integration | VERIFIED_STRONG | P2 | Green strict CI on 367cd72 and on the integrated head (run 37456628604 on 096658b). |
 | [T09](#t09) | Agent tooling | Pinned Luau toolchain | WEAK | P2 | `python3 tools/pc_doctor.py` on the PC shows PASS for path-order and toolchain:rojo (7.7.0). |
-| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_ACCEPTABLE | P2 | Selene step green in CI; container run on the integrated head. |
-| [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | VERIFIED_STRONG | P2 | Rojo builds of all five projects in the container; five in the workflow, four run in CI so far. |
-| [T12](#t12) | Agent tooling | Reusable project starter | VERIFIED_ACCEPTABLE | P1 | `starter-smoke` in the pre-commit gate and CI; `tools/starter_smoke.py`; Python unit tests. |
+| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_STRONG | P3 | Selene step green in strict CI on the integrated head (run 37456628604 on 096658b); container run. |
+| [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | VERIFIED_STRONG | P2 | Rojo builds of all five projects in the container and in strict CI (run 37456628604 on 096658b). |
+| [T12](#t12) | Agent tooling | Reusable project starter | VERIFIED_ACCEPTABLE | P1 | `starter-smoke` in the pre-commit gate and CI; `starter-smoke-full` in the pre-release gate and CI; `tools/starter_smoke.py`; Python unit tests. |
 | [T13](#t13) | Agent tooling | Publish/spend guards and MCP settings for Codex | PARTIAL | P1 | Hook, rule and config parity in the pre-commit self-test; live Codex behaviour pending. |
 | [T14](#t14) | Agent tooling | Engine probe runner and tier enforcement (studio_run, kit_tiers) | PARTIAL | P1 | `reports/engine/kitsmoke_all.json` PASS from the Studio CLI route; `kit_tiers.py --check` in the gate. |
-| [T15](#t15) | Agent tooling | Luau type analysis with pinned definitions (luau-lsp) | PARTIAL | P2 | `luau_analyze.py` reports 0 files over on the integrated head in CI; on the PC the plugin shows diagnostics after an edit. |
+| [T15](#t15) | Agent tooling | Luau type analysis with pinned definitions (luau-lsp) | VERIFIED_ACCEPTABLE | P3 | `luau_analyze.py` reports 0 files over in strict CI on the integrated head (run 37456628604 on 096658b); plugin diagnostics on the PC not yet observed. |
 | [T16](#t16) | Agent tooling | Owner-record write protection (release/owner-*.json) | PARTIAL | P2 | Self-test cases in the gate; Claude file-tool protection pending the settings change. |
 | [T17](#t17) | Agent tooling | Starter boot skeleton and kit layout | PARTIAL | P2 | Lune specs in the scaffold (T0/T2); S07 owner record pending (T3). |
 | [T18](#t18) | Agent tooling | Pinned optional dependencies with licence notices (starter bundles) | PARTIAL | P3 | Unit tests and starter smoke; CI in a game repo. |
@@ -77,8 +77,8 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [B08](#b08) | Blender | Retopology, LOD chains and smooth skin weighting (bkit) | VERIFIED_ACCEPTABLE | P2 | Self-test on three bpy versions in the pre-release gate and CI. |
 | [B09](#b09) | Blender | Brush sculpting in scripts | INTENTIONALLY_EXCLUDED | P3 | Self-test case for the stand-in. |
 | [B10](#b10) | Blender | Animation clip export (clips/1, multi-clip GLB) | VERIFIED_ACCEPTABLE | P2 | Executed headless on three bpy versions. |
-| [B11](#b11) | Blender | Kit export (kit/1) and offline asset intake | VERIFIED_ACCEPTABLE | P2 | Executed headless on three bpy versions. |
-| [B12](#b12) | Blender | glTF structural validation | VERIFIED_ACCEPTABLE | P2 | Unit tests and representative runs. |
+| [B11](#b11) | Blender | Kit export (kit/1) and offline asset intake | VERIFIED_ACCEPTABLE | P2 | Executed headless on three bpy versions; the gate step in strict CI on two. |
+| [B12](#b12) | Blender | glTF structural validation | VERIFIED_ACCEPTABLE | P2 | Unit tests and representative runs, in the container and strict CI. |
 | [R01](#r01) | Inherited modules | Inherited pure-Luau modules (ReceiptLedger, CommerceCatalog, Lifetime, Motion, AudioMixer, AudioDirector, EffectsPool, MovementProfile, AnimationInspector and WorldInspector maths, UI logic, FaultQueue) | VERIFIED_ACCEPTABLE | P2 | Inherited suites and new specs pass in the gate. |
 | [R02](#r02) | Inherited modules | Studio-bound inherited modules (NativeUI, NativeAudio, NativeEffects, RobloxReceiptAdapter, Effects, Observation, engine queries in WorldInspector) | WEAK | P2 | Fresh receipts with today's Studio version. |
 | [K01](#k01) | Runtime kits | Runtime-kit foundation and contract (Env, Probe, Fsm, Signal, Scope, Retry, Events, Settings, Catalog; tiers, probe protocol, require allowlist) | VERIFIED_ACCEPTABLE | P1 | Lune specs and the tier report in the gate. |
@@ -116,7 +116,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [Q06](#q06) | Production lab | Asset sourcing and approval (intake, provenance) | VERIFIED_ACCEPTABLE | P2 | Gate step with a negative self-test. |
 | [Q07](#q07) | Production lab | Gameplay-system library | PARTIAL | P3 | Full Lune suite in the gate; kit-tiers report; Studio pending. |
 | [Q08](#q08) | Production lab | Analytics (telemetry and offline report) | PARTIAL | P3 | Python and Lune tests in the gate; Studio pending. |
-| [Q09](#q09) | Production lab | Genre playbooks and taxonomy (29 playbooks, 17 genres, 43 subgenres) | VERIFIED_ACCEPTABLE | P3 | Lint and unit tests. |
+| [Q09](#q09) | Production lab | Genre playbooks and taxonomy (29 playbooks, 17 genres, 43 subgenres) | VERIFIED_ACCEPTABLE | P3 | Lint and unit tests, in the container and strict CI. |
 | [Q10](#q10) | Production lab | Neutral production pipeline (brief, stages, issue drafts) | VERIFIED_ACCEPTABLE | P3 | Unit tests and starter smoke. |
 | [Q11](#q11) | Production lab | CC0 asset fetch with provenance | PARTIAL | P2 | One real item pinned with a matching sha256. |
 
@@ -151,7 +151,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 1. On the PC, prepare the kits place (K20) and run `python3 tools/studio_run.py --probe kitsmoke_all`, then `--probe perf_capture`.
 2. Run `python3 tools/kit_tiers.py` to join the new reports and commit `reports/engine/` and `reports/kit-tiers.json`.
 
-**T15 Luau type analysis with pinned definitions (luau-lsp)** (PARTIAL)
+**T15 Luau type analysis with pinned definitions (luau-lsp)** (VERIFIED_ACCEPTABLE)
 
 1. Optional, on the PC: install the plugin as `docs/pc-setup.md` (section "Claude Code luau-lsp plugin") describes and confirm diagnostics appear after an edit.
 
@@ -425,29 +425,29 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T07
 
-**Repo gate (fast / pre-commit / pre-release)** · Agent tooling · VERIFIED_ACCEPTABLE · P1
+**Repo gate (fast / pre-commit / pre-release)** · Agent tooling · VERIFIED_STRONG · P2
 
 - **PREVIOUS CLAIM:** Workbench `tools/check.py` 43 checks passed at 19:43Z.
 - **ACTUAL STATE:** `tools/check.py` runs StyLua, JSON, the shared-pattern secret scan over every committable file, skills sync, gap matrix, doc links (relative links, heading anchors, well-formed URLs), the knowledge index and record paths, the fixtures README, asset provenance, Rojo sourcemaps of every project (orphan `.luau` files fail), a self-test that feeds each content check a broken input, hook self-test, Selene, Lune specs, the inherited suites, fixture builds with golden hashes (added, removed and changed fixtures fail; a missing golden fails) and the project-starter smoke; pre-release adds Blender templates, round trip, QA self-test and previews. Without `--strict`, Selene and (pre-release only) `luau-lsp-analyze` may skip; any other skipped step fails, in the installed git hook too; `--strict` (CI) allows none. `--update-golden` rewrites every golden, `--update-golden=NAME[,NAME]` only the named ones (fixture-hashes, studio-smoke or a spec golden), and a `golden-update` step lists what changed. For the runtime kits, pre-commit also runs `python-unit` (every `tests/test_*.py`), `playbook-lint`, `asset-sources`, `luau-defs-lock`, `kit-tiers` and `capture-staleness` (non-fatal), and pre-release runs `material-library`, `blender-kit`, `gltf-validate-templates`, previews of the five course fixtures, `luau-lsp-analyze` and `starter-smoke-full`.
-- **EVIDENCE:** Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. On the integrated head (fd29fd6) in the cloud container, with a locally generated Roblox std and a source-built luau-lsp 1.70.1: pre-commit PASS with nothing skipped (Selene 0 errors, 183 Python tests, kit-tiers, 1214 Lune cases) and pre-release PASS with nothing skipped on bpy 5.0.1, 5.1.2 and 5.2.2 (Blender templates, round trip, QA self-test, material library, kit bake, glTF validation, 9 previews, luau-lsp 0 files over, full starter smoke).
-- **DEFECT:** The integrated head has not run in strict CI yet.
-- **ROOT CAUSE:** New steps and ten groups' code landed together.
-- **IMPACT:** Until CI runs, a step that only fails under `--strict` or on Windows/CI tooling would go unnoticed.
-- **FIX:** Push and keep both tiers green in strict CI on the PR head.
-- **VERIFICATION:** Both tiers on the integrated head in the container (nothing skipped); strict CI on 367cd72; strict CI on the integrated head pending.
+- **EVIDENCE:** Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. On the integrated head (fd29fd6) in the cloud container, with a locally generated Roblox std and a source-built luau-lsp 1.70.1: pre-commit PASS with nothing skipped (Selene 0 errors, 183 Python tests, kit-tiers, 1214 Lune cases) and pre-release PASS with nothing skipped on bpy 5.0.1, 5.1.2 and 5.2.2 (Blender templates, round trip, QA self-test, material library, kit bake, glTF validation, 9 previews, luau-lsp 0 files over, full starter smoke). Strict CI on the integrated head (run 37456628604 on 096658b) passed pre-commit and pre-release on bpy 5.1.2 and 5.2.2 with `failed=[] skipped=[]`, including `luau-lsp-analyze`, `blender-kit`, `gltf-validate-templates` and `starter-smoke-full`.
+- **DEFECT:** The gate has run only on Linux (the cloud container and Ubuntu CI); a run on the owner's Windows PC has not been observed.
+- **ROOT CAUSE:** CI runners and the cloud container are Linux.
+- **IMPACT:** A Windows-only path or tool problem would show only on the PC.
+- **FIX:** On the PC, run `python3 tools/check.py` after pulling the branch (`docs/pc-setup.md`).
+- **VERIFICATION:** Both tiers in strict CI on the integrated head (run 37456628604 on 096658b, nothing skipped) and in the container on bpy 5.0.1, 5.1.2 and 5.2.2; planted broken inputs each failed the gate.
 
 ### T08
 
-**Continuous integration** · Agent tooling · VERIFIED_ACCEPTABLE · P1
+**Continuous integration** · Agent tooling · VERIFIED_STRONG · P2
 
 - **PREVIOUS CLAIM:** None.
-- **ACTUAL STATE:** `.github/workflows/factory.yml`: a pre-commit job (Rokit toolchain, Selene std generation, Rojo builds of the projects, `--tier pre-commit --strict`) and a Blender matrix on bpy 5.1.2 (the PC's version) and 5.2.2 LTS that runs `--tier pre-release --strict`. The integration (c70ff63) added the `kits` place to the Rojo build loop and the luau-lsp steps (`rokit install`, `python3 tools/luau_defs.py`, then `luau-lsp-analyze` inside the pre-release tier); the current workflow has not run in CI yet.
-- **EVIDENCE:** Runs 3 to 5 passed (pre-commit gate with Selene and nothing skipped, Blender templates and round trip on both bpy versions). Run 37393231152 on 367cd72 passed all three jobs in strict mode (pre-commit with Selene, pre-release on bpy 5.1.2 and 5.2.2).
-- **DEFECT:** Not yet run on the integrated head. Untested in Actions: the kits place build, the rokit download of luau-lsp 1.70.1 (the release asset was refused in the cloud container, so G9b built it from source) and every new gate step.
-- **ROOT CAUSE:** The integration has not been pushed yet.
-- **IMPACT:** CI-only failures (toolchain downloads, strict skips) are unknown for the integrated head.
-- **FIX:** Push the integrated branch and keep strict CI green on the PR head; if rokit cannot fetch luau-lsp, build it from source at tag 1.70.1.
-- **VERIFICATION:** Green strict CI on 367cd72; the integrated head is pending.
+- **ACTUAL STATE:** `.github/workflows/factory.yml`: a pre-commit job (Rokit toolchain, Selene std generation, Rojo builds of the projects, `--tier pre-commit --strict`) and a Blender matrix on bpy 5.1.2 (the PC's version) and 5.2.2 LTS that runs `--tier pre-release --strict`. The integration (c70ff63) added the `kits` place to the Rojo build loop and the luau-lsp steps (`rokit install`, `python3 tools/luau_defs.py`, then `luau-lsp-analyze` inside the pre-release tier); run 37456628604 on 096658b ran all of it.
+- **EVIDENCE:** Runs 3 to 5 passed (pre-commit gate with Selene and nothing skipped, Blender templates and round trip on both bpy versions). Run 37393231152 on 367cd72 passed all three jobs in strict mode (pre-commit with Selene, pre-release on bpy 5.1.2 and 5.2.2). On the integrated head, run 37456628604 on 096658b passed all three jobs in strict mode with nothing skipped: the Rojo loop built all five places including SETUP_ONLY_Kits_Diagnostic, `rokit install` fetched luau-lsp 1.70.1 from its release, and `luau-lsp-analyze` passed in both Blender jobs.
+- **DEFECT:** CI runs on Ubuntu only (no Windows or macOS job).
+- **ROOT CAUSE:** Hosted Linux runners cover the headless gate; Studio and Windows need the owner's PC.
+- **IMPACT:** Windows-only failures show only on the PC (T07).
+- **FIX:** Keep strict CI green on the PR head.
+- **VERIFICATION:** Green strict CI on 367cd72 and on the integrated head (run 37456628604 on 096658b).
 
 ### T09
 
@@ -464,16 +464,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T10
 
-**Selene lint with the Roblox standard library** · Agent tooling · VERIFIED_ACCEPTABLE · P2
+**Selene lint with the Roblox standard library** · Agent tooling · VERIFIED_STRONG · P3
 
 - **PREVIOUS CLAIM:** Selene in the workbench gate.
 - **ACTUAL STATE:** A plain `selene generate-roblox-std` fails TLS through the cloud proxy, so a fresh container with no `roblox.yml` reports Selene SKIPPED. CI generates the std first and lints `packages` with it.
-- **EVIDENCE:** GitHub Actions run 3 (1eee84a): `[ok  ] selene`. On the integrated head this container used a Roblox std generated from a locally served API dump: c70ff63 fixed the 2 errors and 3 warnings it found in kit code and 1 in the starter's Boot.luau, and the pre-commit gate's `selene packages` reports 0 errors, 0 warnings and 0 parse errors (fd29fd6).
-- **DEFECT:** Strict CI has not run Selene on the integrated head yet.
+- **EVIDENCE:** GitHub Actions run 3 (1eee84a): `[ok  ] selene`. On the integrated head this container used a Roblox std generated from a locally served API dump: c70ff63 fixed the 2 errors and 3 warnings it found in kit code and 1 in the starter's Boot.luau, and the pre-commit gate's `selene packages` reports 0 errors, 0 warnings and 0 parse errors (fd29fd6). Strict CI on the integrated head (run 37456628604 on 096658b) generated the std in each job and reported `[ok  ] selene` in all three.
+- **DEFECT:** None open in CI; a fresh cloud container still needs a locally served API dump to generate the std.
 - **ROOT CAUSE:** The proxy's TLS interception breaks selene's own fetch of the API dump.
-- **IMPACT:** Lint regressions would only show in CI.
+- **IMPACT:** Only a local run without `roblox.yml` skips Selene; strict CI cannot.
 - **FIX:** CI pre-commit job (strict, so a skip fails it).
-- **VERIFICATION:** Selene step green in CI; container run on the integrated head.
+- **VERIFICATION:** Selene step green in strict CI on the integrated head (run 37456628604 on 096658b); container run.
 
 ### T11
 
@@ -481,12 +481,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Three Rojo fixture builds in the workbench gate.
 - **ACTUAL STATE:** All five projects build from a clean clone: creator, diagnostic, factory, network and the kits diagnostic place (`fixtures/kits.project.json`: every kit package plus opt-in fixtures keyed by the Workspace attribute `SETUP_ONLY_KitFixture`). `network.project.json` used to read `../artifacts/network/SourceManifest.luau`, which only the PC workbench generated; it now reads `build/network/SourceManifest.luau`, written by `python3 tools/network_manifest.py` from the place's own sources (per-file sha256 and the combined `input_sha256` that the Echo scripts put in their evidence).
-- **EVIDENCE:** Cloud container: `python3 tools/network_manifest.py` then `rojo build fixtures/network.project.json` (Rojo 7.7.1) built the place, and deserialising it in Lune listed FaultQueue, Settings and SourceManifest under ReplicatedStorage.WorkbenchNetwork. On the integrated branch `rojo build fixtures/kits.project.json` built SETUP_ONLY_Kits_Diagnostic. CI builds creator, diagnostic, factory and network; kits was added to the loop in c70ff63 and has not run in CI yet.
+- **EVIDENCE:** Cloud container: `python3 tools/network_manifest.py` then `rojo build fixtures/network.project.json` (Rojo 7.7.1) built the place, and deserialising it in Lune listed FaultQueue, Settings and SourceManifest under ReplicatedStorage.WorkbenchNetwork. On the integrated branch `rojo build fixtures/kits.project.json` built SETUP_ONLY_Kits_Diagnostic. CI builds all five: run 37456628604 on 096658b logged `Built project to kits.rbxl` after the other four.
 - **DEFECT:** The workbench's own manifest format is unknown; this one keeps the only field the scripts read.
 - **ROOT CAUSE:** Generated file referenced but never committed.
 - **IMPACT:** n/a
 - **FIX:** Generator plus CI build of every project.
-- **VERIFICATION:** Rojo builds of all five projects in the container; five in the workflow, four run in CI so far.
+- **VERIFICATION:** Rojo builds of all five projects in the container and in strict CI (run 37456628604 on 096658b).
 
 ### T12
 
@@ -494,12 +494,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed (mission section 1).
 - **ACTUAL STATE:** `tools/new_project.py <dest>` scaffolds a separate starter/2 game repository with infrastructure only: factory packages in `factory/` (never `packages/`, which `wally install` deletes first on Windows and macOS, where `Packages/` is the same folder) laid out by class (authoring packages in `ServerStorage.Authoring`, kits in `ReplicatedStorage.Kits` plus leaf copies of ProcGen Rng/Grid/Graph and SceneKit Vec/Lighting, legacy packages in `ReplicatedStorage.Kits` beside the kits, `ServerPackages`), a phased boot skeleton that tolerates absent kits (T17), the pinned toolchain, the Lune runner and specs, a gate with fast, pre-commit and pre-release tiers (skills-packages, brief, deps, blink when a `.blink` file exists, asset-provenance, release-check), CI with `--strict` and a committed-lockfile check, the release checker (Q02), the production pipeline (Q10), optional pinned dependency bundles (T18), the Claude and Codex guards, game-repo AGENTS/CLAUDE templates with every game-design field left TBD, 17 skills and `starter.json` with each module's tier, Lune flag and probe. `--update` refreshes packages, skills, hooks and managed files, adds new bundles, migrates starter/1, moves an older `ReplicatedStorage.Legacy` folder next to the kits, moves an older repo's `packages/` to `factory/` and refuses when files were edited locally. It refuses a destination inside the factory or a non-empty one, and never runs a git write.
-- **EVIDENCE:** Gate step `starter-smoke` (pre-commit) scaffolds into a temp dir, runs `git init` there and runs that repo's own gate, plus the refusals and `--update`. On the integrated branch `tests/test_new_project.py` (23) and `tests/test_release_check.py` (14) pass. G8 also ran `tools/starter_smoke.py` (19 checks PASS), a manual scaffold whose own pre-commit gate passed (28 Lune cases, Rojo build), and an all-kits scaffold (37 Lune specs, Rojo build). Since c70ff63 `DEFAULT_PACKAGES` is the authoring packages plus all five kits, and `starter-smoke-full` (pre-release) scaffolds them and runs the new repo's gate: PASS on the integrated head.
+- **EVIDENCE:** Gate step `starter-smoke` (pre-commit) scaffolds into a temp dir, runs `git init` there and runs that repo's own gate, plus the refusals and `--update`. On the integrated branch `tests/test_new_project.py` (23) and `tests/test_release_check.py` (14) pass. G8 also ran `tools/starter_smoke.py` (19 checks PASS), a manual scaffold whose own pre-commit gate passed (28 Lune cases, Rojo build), and an all-kits scaffold (37 Lune specs, Rojo build). Since c70ff63 `DEFAULT_PACKAGES` is the authoring packages plus all five kits, and `starter-smoke-full` (pre-release) scaffolds them and runs the new repo's gate: PASS on the integrated head. Strict CI (run 37456628604 on 096658b) passed `starter-smoke` in all three jobs and `starter-smoke-full` in both Blender jobs.
 - **DEFECT:** The generated CI has never run on GitHub and a generated place has not been opened in Studio (T17).
 - **ROOT CAUSE:** No game repository exists (setup-only).
 - **IMPACT:** First real use may surface CI setup issues.
 - **FIX:** On the first explicit game-build request, push the new repo and confirm its CI is green.
-- **VERIFICATION:** `starter-smoke` in the pre-commit gate and CI; `tools/starter_smoke.py`; Python unit tests.
+- **VERIFICATION:** `starter-smoke` in the pre-commit gate and CI; `starter-smoke-full` in the pre-release gate and CI; `tools/starter_smoke.py`; Python unit tests.
 
 ### T13
 
@@ -529,16 +529,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T15
 
-**Luau type analysis with pinned definitions (luau-lsp)** · Agent tooling · PARTIAL · P2
+**Luau type analysis with pinned definitions (luau-lsp)** · Agent tooling · VERIFIED_ACCEPTABLE · P3
 
 - **PREVIOUS CLAIM:** None (luau-lsp was pinned but never run).
 - **ACTUAL STATE:** `luau-defs.lock.json` pins the Roblox definitions and API docs by commit (0382dc76) and sha256; `tools/luau_defs.py` fetches and verifies them into `build/luau-lsp/`. `tools/luau_analyze.py` runs `luau-lsp analyze` over `packages/` and `fixtures/` with a Rojo sourcemap and fails on any per-file increase over `tests/golden/luau-lsp-baseline.json` (exit 3, SKIPPED, without a binary); it fails when luau-lsp crashes, exits with a code other than 0 or 1, or prints output it cannot parse, so a broken analyzer can never pass the step. The repo-local Claude Code plugin `luau-lsp@roblox-factory` runs the same server and definitions; it is an LSP server, not MCP (`docs/pc-setup.md`).
-- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under. Typing passes fixed every kit file (GameKit, UIKit, Cinematics, Feel, AVKit, authoring kits and kit fixtures to 0) and the baseline was re-recorded: 278 diagnostics in 38 files, 0 over (fd29fd6 names each file that fell and why; none rose).
-- **DEFECT:** CI's rokit-installed binary is untested (release download refused here); the plugin has not run inside a Claude Code session.
-- **ROOT CAUSE:** Groups wrote modules without a shared analyzer run; the proxy blocks the release asset; cloud sessions start no LSP.
-- **IMPACT:** Type regressions are gated in strict CI and in any local pre-release run that has the binary; a local run without it may skip the step.
-- **FIX:** In CI run `rokit install`, `python3 tools/luau_defs.py` and `python3 tools/luau_analyze.py`, building luau-lsp from source if rokit cannot fetch it.
-- **VERIFICATION:** `luau_analyze.py` reports 0 files over on the integrated head in CI; on the PC the plugin shows diagnostics after an edit.
+- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under. Typing passes fixed every kit file (GameKit, UIKit, Cinematics, Feel, AVKit, authoring kits and kit fixtures to 0) and the baseline was re-recorded: 278 diagnostics in 38 files, 0 over (fd29fd6 names each file that fell and why; none rose). Strict CI on the integrated head (run 37456628604 on 096658b): `rokit install` fetched luau-lsp 1.70.1 from its release and `luau-lsp-analyze` passed in both Blender jobs; strict mode fails a skipped step, so the binary ran.
+- **DEFECT:** The plugin has not run inside a Claude Code session.
+- **ROOT CAUSE:** Groups wrote modules without a shared analyzer run; cloud sessions start no language server, so the plugin needs a desktop Claude Code session.
+- **IMPACT:** Type regressions are gated in strict CI; a local pre-release run without the binary may skip the step; editor diagnostics on the PC are unconfirmed.
+- **FIX:** On the PC, install the plugin (`docs/pc-setup.md`) and confirm diagnostics appear after an edit.
+- **VERIFICATION:** `luau_analyze.py` reports 0 files over in strict CI on the integrated head (run 37456628604 on 096658b); plugin diagnostics on the PC not yet observed.
 
 ### T16
 
@@ -1057,8 +1057,8 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **DEFECT:** Pieces have not been imported into Studio (B06, S10); greybox art only; icons are not byte-identical across Blender versions; intake has run only on the bundled fixture.
 - **ROOT CAUSE:** Headless by design; no third-party asset sourced (setup-only).
 - **IMPACT:** The first real intake may need a normalise or bake fix.
-- **FIX:** Gate step `blender-kit` (pre-release, added in c70ff63) builds a kit on every pre-release run; it passed on bpy 5.0.1, 5.1.2 and 5.2.2 on the integrated head, not yet in CI.
-- **VERIFICATION:** Executed headless on three bpy versions.
+- **FIX:** Gate step `blender-kit` (pre-release, added in c70ff63) builds a kit on every pre-release run; it passed on bpy 5.0.1, 5.1.2 and 5.2.2 in the container and on 5.1.2 and 5.2.2 in strict CI (run 37456628604 on 096658b).
+- **VERIFICATION:** Executed headless on three bpy versions; the gate step in strict CI on two.
 
 ### B12
 
@@ -1066,12 +1066,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** `tools/gltf_validate.py` (pure Python, gltf-validate/1) checks the GLB container, buffers and views, accessor bounds and alignment, attributes, at most 4 influences, normalised weights, the node graph, skins, morph targets, animation samplers, image headers (size, power of two) and TEXCOORD_0; `gltf-transform inspect` runs only when npx exists and the owner opts in.
-- **EVIDENCE:** On the integrated branch `tests/test_gltf_validate.py` 22 OK; G6: every template GLB passes. Gate step `gltf-validate-templates` (pre-release, added in c70ff63) validates them on every pre-release run; it passed on the three bpy versions on the integrated head, not yet in CI.
+- **EVIDENCE:** On the integrated branch `tests/test_gltf_validate.py` 22 OK; G6: every template GLB passes. Gate step `gltf-validate-templates` (pre-release, added in c70ff63) validates them on every pre-release run; it passed on the three bpy versions in the container and on 5.1.2 and 5.2.2 in strict CI (run 37456628604 on 096658b).
 - **DEFECT:** Not the Khronos validator (no extension semantics); the gltf-transform path was not exercised.
 - **ROOT CAUSE:** Pure Python by choice (no network, no Node dependency).
 - **IMPACT:** Extension-level problems would pass.
 - **FIX:** n/a
-- **VERIFICATION:** Unit tests and representative runs.
+- **VERIFICATION:** Unit tests and representative runs, in the container and strict CI.
 
 ### R01
 
@@ -1560,12 +1560,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** 11 genre checklists in `roblox-genre-systems`.
 - **ACTUAL STATE:** `.agents/skills/roblox-genre-systems/references/taxonomy.json` (genre-taxonomy/1) maps all 17 genres and 43 subgenres of the research table to a primary playbook (plus optional also-playbooks) or a reasoned exclusion (only Utility & Other), with aliases and 4 cross-cutting playbooks. 29 playbooks share 9 sections and cite kit modules; none picks a genre, content or prices. `tools/playbook_lint.py` checks the map against the research doc, the format, that Covers/Also lines match the map, that cited modules exist in the ownership list or on disk, and neutral wording.
-- **EVIDENCE:** On the integrated branch `python3 tools/playbook_lint.py`: PASS, 29 playbooks, 17 genres, 43 subgenres, 622 module citations, now resolved against the merged kits (notes only for authoring modules found on disk); `tests/test_playbook_lint.py` 28 OK, including a failure case per rule.
+- **EVIDENCE:** On the integrated branch `python3 tools/playbook_lint.py`: PASS, 29 playbooks, 17 genres, 43 subgenres, 622 module citations, now resolved against the merged kits (notes only for authoring modules found on disk); `tests/test_playbook_lint.py` 28 OK, including a failure case per rule. Strict CI (run 37456628604 on 096658b): `[ok  ] playbook-lint` in all three jobs.
 - **DEFECT:** Playbooks are references, not playtested; six cross-group slices exist (K21), but not one per genre, and no taxonomy-to-slice link. Earlier plans said 39 subgenres; the cited table has 43 and the lint follows it.
 - **ROOT CAUSE:** Gameplay quality needs a game and players.
 - **IMPACT:** Guidance may need revision once a game uses it.
 - **FIX:** Gate step `playbook-lint` (pre-commit, added in c70ff63).
-- **VERIFICATION:** Lint and unit tests.
+- **VERIFICATION:** Lint and unit tests, in the container and strict CI.
 
 ### Q10
 
