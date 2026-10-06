@@ -1,4 +1,8 @@
 --!strict
+-- DEPRECATED: SoundGroup volumes are the legacy route ("Sound, SoundGroup, and SoundEffect objects
+-- are now discouraged in favor of ... audio objects", docs audio/objects). Use AVKit/AudioGraph
+-- (audio-graph/1 buses on AudioFaders) with AVKit/AudioGraphRoblox. Kept unchanged for the
+-- inherited fixtures (fixtures/creator/AudioMovement.client.luau, fixtures/runtime/Diagnostic).
 local NativeAudio = {}
 
 function NativeAudio.new(mixer, channelNames, parent)

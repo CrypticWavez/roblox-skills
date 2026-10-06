@@ -1,6 +1,8 @@
 --!strict
--- Neutral native recipes: no damage, camera control, sounds or external asset IDs.
-local Pool = require(script.Parent.EffectsPool)
+-- Neutral native recipes: no damage, camera control, sounds or external asset IDs. Superseded by
+-- the vfx/1 library (AVKit/Vfx, AVKit/VfxLibrary, AVKit/VfxPoolRoblox); kept for the inherited
+-- creator fixture. String requires, so tools/new_project.py dependency scans follow them.
+local Pool = require("./EffectsPool")
 local Effects = {}
 local particleStyles = {
 	none = "",
