@@ -25,7 +25,7 @@ python3 tools/check.py --tier pre-release      # adds Blender templates, round t
 | PRE_COMMIT (`python3 tools/check.py`) | StyLua, JSON, secret scan, skills sync, gap matrix, Markdown links and URLs, [knowledge index](knowledge/INDEX.md) and record scopes, [fixtures README](fixtures/README.md), asset ids against [`assets/provenance.json`](assets/provenance.json), Rojo sourcemaps of every fixture project, a self-test of those content checks, hook self-test, Selene, Lune specs, fixture hashes | ~17 s |
 | PRE_RELEASE (`--tier pre-release`) | pre-commit plus Blender templates, round trip, QA self-test and previews | minutes |
 
-`--strict` (CI) fails on any SKIPPED step. `--live-links` also requests every external URL; it is opt-in and never runs in CI.
+A SKIPPED step (tool missing) fails the run unless it is Selene, whose Roblox std needs network; `--strict` (CI) allows no skips. `--update-golden` rewrites both golden files. `--live-links` also requests every external URL; it is opt-in and never runs in CI.
 
 | Path | What |
 |---|---|

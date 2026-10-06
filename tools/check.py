@@ -5,7 +5,10 @@
   pre-release pre-commit + Blender templates/QA + round trip + QA self-test + previews (minutes)
 
   python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden] [--install-git-hook]
-                         [--live-links]
+                         [--live-links] [--allow-skip STEP]
+
+--update-golden rewrites both goldens, tests/golden/fixture-hashes.json and tests/golden/studio-smoke.json
+(tools/lune/smoke_hashes.luau, run before the Lune specs that check it); without it a missing golden FAILs.
 
 Content checks: doc-links (relative Markdown links and heading anchors resolve, URLs are well formed),
 knowledge-index (knowledge/INDEX.md is current), knowledge-paths (each knowledge record's cited paths
@@ -15,13 +18,16 @@ assets/provenance.json), rojo-sourcemap (each fixtures/*.project.json maps and e
 packages/ and fixtures/ is reachable from one), and gate-selftest (each of them rejects a broken input).
 --live-links additionally requests every external URL; it is opt-in only (live checks are flaky), so no
 tier or CI job runs it by default.
-Missing optional tools (stylua, selene, lune, rojo, bpy) are reported as SKIPPED, never as passes.
---strict counts every SKIPPED step as a failure; CI runs with it, so a missing tool cannot keep CI green.
+Missing tools (stylua, node, selene, lune, rojo, bpy) are reported as SKIPPED, never as passes, and a
+SKIPPED step fails the run (default tier and the installed git hook included) unless it is selene, which
+needs network to generate its Roblox std, or named with --allow-skip. --strict allows no skips at all;
+CI runs with it, so a missing tool cannot keep CI green.
 The secret scan uses tools/hooks/secret-patterns.json, the same list as the Claude edit hook, over every
 file git would commit (tracked plus untracked, not ignored), dotfiles and scripts included.
 Writes build/check-report.json. Opens no Studio session; publishes, uploads and buys nothing.
 """
 import argparse
+import fnmatch
 import importlib.util
 import json
 import os
@@ -47,6 +53,7 @@ INHERITED_SPECS = [
     "tests/creator/world.luau",
     "tests/diagnostics/network.luau",
 ]
+ALLOWED_SKIPS = {"selene"}  # needs network to generate its Roblox std; --strict (CI) allows no skips
 SECRET_PATTERNS_FILE = ROOT / "tools" / "hooks" / "secret-patterns.json"
 SECRET_SCAN_MAX_BYTES = 5_000_000
 
@@ -176,10 +183,13 @@ def check_fixtures(gate, update):
         return
     report = json.loads((ROOT / "build/fixtures/report.json").read_text())
     hashes = {k: v["hash"] for k, v in report["fixtures"].items()}
-    if update or not GOLDEN.exists():
+    if update:
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         GOLDEN.write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n")
         gate.add("fixture-hashes", "PASS", "golden updated")
+        return
+    if not GOLDEN.exists():  # a deleted golden must not turn hash drift into a pass
+        gate.add("fixture-hashes", "FAIL", f"{GOLDEN.relative_to(ROOT).as_posix()} is missing (intended? rerun with --update-golden)")
         return
     golden = json.loads(GOLDEN.read_text())
     drift = {
@@ -630,6 +640,10 @@ def check_rojo_sourcemap(gate):
         gate.add("rojo-sourcemap", "SKIPPED", "rojo not installed")
         return
     start = time.time()
+    code, version, _ = run(["rojo", "--version"], timeout=60)
+    if code != 0:  # e.g. an Aftman shim ahead of Rokit on PATH (gap matrix T09)
+        gate.add("rojo-sourcemap", "FAIL", f"the rojo on PATH does not run (`rojo --version` exit {code}): {version}")
+        return
     root = ROOT.resolve()
     reached, problems, notes = set(), [], []
     projects = sorted((ROOT / "fixtures").glob("*.project.json"))
@@ -750,10 +764,12 @@ def main():
     ap.add_argument("--update-golden", action="store_true")
     ap.add_argument("--install-git-hook", action="store_true")
     ap.add_argument("--live-links", action="store_true", help="also request every external URL (opt-in; never in CI)")
+    ap.add_argument("--allow-skip", action="append", default=[], metavar="STEP", help="let a SKIPPED step (name or glob) pass; selene always may, except with --strict")
     args = ap.parse_args()
     if args.install_git_hook:
         hook = ROOT / ".git" / "hooks" / "pre-commit"
-        hook.write_text("#!/bin/sh\nexec python3 tools/check.py --tier pre-commit\n")
+        # Default verdict: any SKIPPED step except selene fails the commit (a missing core tool is not a pass).
+        hook.write_text("#!/bin/sh\n# Installed by tools/check.py --install-git-hook.\nexec python3 tools/check.py --tier pre-commit\n")
         hook.chmod(0o755)
         print("installed", hook)
         return 0
@@ -776,6 +792,8 @@ def main():
         selftest_env = {**os.environ, "FACTORY_PYTHON": sys.executable}  # secret-pattern parity check
         gate.cmd("hooks-selftest", ["node", "tools/hooks/selftest.mjs"], needs="node", env=selftest_env)
         check_selene(gate)
+        if args.update_golden:  # tests/scenekit.spec.luau checks this golden, so rewrite it before the specs run
+            gate.cmd("studio-smoke-golden", ["lune", "run", "tools/lune/smoke_hashes.luau"], needs="lune")
         gate.cmd("lune-specs", ["lune", "run", "tests/run.luau"], needs="lune")
         for script in INHERITED_SPECS:  # the first pass's own Lune suites, re-run here
             gate.cmd(f"inherited-{Path(script).parent.name}-{Path(script).stem}", ["lune", "run", script], needs="lune")
@@ -795,12 +813,24 @@ def main():
 
     failed = [r["name"] for r in gate.results if r["status"] == "FAIL"]
     skipped = [r["name"] for r in gate.results if r["status"] == "SKIPPED"]
-    passed = not failed and not (args.strict and skipped)
+    allowed = [] if args.strict else sorted(ALLOWED_SKIPS | set(args.allow_skip))
+    blocking = [name for name in skipped if not any(fnmatch.fnmatchcase(name, pattern) for pattern in allowed)]
+    passed = not failed and not blocking
     (ROOT / "build").mkdir(exist_ok=True)
-    report = {"tier": args.tier, "strict": args.strict, "pass": passed, "failed": failed, "skipped": skipped, "results": gate.results}
+    report = {
+        "tier": args.tier,
+        "strict": args.strict,
+        "pass": passed,
+        "failed": failed,
+        "skipped": skipped,
+        "allowed_skips": allowed,
+        "results": gate.results,
+    }
     (ROOT / "build" / "check-report.json").write_text(json.dumps(report, indent=2))
-    strict = " (strict: skipped steps count as failures)" if args.strict and skipped else ""
-    print(f"\n{args.tier}: {'PASS' if passed else 'FAIL'}{strict}; failed={failed} skipped={skipped}")
+    why = ""
+    if blocking:
+        why = " (strict: skipped steps count as failures)" if args.strict else f" (skipped steps {blocking} count as failures: install the tool, or pass --allow-skip <step>)"
+    print(f"\n{args.tier}: {'PASS' if passed else 'FAIL'}{why}; failed={failed} skipped={skipped}")
     return 0 if passed else 1
 
 

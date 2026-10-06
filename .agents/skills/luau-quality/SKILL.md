@@ -27,14 +27,14 @@ The working tree, the tier to run, and whether a golden-hash change is intended.
 
 - Content checks (PRE_COMMIT, offline): `doc-links` (relative Markdown links, heading anchors and `@` imports resolve; http(s) URLs in Markdown and `knowledge/`/`assets/` JSON are well formed), `knowledge-index` (`knowledge/INDEX.md` matches `python3 tools/knowledge_index.py`), `knowledge-paths` (every record has `scope` and `scope_note`; scope `repo` cites only paths that exist; scope `workbench` never claims plain `verified`), `fixtures-readme` (every `fixtures/` entry is in `fixtures/README.md`), `asset-provenance` (every rbxassetid/rbxthumb id, roblox.com asset URL id and AssetId/MeshId/TextureId-style number is in `assets/provenance.json`; 0 is the placeholder; place content may use only `approved` ids), `rojo-sourcemap` (`rojo sourcemap` maps each `fixtures/*.project.json`; every `.luau` under `packages/` and `fixtures/` is reached; SKIPPED without rojo), `gate-selftest` (each of them rejects a planted broken input).
 - `--live-links` also requests every external URL (dead = 404/410 or unresolvable host; 401/403/429/5xx and proxy refusals are listed as unverified). Opt-in only: no tier or CI job runs it, because live link checks are flaky.
-- `--strict` counts every SKIPPED step (tool missing) as FAIL. CI runs `--tier pre-commit --strict` and the Blender job `--tier pre-release --strict`. Without it a missing tool shows as SKIPPED, never as PASS.
+- A SKIPPED step (tool missing) fails the run, the default tier and the installed git hook included, unless it is `selene` (its Roblox std needs network) or named with `--allow-skip <step or glob>`. `--strict` allows no skips: CI runs `--tier pre-commit --strict` and the Blender job `--tier pre-release --strict`.
 - The secret scan reads the working-tree copy of every file git would commit (tracked and untracked, not ignored), not the staged index, so unstaged edits count too.
-- `--update-golden` rewrites `tests/golden/fixture-hashes.json`; `--install-git-hook` makes `git commit` run PRE_COMMIT.
+- `--update-golden` rewrites both goldens: `tests/golden/fixture-hashes.json` and `tests/golden/studio-smoke.json` (step `studio-smoke-golden`, run before the specs that check it). Without it a missing golden FAILs. `--install-git-hook` makes `git commit` run PRE_COMMIT.
 
 ## Procedure
 1. Edit; read the hook's message if it flags formatting, JSON, a secret or SKILL.md frontmatter. Format Luau with `stylua <file>`.
 2. Before committing run PRE_COMMIT; fix failures at the root (no skipped tests, no lowered validation limits).
-3. Fixture hash changed on purpose: `python3 tools/check.py --update-golden` and `lune run tools/lune/smoke_hashes.luau`, and name the changed fixtures and why in the commit.
+3. Fixture hash changed on purpose: `python3 tools/check.py --update-golden` (both goldens in one run), and name the changed fixtures and why in the commit. A changed `studio-smoke.json` voids the Studio parity evidence until Studio reproduces it (gap matrix S02).
 4. New Luau logic gets a Lune spec in `tests/*.spec.luau` (pure modules) or a Studio diagnostic (Roblox-only APIs); see roblox-luau-testing.
 5. Before a PR is ready, run PRE_RELEASE where `bpy` or Blender is installed.
 
@@ -42,7 +42,7 @@ The working tree, the tier to run, and whether a golden-hash change is intended.
 One line per step (`[ok  ]`, `[FAIL]`, `[skip]`), a final `<tier>: PASS|FAIL; failed=[...] skipped=[...]` line, and `build/check-report.json` (`tier`, `pass`, `failed`, `skipped`, per-step detail).
 
 ## Acceptance
-The tier reports PASS with `failed` empty; every SKIPPED step is named in the PR or report (CI's `--strict` makes it a failure).
+The tier reports PASS with `failed` empty; any SKIPPED step (only `selene` passes by default) is named in the PR or report (CI's `--strict` makes it a failure).
 
 ## Failure
 - `fixture-hashes`: an unintended change is a generator or SceneKit regression; find it with `Scene.compare` on the old and new manifests (visual-qa).
@@ -53,7 +53,7 @@ The tier reports PASS with `failed` empty; every SKIPPED step is named in the PR
 - `knowledge-index` / `knowledge-paths`: run `python3 tools/knowledge_index.py` after adding or editing a record or research doc; a record citing paths that exist only on the owner's PC gets `"scope": "workbench"` and an `*_on_workbench` status.
 - `fixtures-readme`: add a row for the new `fixtures/` entry saying what consumes it.
 - `asset-provenance`: register the id through skill roblox-asset-intake, or use 0 as the placeholder; never commit ids of private assets on the owner's account.
-- `rojo-sourcemap`: a failed project names the missing `$path`; an orphan `.luau` file needs a project entry (or deleting). The step regenerates the network place's `build/network/SourceManifest.luau` first.
+- `rojo-sourcemap`: a failed project names the missing `$path`; an orphan `.luau` file needs a project entry (or deleting). The step regenerates the network place's `build/network/SourceManifest.luau` first. "The rojo on PATH does not run": put Rokit's bin before Aftman's (gap matrix T09).
 - Toolchain missing: `rokit install`; without rokit, `cargo install stylua --features luau` and `cargo install selene lune`.
 
 ## Related
