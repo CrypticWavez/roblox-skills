@@ -1502,8 +1502,11 @@ test("chooseBackend fails closed: an unknown place builds no DataStore or Profil
 		end,
 	}
 	local world = FakeProfileStore.world(env)
-	for _, place in { false, { gameId = 5, placeId = 6 }, { isStudio = "no", gameId = 5, placeId = 6 } } do
-		env.place = if place == false then nil else place :: any
+	-- no place, a place without isStudio, a place whose isStudio is not a boolean
+	local unknown: { any } =
+		{ false, { gameId = 5, placeId = 6 }, { isStudio = "no", gameId = 5, placeId = 6 } }
+	for _, place in unknown do
+		env.place = if place == false then nil else place
 		local ds, dsKind = PlayerDataRoblox.chooseBackend({
 			storeName = "PlayerData",
 			kind = "datastore",

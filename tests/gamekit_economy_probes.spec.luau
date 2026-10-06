@@ -41,13 +41,15 @@ local PROBES = {
 }
 
 -- options.place replaces FakeEnv's diagnostic place; options.kits replaces kit modules by path.
+type RunOptions = { place: any?, kits: { [string]: any }? }
+
 local function runRegistry(
 	players: { any },
 	only: { string }?,
-	options: { place: any?, kits: { [string]: any }? }?
+	options: RunOptions?
 ): (any, { string }, any, any)
 	local registry = REGISTRY
-	local opts = options or {}
+	local opts: RunOptions = options or {}
 	local engine = FakeEconomyEngine.new()
 	engine.players = players
 	local env = FakeEconomyEngine.env(engine, { seed = "economy-probes", place = opts.place })
