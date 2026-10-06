@@ -292,7 +292,9 @@ def main(argv=None):
 
     if args.from_output:
         text = Path(args.from_output).read_text(encoding="utf-8", errors="replace")
-        source["route"] = "from-output"
+        # The output's digest ties the report to the captured file; the route says it was not a CLI
+        # run here. Lune output (tools/lune/kit_smoke.luau) parses too, but is not Studio evidence.
+        source.update({"route": "from-output", "output_sha256": sha256_file(Path(args.from_output))})
         status, body = evaluate(args.probe, text)
         report = scrub(report_document(args.probe, status, body, source), secrets)
         path = write_report(Path(args.report_dir) / f"{args.probe}.json", report)

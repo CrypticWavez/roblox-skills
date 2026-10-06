@@ -5,7 +5,8 @@
 --   tag(name)           a DeveloperMemoryTag-like item ({ Name = name })
 --   instance(class, props, ancestors?)  an Instance-like table whose IsA knows the class chain
 --   folder(children)    a root with GetDescendants
---   runService()        RunService-like with a Heartbeat signal; fire(dt) runs its handlers
+--   runService(options?) RunService-like with a Heartbeat signal; fire(dt) runs its handlers;
+--                       IsRunning() is options.running (default true: a play session)
 -- Values are plain data so a spec states exactly what the engine "reported".
 local FakePerfEngine = {}
 
@@ -66,7 +67,8 @@ function FakePerfEngine.folder(children: { any }): any
 	}
 end
 
-function FakePerfEngine.runService(): any
+function FakePerfEngine.runService(options: { running: boolean? }?): any
+	local running = not (options and options.running == false)
 	local handlers: { (number) -> () } = {}
 	local heartbeat: any = {}
 	function heartbeat.Connect(_: any, fn: (number) -> ()): any
@@ -89,6 +91,9 @@ function FakePerfEngine.runService(): any
 	end
 	function service.listeners(_: any): number
 		return #handlers
+	end
+	function service.IsRunning(_: any): boolean
+		return running
 	end
 	return service
 end

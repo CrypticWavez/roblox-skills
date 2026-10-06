@@ -156,6 +156,7 @@ def main(argv=None):
     ap.add_argument("--from-output", metavar="FILE", help="parse canned analyzer output instead of running luau-lsp")
     ap.add_argument("--luau-lsp", metavar="PATH", help="luau-lsp binary (default: $LUAU_LSP, then PATH)")
     ap.add_argument("--baseline", default=str(BASELINE), help=argparse.SUPPRESS)
+    ap.add_argument("--report", default=str(CACHE / "report.json"), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     baseline_path = Path(args.baseline)
     lock = luau_defs.load_lock()
@@ -194,7 +195,7 @@ def main(argv=None):
             print(f"FAIL analyzer error: {line}")
         return 1
     files = summarise(diagnostics)
-    write_json(CACHE / "report.json", {"luau_lsp": version, "total": len(diagnostics), "files": files, "diagnostics": diagnostics})
+    write_json(Path(args.report), {"luau_lsp": version, "total": len(diagnostics), "files": files, "diagnostics": diagnostics})
     document = baseline_document(files, version, definitions_entry["sha256"])
     if args.update_baseline:
         write_json(baseline_path, document)
