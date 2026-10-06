@@ -71,14 +71,15 @@ function Scene.new(options: {
 	}, Scene)
 end
 
-function Scene.group<T>(self: Scene, name: string, body: () -> T): T
+function Scene.group<T...>(self: Scene, name: string, body: () -> T...): T...
 	table.insert(self.groupStack, name)
-	local ok, result = pcall(body)
+	local results = table.pack(pcall(body))
 	table.remove(self.groupStack)
-	if not ok then
-		error(result, 0)
+	if not results[1] then
+		error(results[2], 0)
 	end
-	return result
+	local unpack: (any, number, number) -> T... = table.unpack :: any -- body's own returns, typed as T...
+	return unpack(results, 2, results.n)
 end
 
 function Scene.currentGroup(self: Scene): string
