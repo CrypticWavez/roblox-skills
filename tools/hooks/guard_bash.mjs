@@ -2,8 +2,10 @@
 // there is no ask path. Denied:
 //  - publishing and uploads: rojo upload (global flags and rojo.exe included), mantle deploy/destroy,
 //    tarmac sync --target roblox / upload-image (global --auth/--api-key included), asphalt upload and
-//    sync (except --dry-run or --target studio/debug), and every rbxcloud subcommand except
-//    get*/list*/help; also through runners (npx, pnpm, yarn, bunx, rokit, uv run, uvx, pipx, ...),
+//    sync (except --dry-run or --target studio/debug), every rbxcloud subcommand except
+//    get*/list*/help, and package-registry writes and logins: wally publish/login/logout, pesde
+//    publish/yank/deprecate and pesde auth login/logout/token (install, add and whoami pass); also
+//    through runners (npx, pnpm, yarn, bunx, rokit, uv run, uvx, pipx, ...),
 //    wrappers (env, sudo, setsid, flock, nohup, timeout, script -c, cmd start, Start-Process), a
 //    command name held in a variable, inline interpreter code (python -c "os.system('rojo upload')"),
 //    and git -c settings. A subcommand this guard cannot see ($(...), xargs/parallel input) is denied;
@@ -36,12 +38,22 @@
 //    GIT_DIR and GIT_WORK_TREE all count). Everything else is denied: redirections into it,
 //    rm/mv/tee/touch, patch, git apply/am, curl -o, wget -O, tar -C or old-style tar xCf, unzip -d,
 //    interpreters, build tools, git writes. Variables assigned in the same command line (D=...,
-//    export, for, read, $1, PowerShell $x = ...) are followed; a value from input counts as naming it.
+//    export, for, read, $1, PowerShell $x = ...) are followed; a value from input counts as naming it;
+//  - anything that may create, change or delete an owner record, release/owner-*.json at any depth
+//    (release sign-offs and publish exceptions only the owner writes; copies below a fixtures/ or
+//    tests/ folder of the working directory are test data and pass). The same read-only rule applies
+//    to each command on a line that names such a file (or a glob that could expand to one, or that
+//    enters a release folder): reading and copying it elsewhere pass, as do git add/commit and
+//    read-only git; redirections, tee, cp/mv into it or its release folder, sed -i, rm, interpreters
+//    that name it and git checkout/restore of it are denied.
+// File-edit events routed here (Codex apply_patch; Claude Edit/Write/MultiEdit/NotebookEdit when a
+// matcher sends them) are checked by path only: an owner record (fixture copies aside) or anything in
+// weppy-project-sync/ is denied.
 // Command lines are parsed into simple commands (tools/hooks/shell.mjs) so argument order, quoting
 // and nesting (bash -c, eval, $(...), heredocs and echo piped into a shell, powershell -Command) do
 // not matter. Commands over 64 KiB are denied (a hook that times out lets the command run).
-// Residual risk: scripts in files, aliases stored in git or shell config, code that builds tool names
-// or URLs at run time, and paths or URLs produced by programs. Hooks never publish anything.
+// Residual risk: scripts in files, aliases stored in git or shell config, code that builds tool names,
+// URLs or paths at run time, and paths or URLs produced by programs. Hooks never publish anything.
 import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { isAbsolute, resolve } from "node:path";
@@ -51,22 +63,132 @@ import { commandName, parseCommands } from "./shell.mjs";
 // Fail closed: a bug in this guard must block the command, not wave it through.
 process.on("uncaughtException", (err) => decide("deny", `guard_bash.mjs failed (${err.message}); fix the hook (node tools/hooks/selftest.mjs) before retrying.`));
 
+// ---- protected paths: names and patterns -------------------------------------------------------------
+// weppy-project-sync/ (another project's folder) is read-only as a whole.
+const WEPPY = /weppy-project-sync/i;
+const WEPPY_DIR = /(^|[\\/])weppy-project-sync([\\/]|$)/i;
+// The name as a path component (../weppy-project-sync/x, --dir=weppy-project-sync, -Cweppy-project-sync),
+// not inside prose such as a PR body ("never modify weppy-project-sync").
+const WEPPY_PATH = /(?:^|[\\/=:'"(,]|^-[A-Za-z]+)weppy-project-sync(?=$|[\\/'"\s;,)])/i;
+
+// A shell glob component as a regular expression, or null when it is not a valid glob.
+function globRegex(c) {
+	let re = "";
+	for (let i = 0; i < c.length; i++) {
+		if (c[i] === "*") re += ".*";
+		else if (c[i] === "?") re += ".";
+		else if (c[i] === "[" && c.indexOf("]", i) > i) {
+			re += c.slice(i, c.indexOf("]", i) + 1).replace(/^\[!/, "[^");
+			i = c.indexOf("]", i);
+		} else re += c[i].replace(/[.+^${}()|[\]\\]/g, "\\$&");
+	}
+	try {
+		return new RegExp(`^${re}$`, "i");
+	} catch {
+		return null; // not a valid glob class, so the shell would not expand it either
+	}
+}
+// A glob component with at least three literal characters that could expand to `name`.
+const globMatches = (c, name) => /[*?[]/.test(c) && c.replace(/\*|\?|\[[^\]]*\]/g, "").length >= 3 && Boolean(globRegex(c)?.test(name));
+
+// A glob component that could expand to weppy-project-sync (../weppy-*, ../*project-sync). Words
+// with whitespace are prose or scripts, not paths.
+function globHitsWeppy(s) {
+	if (/\s/.test(s)) return false;
+	return String(s)
+		.split(/[\\/]/)
+		.some((c) => globMatches(c, "weppy-project-sync"));
+}
+
+// Owner records: release/owner-*.json at any depth (a game repo's release/, the starter template's
+// copy). Only the owner writes them; the starter's release check reads them. Copies under a
+// fixtures/ or tests/ folder are test data, not records.
+const OWNER_NAME = /owner-[^\s'"`\\/;,)]*\.json/i;
+const OWNER_PATH = /(?:^|[\\/=:'"(,]|^-[A-Za-z]+)release[\\/]+owner-[^\s'"`\\/;,)]*\.json(?=$|[\s'"`;,)])/gi;
+const RELEASE_DIR = /(^|[\\/])release[\\/]*$/i;
+const FIXTURE_DIR = /(^|[\\/])(fixtures|tests?)[\\/]/i;
+// A file name that is, or a glob that could expand to, owner-<anything>.json (owner-*.json, *.json,
+// o*, [o]wner-x.json), judged by the literal text before the first and after the last glob character.
+function couldBeOwnerLeaf(c) {
+	if (/^owner-[^\\/]*\.json$/i.test(c)) return true;
+	const first = c.search(/[*?[]/);
+	if (first < 0) return false;
+	const prefix = c.slice(0, first).toLowerCase();
+	const suffix = c.slice(Math.max(c.lastIndexOf("*"), c.lastIndexOf("?"), c.lastIndexOf("]")) + 1).toLowerCase();
+	return ("owner-".startsWith(prefix) || prefix.startsWith("owner-")) && (".json".endsWith(suffix) || suffix.endsWith(".json"));
+}
+// A word that names an owner record as a path: release/owner-x.json (also inside a script or after
+// an option, but not in prose), or a glob such as release/*, rel*/owner-*.json or */owner-x.json.
+function ownerPath(s) {
+	s = String(s);
+	for (const m of s.matchAll(OWNER_PATH)) {
+		// The path text before release/ in the same word decides whether it is a fixture.
+		const before = s.slice(0, m.index + m[0].search(/release[\\/]/i));
+		const word = before.slice(Math.max(-1, ...[...before.matchAll(/[\s'"`(,=:]/g)].map((x) => x.index)) + 1);
+		if (!underFixture(`${word}release`)) return true;
+	}
+	const bare = s.replace(/^--?[\w-]+=/, "");
+	if (/\s/.test(s) || underFixture(bare)) return false;
+	const parts = bare.split(/[\\/]+/);
+	return parts.some((c, i) => i > 0 && (/^release$/i.test(parts[i - 1]) || globMatches(parts[i - 1], "release")) && couldBeOwnerLeaf(c));
+}
+// Whether a path lies in a fixtures/ or tests/ folder below the event's working directory (the
+// repository root in practice). Judged after resolving it, so fixtures/../release is not one; a path
+// outside the working directory, the directory itself, or one that keeps a .. part never is.
+function underFixture(p) {
+	const n = resolvePath(baseCwd, String(p)).replace(/\\/g, "/");
+	const b = String(baseCwd).replace(/\\/g, "/").replace(/\/+$/, "");
+	if (/(^|\/)\.\.(\/|$)/.test(n) || !n.startsWith(`${b}/`)) return false;
+	return FIXTURE_DIR.test(n.slice(b.length));
+}
+// A release folder that may hold owner records (any but one under fixtures/ or tests/).
+const recordFolder = (p) => RELEASE_DIR.test(String(p)) && !underFixture(p);
+
+function weppyDeny(what) {
+	decide("deny", `weppy-project-sync/ is outside this setup's ownership; do not modify it (${what}). Read it with cat/ls/rg/git log, or copy files out of it.`);
+}
+function ownerDeny(what) {
+	decide("deny", `release/owner-*.json files are owner records (release sign-offs and publish exceptions): only the owner writes, moves or deletes them (${what}). Read them with cat/jq/git diff, or copy them elsewhere; ask the owner to edit them by hand.`);
+}
+
 const event = readEvent();
+const baseCwd = event.cwd || process.cwd();
+
+// ---- file-edit events (Codex apply_patch; Claude Edit/Write/MultiEdit/NotebookEdit if routed here) ----
+// Only paths are checked: path-like fields at any depth, and the file headers of a patch
+// (*** Add/Update/Delete File: x, *** Move to: x) in any other string that holds one, so the content
+// a Write or Edit puts into a file is never read as a patch.
+const EDIT_TOOLS = /^(apply_patch|Edit|Write|MultiEdit|NotebookEdit)$/;
+if (EDIT_TOOLS.test(String(event.tool_name || ""))) {
+	const targets = [];
+	const walk = (v, key = "") => {
+		if (typeof v === "string") {
+			if (/^(file_?path|notebook_?path|path|filename|target_?file)$/i.test(key)) targets.push(v);
+			else if (!/^(content|new_?string|old_?string|new_?source)$/i.test(key) && v.includes("*** Begin Patch"))
+				for (const m of v.matchAll(/^\*\*\* (?:(?:Add|Update|Delete) File|Move to): *(.+?) *$/gm)) targets.push(m[1]);
+		} else if (Array.isArray(v)) v.forEach((x) => walk(x, key));
+		else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) walk(x, k);
+	};
+	walk(event.tool_input ?? {});
+	for (const t of targets) {
+		const abs = resolvePath(baseCwd, t).replace(/\\/g, "/");
+		if (WEPPY_DIR.test(abs)) weppyDeny(`${event.tool_name} ${t}`);
+		if (/(^|\/)release\/+owner-[^/]*\.json$/i.test(abs) && !underFixture(abs)) ownerDeny(`${event.tool_name} ${t}`);
+	}
+	process.exit(0);
+}
+
 const text = String(event.tool_input?.command || "");
 // Above this size parsing could run past the hook timeout, and a timed-out hook lets the command run.
 const MAX_COMMAND = 64 * 1024;
 if (text.length > MAX_COMMAND) decide("deny", `Blocked by factory guard: the command is ${text.length} characters, more than the ${MAX_COMMAND} this guard checks in time. Split it into smaller commands.`);
-const baseCwd = event.cwd || process.cwd();
 const commands = parseCommands(text);
 // The raw text plus every parsed word, so decoded nested scripts (powershell -EncodedCommand) count too.
 const allText = [text, ...commands.flatMap((c) => [...c.argv, ...c.redirs.map((r) => `${r.target}\n${r.body ?? ""}`)])].join("\n");
-const APPROVAL = "SETUP_ONLY forbids publishing, uploads, spending and production-data writes without Ethan's explicit approval.";
+const APPROVAL = "SETUP_ONLY forbids publishing, uploads, spending and production-data writes without the owner's explicit approval.";
 
 function deny(why) {
 	decide("deny", `Blocked by factory guard: ${why}. ${APPROVAL}`);
-}
-function weppyDeny(what) {
-	decide("deny", `weppy-project-sync/ is outside this setup's ownership; do not modify it (${what}). Read it with cat/ls/rg/git log, or copy files out of it.`);
 }
 
 const positionals = (args, valueOpts = []) => {
@@ -122,14 +244,24 @@ function longNames(option, names) {
 }
 
 // ---- publish / upload tools ----------------------------------------------------------------------
-const PUBLISH_TOOLS = new Set(["rojo", "mantle", "tarmac", "rbxcloud", "asphalt"]);
+// Package managers (wally 0.3.2, pesde 0.7.4 subcommands as read from their sources) are here for
+// their registry writes and logins.
+const PUBLISH_TOOLS = new Set(["rojo", "mantle", "tarmac", "rbxcloud", "asphalt", "wally", "pesde"]);
 // Options that take a separate value, so the value is not read as the subcommand (tarmac --auth X sync).
-const TOOL_VALUE_OPTS = { rojo: ["--color", "--colour"], mantle: [], tarmac: ["--auth", "--api-key", "--target", "--retry", "--retry-delay"], asphalt: ["--api-key", "--target", "--type", "--creator-type", "--creator-id"], rbxcloud: [] };
+const TOOL_VALUE_OPTS = { rojo: ["--color", "--colour"], mantle: [], tarmac: ["--auth", "--api-key", "--target", "--retry", "--retry-delay"], asphalt: ["--api-key", "--target", "--type", "--creator-type", "--creator-id"], rbxcloud: [], wally: ["--project-path", "--api", "--token"], pesde: ["-i", "--index", "-t", "--token"] };
 // Subcommands that never publish. Under xargs/parallel/find -exec, where more arguments come from
 // input, any other subcommand is denied.
-const SAFE_SUBCOMMANDS = { rojo: ["init", "serve", "build", "sourcemap", "fmt-project", "plugin", "doc", "help"], mantle: ["outputs", "import", "download", "help"], tarmac: ["create-cache-map", "asset-list", "help"], asphalt: ["migrate-lockfile", "help"], rbxcloud: [] };
+const SAFE_SUBCOMMANDS = {
+	rojo: ["init", "serve", "build", "sourcemap", "fmt-project", "plugin", "doc", "help"],
+	mantle: ["outputs", "import", "download", "help"],
+	tarmac: ["create-cache-map", "asset-list", "help"],
+	asphalt: ["migrate-lockfile", "help"],
+	rbxcloud: [],
+	wally: ["init", "install", "update", "search", "package", "manifest-to-json", "help"],
+	pesde: ["init", "add", "remove", "install", "i", "update", "outdated", "list", "run", "x", "execute", "exec", "config", "cas", "patch", "patch-commit", "self-install", "self-upgrade", "help"],
+};
 const RUNNERS = new Set(["npx", "bunx", "pnpx", "pnpm", "yarn", "npm", "rokit", "aftman", "foreman", "mise", "asdf", "proto", "cargo", "dotnet", "uv", "uvx", "pipx", "poetry", "pdm", "hatch", "rye", "pixi", "conda", "mamba", "micromamba"]);
-const PUBLISH_VERBS = /^(upload|upload-image|deploy|destroy|publish|sync)$/i;
+const PUBLISH_VERBS = /^(upload|upload-image|deploy|destroy|publish|sync|yank|deprecate|login|logout)$/i;
 
 function checkPublishTool(tool, args, viaXargs = false) {
 	const pos = positionals(args, TOOL_VALUE_OPTS[tool]).map((p) => p.toLowerCase());
@@ -157,6 +289,15 @@ function checkPublishTool(tool, args, viaXargs = false) {
 		if (group !== undefined && group !== "help" && hidden(verb)) deny(`rbxcloud ${group} with a subcommand this guard cannot see (a variable, $(...) or xargs input)`);
 		const read = group === undefined || group === "help" || verb === undefined || verb === "help" || /^(get|list)(-|$)/.test(verb);
 		if (!read) deny(`rbxcloud ${group} ${verb} writes to Roblox (only get*/list*/help subcommands are allowed)`);
+	}
+	if (tool === "wally" && ["publish", "login", "logout"].includes(sub)) deny(`wally ${sub} publishes a package or stores/removes a registry token (install, update, search and package are allowed)`);
+	if (tool === "pesde") {
+		if (["publish", "yank", "deprecate"].includes(sub)) deny(`pesde ${sub} changes a package registry`);
+		if (sub === "auth") {
+			const verb = pos[1];
+			if (hidden(verb)) deny("pesde auth with a subcommand this guard cannot see (a variable, $(...) or xargs input)");
+			if (verb !== undefined && !["whoami", "help"].includes(verb)) deny(`pesde auth ${verb} stores, removes or prints a registry token (only auth whoami is allowed)`);
+		}
 	}
 }
 
@@ -627,40 +768,42 @@ function checkPush(inv) {
 	}
 }
 
-// ---- weppy-project-sync is read-only ---------------------------------------------------------------
-const WEPPY = /weppy-project-sync/i;
-const WEPPY_DIR = /(^|[\\/])weppy-project-sync([\\/]|$)/i;
-// The name as a path component (../weppy-project-sync/x, --dir=weppy-project-sync, -Cweppy-project-sync),
-// not inside prose such as a PR body ("never modify weppy-project-sync").
-const WEPPY_PATH = /(?:^|[\\/=:'"(,]|^-[A-Za-z]+)weppy-project-sync(?=$|[\\/'"\s;,)])/i;
-
-// A glob component that could expand to weppy-project-sync (../weppy-*, ../*project-sync). Words
-// with whitespace are prose or scripts, not paths.
-function globHitsWeppy(s) {
-	if (/\s/.test(s)) return false;
-	return String(s)
-		.split(/[\\/]/)
-		.some((c) => {
-			if (!/[*?[]/.test(c) || c.replace(/\*|\?|\[[^\]]*\]/g, "").length < 3) return false;
-			let re = "";
-			for (let i = 0; i < c.length; i++) {
-				if (c[i] === "*") re += ".*";
-				else if (c[i] === "?") re += ".";
-				else if (c[i] === "[" && c.indexOf("]", i) > i) {
-					re += c.slice(i, c.indexOf("]", i) + 1).replace(/^\[!/, "[^");
-					i = c.indexOf("]", i);
-				} else re += c[i].replace(/[.+^${}()|[\]\\]/g, "\\$&");
-			}
-			try {
-				return new RegExp(`^${re}$`, "i").test("weppy-project-sync");
-			} catch {
-				return false; // not a valid glob class, so the shell would not expand it either
-			}
-		});
-}
+// ---- protected paths: weppy-project-sync/ and owner records are read-only ------------------------------
+// On a command line that names a protected path, every command that touches it must be read-only
+// (weppyVerdict below, run once per protected path).
 const pathy = (s) => WEPPY_PATH.test(s) || globHitsWeppy(s);
-
 const weppyAnywhere = WEPPY.test(allText) || WEPPY_DIR.test(baseCwd) || commands.some((c) => [...c.argv, ...c.redirs.map((r) => r.target)].some(globHitsWeppy));
+
+// Owner records: the line names one (an owner-*.json name anywhere in its text, or a path or glob that
+// could expand to one), runs in a release folder, or enters one (cd release, env -C release).
+const CD = new Set(["cd", "pushd", "chdir", "set-location", "sl", "push-location"]);
+const ownerNamed = OWNER_NAME.test(allText);
+const ownerAnywhere =
+	ownerNamed ||
+	recordFolder(baseCwd) ||
+	commands.some(
+		(c) =>
+			[...c.argv, ...c.redirs.map((r) => r.target)].some(ownerPath) ||
+			(CD.has(commandName(c.argv[0])) && c.argv.slice(1).some(recordFolder)) ||
+			(typeof c.chdir === "string" && recordFolder(c.chdir)),
+	);
+// Relative words that hit an owner record when the working directory is a release folder: an
+// owner-*.json name or a glob that could expand to one, and the folder itself (., ./) on a line that
+// names an owner record.
+function ownerLocal(s) {
+	const leaf = String(s).replace(/^(?:\.[\\/]+)+/, "");
+	if (leaf === "" || leaf === ".") return ownerNamed;
+	return !/[\\/]/.test(leaf) && couldBeOwnerLeaf(leaf);
+}
+
+// anywhere: this line names it. mention: text that names it inside a script. named: a redirection
+// target that names it. pathy: an argument that names it (for owner records, also their release
+// folder, the destination of a copy). inDir: the working directory is inside it. local: a relative
+// word that hits it from inside. wholeDir: every command run inside it counts as touching it.
+const PROTECTED_PATHS = [
+	{ anywhere: weppyAnywhere, mention: WEPPY, named: (s) => WEPPY.test(s) || globHitsWeppy(s), pathy, inDir: (c) => c.unknown || WEPPY_DIR.test(c.path), local: () => true, wholeDir: true, deny: weppyDeny },
+	{ anywhere: ownerAnywhere, mention: OWNER_NAME, named: ownerPath, pathy: (s) => ownerPath(s) || (!/\s/.test(s) && recordFolder(s)), inDir: (c) => c.unknown || recordFolder(c.path), local: ownerLocal, wholeDir: false, deny: ownerDeny },
+];
 
 const READ_ONLY = new Set(
 	(
@@ -902,16 +1045,17 @@ function sortOutputs(args) {
 	return out;
 }
 
-// Why a command (outside git) may write into weppy-project-sync, or null.
-function weppyVerdict(name, ex, rec, inHere) {
+// Why a command (outside git) may write into the protected path P, or null.
+function protectedVerdict(P, name, ex, rec, inHere) {
 	if (rec.carrier) return null; // its script text was parsed into the commands that follow
 	const args = ex.map((e) => e.value);
 	const rel = (s) => !isAbsolute(s) && !/^(~|[A-Za-z]:[\\/]|\\\\|\/dev\/)/.test(s);
-	const hitArg = (e) => pathy(e.value) || e.tainted;
-	const hit = (s) => pathy(s) || /[$`]/.test(s) || (inHere && rel(s));
+	const local = (s) => inHere && rel(s) && P.local(s);
+	const hitArg = (e) => P.pathy(e.value) || local(e.value) || e.tainted;
+	const hit = (s) => P.pathy(s) || /[$`]/.test(s) || local(s);
 	// PowerShell is a full language (method calls, .NET statics) this parser cannot follow, so in a
-	// line that names weppy-project-sync every PowerShell statement must be a read-only cmdlet.
-	const touching = ex.some(hitArg) || inHere || rec.viaXargs || rec.nameTainted || rec.mode === "ps";
+	// line that names a protected path every PowerShell statement must be a read-only cmdlet.
+	const touching = ex.some(hitArg) || (inHere && P.wholeDir) || rec.viaXargs || rec.nameTainted || rec.mode === "ps";
 	if (READ_ONLY.has(name)) {
 		if (!touching && !rec.piped) return null;
 		const optVal = (opts) => args.flatMap((a, i) => (opts.includes(a) ? [args[i + 1] ?? ""] : opts.filter((o) => o.startsWith("--") && a.startsWith(`${o}=`)).map((o) => a.slice(o.length + 1))));
@@ -937,7 +1081,7 @@ function weppyVerdict(name, ex, rec, inHere) {
 		if (dest === null ? rec.viaXargs || (inHere && touching) : hit(dest)) return `${name} into it`;
 		return null;
 	}
-	if (name === "tar") return touching ? tarVerdict(args, hit, inHere) : null;
+	if (name === "tar") return touching || inHere ? tarVerdict(args, hit, inHere) : null;
 	if (name === "unzip") {
 		if (args.some((a) => /^-[a-zA-Z]*[lvtpcZ]/.test(a) && !/^-d/.test(a))) return null; // list / test / to stdout
 		const d = args.findIndex((a) => a === "-d");
@@ -947,7 +1091,7 @@ function weppyVerdict(name, ex, rec, inHere) {
 	// patch (and git apply/am, checked with git) takes its target paths from the diff it reads.
 	if (name === "patch") return "patch writes the files its diff names";
 	const scriptish = SCRIPT_RUNNER.test(name);
-	const mentions = scriptish && (args.some((a) => WEPPY.test(a)) || rec.redirs.some((r) => WEPPY.test(r.body ?? "") || (r.op === "<<<" && WEPPY.test(r.target))));
+	const mentions = scriptish && (args.some((a) => P.mention.test(a)) || rec.redirs.some((r) => P.mention.test(r.body ?? "") || (r.op === "<<<" && P.mention.test(r.target))));
 	// A command fed by a pipe can take paths from its input, so it must be read-only (tee writes only
 	// to its arguments, which are checked as touching).
 	if (touching || mentions || (rec.piped && name !== "tee")) return `${name || "command"} is not a known read-only command`;
@@ -960,9 +1104,9 @@ function resolvePath(base, target) {
 	return resolve(base, target);
 }
 
-// The directory after `cd target`; unknown (treated as inside weppy-project-sync) when the target
-// comes from input or an unset variable in a line that names it.
-const enter = (from, target) => ({ path: resolvePath(from.path, target.value), unknown: from.unknown || (weppyAnywhere && (target.tainted || target.unresolved)) });
+// The directory after `cd target`; unknown (treated as inside a protected path) when the target
+// comes from input or an unset variable in a line that names one.
+const enter = (from, target) => ({ path: resolvePath(from.path, target.value), unknown: from.unknown || ((weppyAnywhere || ownerAnywhere) && (target.tainted || target.unresolved)) });
 
 // ---- one pass over the parsed commands -------------------------------------------------------------
 let previous = { ...cwd };
@@ -970,7 +1114,9 @@ let sawInterpreter = false;
 const inlineCode = [];
 let last = null;
 const stack = [];
-const inDir = (c) => c.unknown || WEPPY_DIR.test(c.path);
+const isRel = (s) => !isAbsolute(s) && !/^(~|[A-Za-z]:[\\/]|\\\\|\/dev\/)/.test(s);
+// git subcommands that only stage or record an owner record without changing its content.
+const OWNER_GIT_INDEX = new Set(["add", "commit"]);
 
 for (const rec of commands) {
 	let argv = rec.argv.map((w) => expandWord(w));
@@ -987,17 +1133,20 @@ for (const rec of commands) {
 	const ex = argv.slice(1);
 	const args = ex.map((e) => e.value);
 	const here = rec.chdir === null ? cwd : enter(cwd, expandWord(rec.chdir)); // env -C dir, sudo -D dir
-	const inHere = weppyAnywhere && inDir(here);
+	// Per protected path: this line names it and the command runs inside it.
+	const inside = PROTECTED_PATHS.map((P) => P.anywhere && P.inDir(here));
+	const inHere = inside[0];
 
-	// Redirections into weppy-project-sync, for every command (git included).
-	if (weppyAnywhere) {
+	// Redirections into a protected path, for every command (git included).
+	PROTECTED_PATHS.forEach((P, k) => {
+		if (!P.anywhere) return;
 		for (const r of rec.redirs) {
 			if (!(r.op.includes(">") || r.op === "<>") || (/&$/.test(r.op) && /^\d*-?$/.test(r.target))) continue;
 			const t = expandWord(r.target);
 			const relTarget = !isAbsolute(t.value) && !/^(~|[A-Za-z]:[\\/]|\/dev\/)/.test(t.value);
-			if (WEPPY.test(t.value) || globHitsWeppy(t.value) || t.tainted || (inHere && relTarget)) weppyDeny(`redirect ${r.op} ${r.target}`);
+			if (P.named(t.value) || t.tainted || (inside[k] && relTarget && P.local(t.value))) P.deny(`redirect ${r.op} ${r.target}`);
 		}
-	}
+	});
 
 	if (!argv.length) continue;
 
@@ -1071,7 +1220,7 @@ for (const rec of commands) {
 	}
 	last = rec;
 
-	// git: force pushes anywhere, writes into weppy-project-sync.
+	// git: force pushes anywhere, writes into protected paths.
 	if (name === "git") {
 		let inv = gitInvocation(args, here.path, env);
 		// git -c settings can run commands (core.fsmonitor, core.pager, alias.x=!cmd): scan them as code.
@@ -1105,17 +1254,29 @@ for (const rec of commands) {
 			const output = inv.rest.flatMap((a, i) => (a === "--output" ? [inv.rest[i + 1] ?? ""] : a.startsWith("--output=") ? [a.slice(9)] : []));
 			if (output.some((o) => pathy(o) || (touches && !isAbsolute(o)))) weppyDeny(`git ${inv.sub} --output`);
 		}
+		// Owner records: read-only git, add and commit pass; anything else that names one (checkout,
+		// restore, mv, rm, stash, ...) and every apply/am on such a line is denied.
+		if (ownerAnywhere && inv.sub) {
+			const owner = PROTECTED_PATHS[1];
+			const there = inside[1] || owner.inDir({ path: inv.dir, unknown: false });
+			const output = inv.rest.flatMap((a, i) => (a === "--output" ? [inv.rest[i + 1] ?? ""] : a.startsWith("--output=") ? [a.slice(9)] : []));
+			const touches = gitPathArgs(inv.sub, inv.rest).some((a) => owner.pathy(a) || (there && isRel(a) && owner.local(a)));
+			if (["apply", "am"].includes(inv.sub)) ownerDeny(`git ${inv.sub} writes the files its patch names`);
+			if (touches && !gitReadOnly(inv.sub, inv.rest) && !OWNER_GIT_INDEX.has(inv.sub)) ownerDeny(`git ${inv.sub}`);
+			if (output.some((o) => owner.named(o))) ownerDeny(`git ${inv.sub} --output`);
+		}
 		continue;
 	}
 
-	if (weppyAnywhere) {
-		const why = weppyVerdict(name, ex, { ...rec, nameTainted: argv[0].tainted }, inHere);
-		if (why) weppyDeny(why);
-	}
+	PROTECTED_PATHS.forEach((P, k) => {
+		if (!P.anywhere) return;
+		const why = protectedVerdict(P, name, ex, { ...rec, nameTainted: argv[0].tainted }, inside[k]);
+		if (why) P.deny(why);
+	});
 }
 
 const code = inlineCode.join("\n");
-if (CODE_PUBLISH.test(code)) deny("inline script or git setting starts a publishing tool (rojo upload, mantle deploy/destroy, tarmac sync/upload-image, asphalt sync/upload, rbxcloud writes)");
+if (CODE_PUBLISH.test(code)) deny("inline script or git setting starts a publishing tool (rojo upload, mantle deploy/destroy, tarmac sync/upload-image, asphalt sync/upload, rbxcloud writes, wally/pesde publish or login)");
 if (ROBLOX_HOST.test(code) && CODE_HTTP_CLI_WRITE.test(code)) deny("inline script runs an HTTP client that sends a write request to a Roblox web API");
 // Inline scripts that send writes to a Roblox web API.
 if (sawInterpreter && (ROBLOX_HOST.test(allText) || ROBLOX_ENV.test(allText)) && SCRIPT_WRITE.test(allText)) deny("inline script sends a write request to a Roblox web API");

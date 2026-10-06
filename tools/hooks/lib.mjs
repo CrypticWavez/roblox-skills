@@ -35,8 +35,10 @@ export const SCRIPT_WRITE = new RegExp(
 	"i",
 );
 // Code (inline scripts, Blender Python) that starts a publishing tool, e.g. os.system('rojo upload')
-// or subprocess.run(['rbxcloud', 'assets', 'create', ...]).
-export const CODE_PUBLISH = /\brojo(?:\.exe)?\b[^\n]{0,80}?\bupload\b|\bmantle\b[^\n]{0,40}?\b(?:deploy|destroy)\b|\btarmac\b[^\n]{0,80}?\b(?:upload-image|sync)\b|\basphalt\b[^\n]{0,40}?\b(?:sync|upload)\b|\brbxcloud\b[^\n]{0,80}?\b(?:publish|create|update|set|delete|increment|remove|archive|restore|execute|send)\b/i;
+// or subprocess.run(['rbxcloud', 'assets', 'create', ...]), or a package-registry publish or login
+// (wally publish/login/logout; pesde publish/yank/deprecate and auth login/logout/token).
+export const CODE_PUBLISH =
+	/\brojo(?:\.exe)?\b[^\n]{0,80}?\bupload\b|\bmantle\b[^\n]{0,40}?\b(?:deploy|destroy)\b|\btarmac\b[^\n]{0,80}?\b(?:upload-image|sync)\b|\basphalt\b[^\n]{0,40}?\b(?:sync|upload)\b|\brbxcloud\b[^\n]{0,80}?\b(?:publish|create|update|set|delete|increment|remove|archive|restore|execute|send)\b|\bwally(?:\.exe)?\b[^\n]{0,40}?\b(?:publish|login|logout)\b|\bpesde(?:\.exe)?\b[^\n]{0,60}?\b(?:publish|yank|deprecate|login|logout|token)\b/i;
 // Code that runs an HTTP command-line client with a write flag (subprocess.run(['curl', '-XPOST', url])).
 export const CODE_HTTP_CLI_WRITE = /\b(?:curl|wget|xh|https?(?!:))\b[^\n]{0,200}?(?:-X\s*['"]?\s*(?:POST|PUT|PATCH|DELETE)\b|--?(?:data|form|json|upload|post|body|method)\b|\bPOST\b|['"]-[dFT]['"])/i;
 
@@ -58,7 +60,7 @@ export function findSecrets(text) {
 export function decide(decision, reason) {
 	if (decision === "ask" && codex) {
 		decision = "deny";
-		reason += " Codex hooks cannot ask, so this is blocked in Codex: run it from Claude Code (which asks) or have Ethan do it by hand.";
+		reason += " Codex hooks cannot ask, so this is blocked in Codex: run it from Claude Code (which asks) or have the owner do it by hand.";
 	}
 	process.stdout.write(
 		JSON.stringify({

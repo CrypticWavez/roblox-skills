@@ -23,9 +23,16 @@ command = "uvx"
 args = ["mcp-for-blender==2.1.8"]
 env = { DISABLE_TELEMETRY = "true" }
 startup_timeout_sec = 60
+# Tools tools/hooks/guard_mcp.mjs denies (paid 3D generation; Poly Haven API terms and per-model
+# Sketchfab/Poly Pizza licences): never offered to the model, even while the hooks are untrusted.
+disabled_tools = ["generate_3d", "import_asset", "search_assets"]
 
-# Tools .claude/settings.json and tools/hooks/guard_mcp.mjs ask for. Codex hooks cannot ask, so the
-# guard denies these in Codex; the native prompt below is the fallback while the hooks are untrusted.
+# Tools tools/hooks/guard_mcp.mjs asks for (and .claude/settings.json asks for, or should: docs/mcp.md).
+# Codex hooks cannot ask, so the guard denies these in Codex; the native prompt below is the fallback
+# while the hooks are untrusted.
+[mcp_servers.Roblox_Studio.tools.subagent]
+approval_mode = "prompt"
+
 [mcp_servers.Roblox_Studio.tools.insert_asset]
 approval_mode = "prompt"
 
@@ -45,15 +52,6 @@ approval_mode = "prompt"
 approval_mode = "prompt"
 
 [mcp_servers.Roblox_Studio.tools.http_get]
-approval_mode = "prompt"
-
-[mcp_servers.blender.tools.generate_3d]
-approval_mode = "prompt"
-
-[mcp_servers.blender.tools.import_asset]
-approval_mode = "prompt"
-
-[mcp_servers.blender.tools.search_assets]
 approval_mode = "prompt"
 
 [mcp_servers.blender.tools.record_trajectory_feedback]

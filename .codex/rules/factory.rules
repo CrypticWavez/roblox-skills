@@ -1,9 +1,10 @@
 # Codex execution-policy rules for this repository (project layer: Codex reads them only after the
-# project is trusted). They mirror the argv-shaped classes of tools/hooks/guard_bash.mjs so a Codex
-# session refuses them even before the guard hooks in .codex/hooks.json are reviewed with /hooks.
-# Prefix rules cannot see URLs, variables, nested scripts, options in any position or the current
-# branch, so Open Cloud write requests, inline scripts and anything not a plain command are covered
-# by the hook only (docs/mcp.md, "Codex"). `node tools/hooks/selftest.mjs` evaluates this file
+# project is trusted). They mirror the argv-shaped classes of tools/hooks/guard_bash.mjs (publishing
+# and uploads, package-registry publishes and logins, owner records, force pushes) so a Codex session
+# refuses them even before the guard hooks in .codex/hooks.json are reviewed with /hooks.
+# Prefix rules cannot see URLs, variables, nested scripts, globs, options in any position or the
+# current branch, so Open Cloud write requests, inline scripts and anything not a plain command are
+# covered by the hook only (docs/mcp.md, "Codex"). `node tools/hooks/selftest.mjs` evaluates this file
 # against the guard's deny and allow samples; `codex execpolicy check --rules .codex/rules/factory.rules -- <cmd>` checks one command.
 
 # ---- publishing and uploads -------------------------------------------------------------------
@@ -123,6 +124,99 @@ prefix_rule(
         "rbxcloud datastore list-stores --universe-id 1",
         "rbxcloud help",
     ],
+)
+
+# ---- package registries: publishing and registry tokens (wally 0.3.2, pesde 0.7.4) -----------------
+# install, update, add, search, package and `pesde auth whoami` stay unmatched (as in the guard).
+prefix_rule(
+    pattern = [["wally", "wally.exe"], ["publish", "login", "logout"]],
+    decision = "forbidden",
+    justification = "wally publish/login/logout publishes a package or handles a registry token. SETUP_ONLY: never publish; the owner logs in by hand.",
+    match = ["wally publish", "wally login --token abc", "wally logout"],
+    not_match = ["wally install", "wally package --output build/x.zip", "wally search profilestore"],
+)
+
+prefix_rule(
+    pattern = [["wally", "wally.exe"], ["-v", "-vv", "-vvv", "--verbose"], ["publish", "login", "logout"]],
+    decision = "forbidden",
+    justification = "wally publish/login/logout publishes a package or handles a registry token. SETUP_ONLY: never publish.",
+    match = ["wally -v publish"],
+)
+
+prefix_rule(
+    pattern = [["pesde", "pesde.exe"], ["publish", "yank", "deprecate"]],
+    decision = "forbidden",
+    justification = "pesde publish/yank/deprecate changes a package registry. SETUP_ONLY: never publish.",
+    match = ["pesde publish -y", "pesde yank scope/name@1.0.0", "pesde deprecate scope/name"],
+    not_match = ["pesde install", "pesde add wally#scope/name"],
+)
+
+prefix_rule(
+    pattern = [["pesde", "pesde.exe"], "auth", ["login", "logout", "token"]],
+    decision = "forbidden",
+    justification = "pesde auth login/logout/token stores, removes or prints a registry token; the owner does this by hand. `pesde auth whoami` is allowed.",
+    match = ["pesde auth login", "pesde auth token"],
+    not_match = ["pesde auth whoami"],
+)
+
+# The index option before the auth subcommand hides it from a prefix.
+prefix_rule(
+    pattern = [["pesde", "pesde.exe"], "auth", ["-i", "--index"]],
+    decision = "prompt",
+    justification = "pesde auth with an index option: confirm the subcommand is whoami, not login/logout/token.",
+    match = ["pesde auth --index default login"],
+    not_match = ["pesde auth whoami"],
+)
+
+prefix_rule(
+    pattern = [["rokit", "aftman", "foreman", "uv", "pixi", "poetry", "pdm", "hatch", "mise"], ["run", "exec"], ["wally", "pesde"], ["publish", "login", "logout", "yank", "deprecate"]],
+    decision = "forbidden",
+    justification = "Runner launch of a package-registry publish or login. SETUP_ONLY: never publish.",
+    match = ["mise exec wally publish"],
+    not_match = ["mise exec wally install"],
+)
+
+prefix_rule(
+    pattern = [["setsid", "nohup", "chronic", "unbuffer"], ["wally", "pesde"], ["publish", "login", "logout", "yank", "deprecate"]],
+    decision = "forbidden",
+    justification = "Wrapper launch of a package-registry publish or login. SETUP_ONLY: never publish.",
+    match = ["nohup wally publish"],
+)
+
+# ---- owner records: release/owner-*.json (only the owner writes them) ------------------------------
+# Prefix rules cannot glob or see a path in any position, so only the documented record
+# (release/owner-exceptions.json, the starter's publish-exceptions list) in the first-argument
+# position of common writers is covered here. The hooks cover every name, position, redirection and
+# Codex apply_patch edit (tools/hooks/guard_bash.mjs).
+prefix_rule(
+    pattern = [["tee", "rm", "touch", "truncate", "shred", "unlink"], ["release/owner-exceptions.json", "./release/owner-exceptions.json"]],
+    decision = "forbidden",
+    justification = "release/owner-*.json files are owner records; only the owner writes or deletes them. Read with cat/jq or copy elsewhere.",
+    match = ["tee release/owner-exceptions.json", "rm release/owner-exceptions.json"],
+    not_match = ["tee release/report.json", "rm release/report.json"],
+)
+
+prefix_rule(
+    pattern = [["tee", "rm", "touch", "truncate"], ["-a", "--append", "-f", "--force", "-c", "--no-create", "-s0", "--size=0"], ["release/owner-exceptions.json", "./release/owner-exceptions.json"]],
+    decision = "forbidden",
+    justification = "release/owner-*.json files are owner records; only the owner writes or deletes them.",
+    match = ["tee -a release/owner-exceptions.json", "rm -f release/owner-exceptions.json"],
+)
+
+prefix_rule(
+    pattern = ["git", ["checkout", "restore"], ["release/owner-exceptions.json", "./release/owner-exceptions.json"]],
+    decision = "forbidden",
+    justification = "git checkout/restore overwrites an owner record; only the owner changes it.",
+    match = ["git restore release/owner-exceptions.json"],
+    not_match = ["git restore release/report.json"],
+)
+
+prefix_rule(
+    pattern = ["git", ["checkout", "restore"], ["--", "--staged", "--worktree", "-W", "-S"], ["release/owner-exceptions.json", "./release/owner-exceptions.json"]],
+    decision = "forbidden",
+    justification = "git checkout/restore overwrites an owner record; only the owner changes it.",
+    match = ["git checkout -- release/owner-exceptions.json", "git restore --worktree release/owner-exceptions.json"],
+    not_match = ["git checkout -- release/report.json"],
 )
 
 # ---- force pushes and deletions of main/master ----------------------------------------------------

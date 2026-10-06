@@ -1,8 +1,9 @@
 // Feeds known-good and known-bad events to the guards so hook regressions fail the gate, in both
 // directions: every deny/ask class has a case, and so do the reads that must stay allowed.
-// Codex parity: reruns the cases through the .codex/hooks.json commands, evaluates
-// .codex/rules/factory.rules against the Bash cases, and checks .codex/config.toml against
-// .mcp.json and the MCP guard.
+// Codex parity: reruns the cases through the .codex/hooks.json commands (Bash, file edits, every MCP
+// tool), evaluates .codex/rules/factory.rules against the Bash cases, and checks .codex/config.toml
+// against .mcp.json and the MCP guard (prompted tools = asked, disabled tools = denied, all 26 Studio
+// tools classified).
 // Also checks that tools/check.py and the edit hook flag the same secrets from secret-patterns.json.
 // Dangerous command strings and fake credentials are assembled at runtime so this file never trips
 // the guard or the secret scan itself.
@@ -18,6 +19,14 @@ const repoRoot = join(here, "..", "..");
 const python = process.env.FACTORY_PYTHON || (process.platform === "win32" ? "python" : "python3");
 // The tools mcp-for-blender 2.1.8 registers (FastMCP list_tools(); the last five are MCP-Apps UI tools).
 const BLENDER_TOOLS = ["get_addon_status", "disable_telemetry", "get_scene_info", "execute_blender_code", "record_trajectory_feedback", "look", "generate_3d", "search_assets", "import_asset", "search_mentions", "open_viewport", "viewport_latest", "viewport_capture", "viewport_pick"];
+// The 26 tools of the built-in Studio MCP server (create.roblox.com/docs/studio/mcp, updated 2026-10-02).
+const STUDIO_TOOLS = [
+	...["script_read", "multi_edit", "script_search", "script_grep"],
+	...["generate_mesh", "generate_material", "generate_procedural_model", "wait_job_finished", "search_asset", "insert_asset", "upload_image", "store_image"],
+	...["subagent", "search_game_tree", "inspect_instance", "execute_luau"],
+	...["get_studio_state", "start_stop_play", "get_console_output", "screen_capture"],
+	...["character_navigation", "user_keyboard_input", "user_mouse_input", "http_get", "skill", "list_roblox_studios"],
+];
 
 // Starlark subset used by .codex/rules: prefix_rule(name = "str" | [ ... ], ...) calls and comments.
 function parseRules(text) {
@@ -98,6 +107,9 @@ const UP = ["up", "load"].join("");
 const API = `https://${["apis", "roblox", "com"].join(".")}`;
 const W = ["weppy", "project", "sync"].join("-");
 const K = '-H "x-api-key: $RBX_KEY"';
+// An owner record (the starter's publish-exceptions list) and its file name.
+const OWN_LEAF = ["owner", "exceptions.json"].join("-");
+const OWN = `release/${OWN_LEAF}`;
 
 // Temporary repositories so a bare forced push resolves against a known branch.
 const temp = mkdtempSync(join(tmpdir(), "hooks-selftest-"));
@@ -118,6 +130,10 @@ const bash = (command, expected, cwd) => ["guard_bash.mjs", { tool_name: "Bash",
 const luau = (code, expected) => ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__execute_luau", tool_input: { code } }, expected];
 const tool = (name, expected) => ["guard_mcp.mjs", { tool_name: name, tool_input: {} }, expected];
 const blenderPy = (code, expected) => ["guard_mcp.mjs", { tool_name: "mcp__blender__execute_blender_code", tool_input: { code } }, expected];
+const mcp = (name, input, expected) => ["guard_mcp.mjs", { tool_name: name, tool_input: input }, expected];
+// A file-edit event (Codex apply_patch, Claude Edit/Write), routed to guard_bash.mjs.
+const fileEdit = (name, input, expected, cwd) => ["guard_bash.mjs", { tool_name: name, tool_input: input, cwd }, expected];
+const patch = (...lines) => ["*** Begin Patch", ...lines, "*** End Patch"].join("\n");
 // A case with a name (element 4), printed when it fails.
 const named = (name, c) => Object.assign(c, { 4: name });
 
@@ -290,10 +306,13 @@ const cases = [
 	luau('game:GetService("MarketplaceService"):PromptProductPurchase(p, 1)', "ask"),
 	luau("MarketplaceService:PromptGamePassPurchase(p, 1)", "ask"),
 	luau("MarketplaceService:PromptBundlePurchase(p, 1)", "ask"),
-	luau("MarketplaceService:PromptPremiumPurchase(p)", "ask"),
-	luau("MarketplaceService:PromptSubscriptionPurchase(p, 'EXP-1')", "ask"),
-	luau("MarketplaceService:PromptBulkPurchase(p, {}, {})", "ask"),
-	luau("MarketplaceService:PromptRobuxTransferAsync(p, 10)", "ask"),
+	// prompts Studio does not safely mock are denied outright (subscriptions, Premium, transfers, bulk)
+	luau("MarketplaceService:PromptPremiumPurchase(p)", "deny"),
+	luau("MarketplaceService:PromptSubscriptionPurchase(p, 'EXP-1')", "deny"),
+	luau("MarketplaceService:PromptRobloxSubscriptionPurchase(p, 'RBX-1')", "deny"),
+	luau("MarketplaceService:PromptBulkPurchase(p, {}, {})", "deny"),
+	luau("MarketplaceService:PromptRobuxTransferAsync(p, 10)", "deny"),
+	luau("MarketplaceService:PromptCancelSubscription(p, 'EXP-1')", "ask"),
 	luau("store:SetAsync('k', 1)", "ask"),
 	luau('ds:UpdateAsync ("k", function(v) return v end)', "ask"),
 	luau('queue:AddAsync("v", 60)', "ask"),
@@ -301,10 +320,12 @@ const cases = [
 	luau("print(workspace:GetChildren())", "allow"),
 	luau("print(MarketplaceService:GetProductInfo(1), MarketplaceService:UserOwnsGamePassAsync(1, 2))", "allow"),
 	luau("print(store:GetAsync('k'))", "allow"),
-	// Blender MCP: third-party libraries, paid generators and vendor uploads ask (2.1.8 and 1.x names)
-	...["generate_3d", "import_asset", "search_assets", "record_trajectory_feedback"].map((t) => tool(`mcp__blender__${t}`, "ask")),
-	...["download_sketchfab_model", "search_polyhaven_assets", "get_sketchfab_model_preview", "generate_hyper3d_model_via_text", "generate_hunyuan3d_model", "poll_rodin_job_status", "import_generated_asset"].map((t) => tool(`mcp__blender__${t}`, "ask")),
-	tool("mcp__blender_workbench__generate_3d", "ask"),
+	// Blender MCP: paid generators and third-party asset libraries are denied (2.1.8 and 1.x names);
+	// the vendor feedback upload asks
+	...["generate_3d", "import_asset", "search_assets"].map((t) => tool(`mcp__blender__${t}`, "deny")),
+	...["download_sketchfab_model", "search_polyhaven_assets", "get_sketchfab_model_preview", "generate_hyper3d_model_via_text", "generate_hunyuan3d_model", "poll_rodin_job_status", "import_generated_asset", "get_polyhaven_categories"].map((t) => tool(`mcp__blender__${t}`, "deny")),
+	tool("mcp__blender__record_trajectory_feedback", "ask"),
+	tool("mcp__blender_workbench__generate_3d", "deny"),
 	...["get_scene_info", "look", "get_addon_status", "disable_telemetry", "get_sketchfab_status", "viewport_latest"].map((t) => tool(`mcp__blender__${t}`, "allow")),
 	// execute_blender_code that reaches the network or a shell asks; ordinary bpy work passes
 	blenderPy("import urllib.request\nurllib.request.urlretrieve('https://example.com/a.fbx', '/tmp/a.fbx')", "ask"),
@@ -325,7 +346,7 @@ const cases = [
 	blenderPy("import bpy\nbpy.ops.export_scene.fbx(filepath='build/blender/prop.fbx')\nprint(bpy.context.preferences.system.memory_cache_limit)", "allow"),
 	// Codex mode (lib.mjs): an ask becomes a deny whether Codex is named by flag or by its turn_id
 	["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__insert_asset", tool_input: {} }, "deny", ["--client=codex"]],
-	["guard_mcp.mjs", { tool_name: "mcp__blender__generate_3d", tool_input: {}, turn_id: "t1" }, "deny"],
+	["guard_mcp.mjs", { tool_name: "mcp__blender__record_trajectory_feedback", tool_input: {}, turn_id: "t1" }, "deny"],
 	["guard_mcp.mjs", { tool_name: "mcp__blender__look", tool_input: {}, turn_id: "t1" }, "allow"],
 	// ---- regressions from the guards audit (HOOK-1 .. HOOK-8), named so a failure says which bypass is back
 	// HOOK-1: curl and wget accept any unique prefix of a long option
@@ -437,6 +458,103 @@ const cases = [
 	named("HOOK-8 git commit --mess= naming the folder", bash(`git commit --mess="${W}/ stays read-only"`, "allow")),
 	named("HOOK-8 urlopen(url, None, timeout) is a GET", bash(`python3 -c "import urllib.request as u, json; print(json.load(u.urlopen('${API}/cloud/v2/universes/1', None, 10)))"`, "allow")),
 	named("HOOK-8 git add of a path in the folder is still denied", bash(`git add ../${W}/x.json`, "deny")),
+	// ---- second guard pass (2026-10), named GUARD-*: package registries, MCP classes, owner records
+	// Package registries: publishing, yanking and tokens are denied; installs and lookups pass.
+	named("GUARD-1 wally publish", bash("wally publish", "deny")),
+	named("GUARD-1 wally login --token", bash("wally login --token abc", "deny")),
+	named("GUARD-1 wally logout", bash("wally logout", "deny")),
+	named("GUARD-1 wally -v publish", bash("wally -v publish", "deny")),
+	named("GUARD-1 wally publish behind a runner", bash("mise exec wally publish", "deny")),
+	named("GUARD-1 wally subcommand from xargs input", bash("echo publish | xargs wally", "deny")),
+	named("GUARD-1 pesde publish", bash("pesde publish -y", "deny")),
+	named("GUARD-1 pesde yank", bash("pesde yank scope/name@1.0.0", "deny")),
+	named("GUARD-1 pesde deprecate", bash("pesde deprecate scope/name", "deny")),
+	named("GUARD-1 pesde auth login", bash("pesde auth login", "deny")),
+	named("GUARD-1 pesde auth --index before login", bash("pesde auth --index default login", "deny")),
+	named("GUARD-1 pesde auth token prints a secret", bash("pesde auth token", "deny")),
+	named("GUARD-1 pesde auth logout", bash("pesde auth logout", "deny")),
+	named("GUARD-1 inline script runs wally publish", bash(`python3 -c "import os; os.system('wally publish')"`, "deny")),
+	named("GUARD-1 Blender Python runs pesde publish", blenderPy("import subprocess; subprocess.run(['pesde', 'publish', '-y'])", "deny")),
+	named("GUARD-1 wally install stays allowed", bash("wally install", "allow")),
+	named("GUARD-1 wally package stays allowed", bash("wally package --output build/pkg.zip", "allow")),
+	named("GUARD-1 pesde install and add stay allowed", bash("pesde install && pesde add wally#scope/name", "allow")),
+	named("GUARD-1 pesde auth whoami stays allowed", bash("pesde auth whoami", "allow")),
+	named("GUARD-1 rokit add of the wally tool stays allowed", bash("rokit add UpliftGames/wally", "allow")),
+	// Studio MCP: all 26 tools classified; subagent asks; skill/wait_job_finished/search_asset are reads.
+	...["skill", "wait_job_finished", "search_asset", "list_roblox_studios"].map((t) => named(`GUARD-2 Studio ${t} stays allowed`, tool(`mcp__Roblox_Studio__${t}`, "allow"))),
+	named("GUARD-2 Studio search_asset query naming write APIs stays allowed", mcp("mcp__Roblox_Studio__search_asset", { query: "SetAsync PromptProductPurchase SavePlaceAsync" }, "allow")),
+	named("GUARD-2 Studio skill by name stays allowed", mcp("mcp__Roblox_Studio__skill", { name: "rbx-perf-profiling" }, "allow")),
+	named("GUARD-2 Studio subagent asks", mcp("mcp__Roblox_Studio__subagent", { type: "playtest", prompt: "walk to the spawn and report" }, "ask")),
+	named("GUARD-2 Studio subagent is denied in Codex", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__subagent", tool_input: { type: "explore" } }, "deny", ["--client=codex"]]),
+	named("GUARD-2 Studio http_get asks", tool("mcp__Roblox_Studio__http_get", "ask")),
+	named("GUARD-2 Studio play and input tools stay allowed", tool("mcp__Roblox_Studio__start_stop_play", "allow")),
+	named("GUARD-2 unknown Studio tool asks", tool("mcp__Roblox_Studio__set_place_settings", "ask")),
+	named("GUARD-2 unknown Studio tool with publish code is denied", mcp("mcp__Roblox_Studio__run_code", { code: 'game:GetService("AssetService"):SavePlaceAsync()' }, "deny")),
+	named("GUARD-2 Luau PromptRobuxTransfer in a multi_edit is denied", mcp("mcp__Roblox_Studio__multi_edit", { edits: [{ new_string: "MarketplaceService:PromptRobuxTransferAsync(p, 10)" }] }, "deny")),
+	// Blender MCP: unknown tools ask; code tools of another Blender server (Blender Lab) are checked as code.
+	named("GUARD-3 unknown Blender tool asks", tool("mcp__blender__frobnicate_scene", "ask")),
+	named("GUARD-3 Blender Lab execute_blender_code with plain bpy stays allowed", mcp("mcp__blender_lab__execute_blender_code", { code: "import bpy\nprint(len(bpy.data.objects))" }, "allow")),
+	named("GUARD-3 Blender Lab execute_blender_code_for_cli reaching the network asks", mcp("mcp__blender_lab__execute_blender_code_for_cli", { code: "import urllib.request\nurllib.request.urlopen('https://example.com')" }, "ask")),
+	// Other MCP servers (connectors, plugins, ChatGPT apps): ask (deny in Codex); GitHub reads pass.
+	named("GUARD-4 claude.ai connector tool asks", tool("mcp__claude_ai_Figma__create_new_file", "ask")),
+	named("GUARD-4 Codex app tool asks", tool("mcp__codex_apps__gmail__send_email", "ask")),
+	named("GUARD-4 plugin MCP tool asks", tool("mcp__plugin_linear_linear__create_issue", "ask")),
+	named("GUARD-4 GitHub read stays allowed", mcp("mcp__github__get_file_contents", { owner: "o", repo: "r", path: "README.md" }, "allow")),
+	named("GUARD-4 GitHub plugin search stays allowed", tool("mcp__plugin_github_github__search_code", "allow")),
+	named("GUARD-4 GitHub pull_request_read stays allowed", tool("mcp__github__pull_request_read", "allow")),
+	named("GUARD-4 GitHub write asks", tool("mcp__github__create_pull_request", "ask")),
+	named("GUARD-4 GitHub merge asks", tool("mcp__github__merge_pull_request", "ask")),
+	named("GUARD-4 unknown MCP tool is denied in Codex", ["guard_mcp.mjs", { tool_name: "mcp__codex_apps__gmail__send_email", tool_input: {}, turn_id: "t1" }, "deny"]),
+	named("GUARD-4 GitHub read stays allowed in Codex", ["guard_mcp.mjs", { tool_name: "mcp__github__list_issues", tool_input: {}, turn_id: "t1" }, "allow"]),
+	// Owner records (release/owner-*.json): only the owner writes, moves or deletes them.
+	named("GUARD-5 owner record: redirect", bash(`echo '{}' > ${OWN}`, "deny")),
+	named("GUARD-5 owner record: append", bash(`echo '{}' >> ${OWN}`, "deny")),
+	named("GUARD-5 owner record: tee", bash(`jq '.items=[]' /tmp/x.json | tee ${OWN}`, "deny")),
+	named("GUARD-5 owner record: cp onto it", bash(`cp /tmp/forged.json ${OWN}`, "deny")),
+	named("GUARD-5 owner record: mv into the release folder", bash(`mv /tmp/${OWN_LEAF} release/`, "deny")),
+	named("GUARD-5 owner record: sed -i", bash(`sed -i 's/false/true/' ${OWN}`, "deny")),
+	named("GUARD-5 owner record: rm -f", bash(`rm -f ${OWN}`, "deny")),
+	named("GUARD-5 owner record: touch another record", bash("touch release/owner-signoff.json", "deny")),
+	named("GUARD-5 owner record: glob of records", bash("rm release/owner-*.json", "deny")),
+	named("GUARD-5 owner record: release/* glob", bash("sed -i s/a/b/ release/*", "deny")),
+	named("GUARD-5 owner record: inside the release folder", bash("cd release && echo '{}' > owner-signoff.json", "deny")),
+	named("GUARD-5 owner record: rm * inside a release folder", bash("cd templates/starter/release && rm *", "deny")),
+	named("GUARD-5 owner record: the starter template copy", bash(`printf '{}' > templates/starter/${OWN}`, "deny")),
+	named("GUARD-5 owner record: python writes it", bash(`python3 -c "open('${OWN}', 'w').write('{}')"`, "deny")),
+	named("GUARD-5 owner record: xargs rm", bash("ls release/owner-*.json | xargs rm", "deny")),
+	named("GUARD-5 owner record: PowerShell Set-Content", bash(`powershell -Command "Set-Content ${OWN} '{}'"`, "deny")),
+	named("GUARD-5 owner record: git checkout of an older version", bash(`git checkout HEAD~1 -- ${OWN}`, "deny")),
+	named("GUARD-5 owner record: git restore", bash(`git restore ${OWN}`, "deny")),
+	named("GUARD-5 owner record: path in a variable", bash(`F=${OWN}; echo '{}' > "$F"`, "deny")),
+	named("GUARD-5 owner record: for loop over records", bash(`for f in release/owner-*.json; do echo '{}' > "$f"; done`, "deny")),
+	named("GUARD-5 owner record: Codex apply_patch update", fileEdit("apply_patch", { command: patch(`*** Update File: ${OWN}`, "@@", '-  "items": []', '+  "items": ["x"]') }, "deny")),
+	named("GUARD-5 owner record: Codex apply_patch add (array input)", fileEdit("apply_patch", { command: ["apply_patch", patch(`*** Add File: templates/starter/${OWN}`, "+{}")] }, "deny")),
+	named("GUARD-5 owner record: Codex apply_patch move onto it", fileEdit("apply_patch", { input: patch("*** Update File: /tmp/x.json", `*** Move to: ${OWN}`) }, "deny")),
+	named("GUARD-5 owner record: Codex apply_patch delete", fileEdit("apply_patch", { patch: patch(`*** Delete File: ${OWN}`) }, "deny")),
+	named("GUARD-5 protected folder: Codex apply_patch into it", fileEdit("apply_patch", { command: patch(`*** Add File: ../${W}/x.json`, "+{}") }, "deny")),
+	named("GUARD-5 owner record: Claude Write", fileEdit("Write", { file_path: `/work/game/${OWN}`, content: "{}" }, "deny")),
+	named("GUARD-5 owner record: Claude Edit", fileEdit("Edit", { file_path: OWN, old_string: "a", new_string: "b" }, "deny")),
+	named("GUARD-5 owner record: cat and jq stay allowed", bash(`cat ${OWN} && jq . ${OWN}`, "allow")),
+	named("GUARD-5 owner record: copy elsewhere stays allowed", bash(`cp ${OWN} /tmp/owner-copy.json`, "allow")),
+	named("GUARD-5 owner record: git diff, add and commit stay allowed", bash(`git diff ${OWN} && git add ${OWN} && git commit -m "Owner sign-off"`, "allow")),
+	named("GUARD-5 owner record: rg for it stays allowed", bash(`rg -n "${OWN}" docs tools`, "allow")),
+	named("GUARD-5 release report writes stay allowed", bash("mkdir -p release && echo '{}' > release/report.json", "allow")),
+	named("GUARD-5 release check run stays allowed", bash("python3 templates/starter/tools/release_check.py --root /tmp/game --out release/report.json", "allow")),
+	named("GUARD-5 owner-named file outside release stays allowed", bash("echo '{}' > /tmp/owner-notes.json", "allow")),
+	named("GUARD-5 apply_patch of ordinary files stays allowed", fileEdit("apply_patch", { command: patch("*** Update File: release/report.json", "@@", "-a", "+b", "*** Add File: docs/notes.md", "+x") }, "allow")),
+	named("GUARD-5 Write whose content shows a patch stays allowed", fileEdit("Write", { file_path: "docs/notes.md", content: patch(`*** Update File: ${OWN}`) }, "allow")),
+	// Copies under fixtures/ or tests/ are test data for the release check, not owner records.
+	named("GUARD-5 fixture record: redirect stays allowed", bash(`mkdir -p fixtures/release/good/release && echo '{}' > fixtures/release/good/${OWN}`, "allow")),
+	named("GUARD-5 fixture record: cd into a fixture release folder stays allowed", bash("cd tests/fixtures/release && printf '{}' > owner-signoff.json", "allow")),
+	named("GUARD-5 fixture record: cp and rm stay allowed", bash(`cp ${OWN} fixtures/release/bad/${OWN} && rm -f fixtures/release/old/release/owner-*.json`, "allow")),
+	named("GUARD-5 fixture record: Codex apply_patch stays allowed", fileEdit("apply_patch", { command: patch(`*** Add File: fixtures/release/bad/${OWN}`, "+{}") }, "allow")),
+	named("GUARD-5 fixture record: Claude Write below the project stays allowed", fileEdit("Write", { file_path: `/work/game/fixtures/release/good/${OWN}`, content: "{}" }, "allow", "/work/game")),
+	named("GUARD-5 fixture record: .. out of fixtures", bash(`echo '{}' > fixtures/../${OWN}`, "deny")),
+	named("GUARD-5 fixture record: .. out of tests into the template", bash(`cp /tmp/x.json tests/../templates/starter/${OWN}`, "deny")),
+	named("GUARD-5 fixture record: cd out of fixtures into release", bash("cd fixtures/release && cd ../../release && echo '{}' > owner-signoff.json", "deny")),
+	named("GUARD-5 fixture record: Claude Write with .. out of fixtures", fileEdit("Write", { file_path: `/work/game/fixtures/../${OWN}`, content: "{}" }, "deny", "/work/game")),
+	named("GUARD-5 fixture record: Claude Write outside the project", fileEdit("Write", { file_path: `/elsewhere/fixtures/x/${OWN}`, content: "{}" }, "deny", "/work/game")),
+	named("GUARD-5 fixture record: python names a project record", bash(`python3 -c "open('fixtures/x/${OWN}', 'w'); open('${OWN}', 'w')"`, "deny")),
 ];
 
 let failed = 0;
@@ -448,7 +566,7 @@ const fail = (msg) => {
 };
 // Cases rely on these being unset (a URL in an unset variable is treated as a Roblox URL).
 const hookEnv = { ...process.env };
-for (const k of ["ROBLOX_ASSETS_URL", "X", "D", "P", "BRANCH", "COOKIE", "BODY", "GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"]) delete hookEnv[k];
+for (const k of ["ROBLOX_ASSETS_URL", "X", "D", "F", "P", "BRANCH", "COOKIE", "BODY", "GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"]) delete hookEnv[k];
 const run = (file, args, event, options = {}) =>
 	new Promise((done) => {
 		const child = spawn(file, args, { env: hookEnv, ...options });
@@ -481,7 +599,7 @@ for (const [k, [script, event, expected, , name]] of cases.entries()) {
 	const got = verdict(results[k]);
 	if (got !== expected) fail(`${label(script, event, name)}: expected ${expected}, got ${got}`);
 }
-console.log(`${cases.length - failed}/${cases.length} hook cases (${cases.filter((c) => /^HOOK-/.test(c[4] ?? "")).length} named audit regressions)`);
+console.log(`${cases.length - failed}/${cases.length} hook cases (${cases.filter((c) => /^HOOK-/.test(c[4] ?? "")).length} named audit regressions, ${cases.filter((c) => /^GUARD-/.test(c[4] ?? "")).length} named second-pass cases)`);
 
 // HOOK-7: the largest commands the guard accepts (just under its 64 KiB cap) are decided well inside
 // the hook timeout (5 s in .claude/settings.json, 10 s in .codex/hooks.json); a timed-out hook lets
@@ -556,31 +674,37 @@ for (const r of rules) {
 	for (const ex of r.match) if (!matches(r, shellWords(ex))) fail(`${rulesFile}: match example "${ex}" does not match its rule ${JSON.stringify(r.pattern)}`);
 	for (const ex of r.not_match) if (matches(r, shellWords(ex))) fail(`${rulesFile}: not_match example "${ex}" matches its rule ${JSON.stringify(r.pattern)}`);
 }
-const RULE_HEADS = /^(rojo|rojo\.exe|mantle|tarmac|rbxcloud|asphalt|npx|bunx|pnpx)$/;
+const RULE_HEADS = /^(rojo|rojo\.exe|mantle|tarmac|rbxcloud|asphalt|npx|bunx|pnpx|wally|wally\.exe|pesde|pesde\.exe)$/;
+// Owner-record writes a prefix rule can see: a writer or git checkout/restore whose first argument
+// (after at most one option) is the documented record.
+const ownerRuleShaped = (a) => {
+	const i = /^(tee|rm|touch|truncate|shred|unlink)$/.test(a[0]) ? 1 : a[0] === "git" && /^(checkout|restore)$/.test(a[1]) ? 2 : -1;
+	return i > 0 && (a[i] === OWN || (String(a[i]).startsWith("-") && a[i + 1] === OWN));
+};
 const checked = new Map(); // argv JSON -> our decision, for the codex cross-check
 let ruleCovered = 0;
 let ruleShaped = 0;
 let hookOnly = 0;
 let prompted = 0;
 for (const [script, event, expected] of cases) {
-	if (script !== "guard_bash.mjs") continue;
+	if (script !== "guard_bash.mjs" || event.tool_name !== "Bash") continue;
 	const argvs = codexCommands(event.tool_input.command) ?? [];
 	for (const argv of argvs) checked.set(JSON.stringify(argv), ruleDecision(argv));
 	const worst = strictest(argvs.map(ruleDecision));
 	if (expected === "allow") {
 		if (worst === "forbidden") fail(`.codex/rules forbids an allowed command: ${event.tool_input.command}`);
 		if (worst === "prompt") prompted++;
-	} else if (!argvs.some((a) => RULE_HEADS.test(a[0]) || (a[0] === "git" && a[1] === "push"))) hookOnly++;
+	} else if (!argvs.some((a) => RULE_HEADS.test(a[0]) || (a[0] === "git" && a[1] === "push") || ownerRuleShaped(a))) hookOnly++;
 	// A plain `git push` denied only because of the repository's own config (a mirror remote) cannot be
 	// told apart by a prefix rule; only the hook reads that config.
 	else if (worst === null && event.cwd === mirrorRepo) hookOnly++;
 	else {
 		ruleShaped++;
 		if (worst === "forbidden" || worst === "prompt") ruleCovered++;
-		else fail(`.codex/rules lets a denied publishing command through: ${event.tool_input.command}`);
+		else fail(`.codex/rules lets a denied publishing, registry or owner-record command through: ${event.tool_input.command}`);
 	}
 }
-console.log(`${ruleCovered}/${ruleShaped} plain publish/upload/force-push deny cases forbidden or prompted by .codex/rules (${hookOnly} more are hook-only: URLs, variables, nested scripts); ${prompted} allow cases prompted, none forbidden`);
+console.log(`${ruleCovered}/${ruleShaped} plain publish/upload/registry/owner-record/force-push deny cases forbidden or prompted by .codex/rules (${hookOnly} more are hook-only: URLs, variables, nested scripts); ${prompted} allow cases prompted, none forbidden`);
 const codexBin = process.env.CODEX_BIN || "codex";
 const codexVersion = spawnSync(codexBin, ["--version"], { encoding: "utf8" });
 if (codexVersion.status === 0) {
@@ -594,8 +718,10 @@ if (codexVersion.status === 0) {
 	console.log(`${same}/${checked.size} rule decisions identical to \`codex execpolicy check\` (${codexVersion.stdout.trim()})`);
 } else console.log(`codex CLI not found: rules evaluated by the self-test parser only (set CODEX_BIN to cross-check)`);
 
-// .codex/config.toml mirrors .mcp.json (same servers, commands, args, env) and prompts natively for
-// exactly the tools the MCP guard asks for, so a session whose hooks are not yet trusted still asks.
+// .codex/config.toml mirrors .mcp.json (same servers, commands, args, env), prompts natively for
+// exactly the tools the MCP guard asks for and disables exactly the tools it denies, so a session
+// whose hooks are not yet trusted still asks or never sees them. Every Studio tool must have an
+// explicit class in the guard (not the "does not classify" fallback).
 const tomlRead = spawnSync(python, ["-c", "import json, sys, tomllib; print(json.dumps(tomllib.load(open(sys.argv[1], 'rb'))))", join(repoRoot, ".codex", "config.toml")], { encoding: "utf8" });
 const codexConfig = tomlRead.status === 0 ? JSON.parse(tomlRead.stdout) : null;
 if (!codexConfig) fail(`.codex/config.toml could not be read with ${python} (tomllib): ${tomlRead.error?.message || tomlRead.stderr}`);
@@ -608,19 +734,28 @@ else {
 	for (const name of new Set([...Object.keys(claudeServers), ...Object.keys(codexServers)]))
 		if (!claudeServers[name] || !codexServers[name] || pick(claudeServers[name]) !== pick(codexServers[name])) fail(`MCP server "${name}" differs between .mcp.json and .codex/config.toml`);
 	const prompts = new Set(Object.entries(codexServers).flatMap(([s, c]) => Object.entries(c.tools ?? {}).filter(([, t]) => t.approval_mode === "prompt").map(([t]) => `mcp__${s}__${t}`)));
+	const disabled = new Set(Object.entries(codexServers).flatMap(([s, c]) => (c.disabled_tools ?? []).map((t) => `mcp__${s}__${t}`)));
+	if (STUDIO_TOOLS.length !== 26 || new Set(STUDIO_TOOLS).size !== 26) fail(`STUDIO_TOOLS must list the 26 Studio MCP tools once each, got ${STUDIO_TOOLS.length}`);
 	const settings = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")).permissions;
-	const known = new Set([...settings.allow, ...settings.ask].filter((p) => p.startsWith("mcp__")));
+	const claudeRule = (name) => (settings.deny ?? []).includes(name) ? "deny" : settings.ask.includes(name) ? "ask" : settings.allow.includes(name) ? "allow" : null;
+	const known = new Set([...settings.allow, ...settings.ask, ...(settings.deny ?? [])].filter((p) => p.startsWith("mcp__")));
 	if (codexServers.blender) for (const t of BLENDER_TOOLS) known.add(`mcp__blender__${t}`);
-	for (const t of prompts) known.add(t);
+	if (codexServers.Roblox_Studio) for (const t of STUDIO_TOOLS) known.add(`mcp__Roblox_Studio__${t}`);
+	for (const t of [...prompts, ...disabled]) known.add(t);
 	const names = [...known].sort();
 	const asked = await runAll(names.map((name) => () => run(process.execPath, [join(here, "guard_mcp.mjs")], { tool_name: name, tool_input: {} })));
 	let agree = 0;
 	names.forEach((name, i) => {
-		const asks = verdict(asked[i]) === "ask";
-		if (asks !== prompts.has(name)) fail(`${name}: guard_mcp ${asks ? "asks" : "allows"} but .codex/config.toml ${prompts.has(name) ? "prompts" : "does not prompt"}`);
+		const v = verdict(asked[i]);
+		const reason = v === "ask" || v === "deny" ? JSON.parse(asked[i].stdout).hookSpecificOutput.permissionDecisionReason : "";
+		if ((v === "ask") !== prompts.has(name)) fail(`${name}: guard_mcp says ${v} but .codex/config.toml ${prompts.has(name) ? "prompts" : "does not prompt"}`);
+		else if ((v === "deny") !== disabled.has(name)) fail(`${name}: guard_mcp says ${v} but .codex/config.toml ${disabled.has(name) ? "disables" : "does not disable"} it`);
+		else if (/does not classify/.test(reason)) fail(`${name}: guard_mcp has no class for this tool`);
+		// .claude/settings.json may leave a tool unlisted (Claude then prompts), but a rule it lists must match the guard.
+		else if (claudeRule(name) && claudeRule(name) !== v) fail(`${name}: .claude/settings.json says ${claudeRule(name)} but guard_mcp says ${v}`);
 		else agree++;
 	});
-	console.log(`.codex/config.toml: ${Object.keys(codexServers).length} MCP servers identical to .mcp.json; ${agree}/${names.length} tools prompt in Codex exactly when guard_mcp asks`);
+	console.log(`.codex/config.toml: ${Object.keys(codexServers).length} MCP servers identical to .mcp.json; ${agree}/${names.length} tools (all ${STUDIO_TOOLS.length} Studio tools) classified, prompted in Codex exactly when guard_mcp asks and disabled exactly when it denies, and no .claude/settings.json rule disagrees`);
 }
 
 // Secret patterns: one sample per label, flagged identically by this hook library and tools/check.py.
