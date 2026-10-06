@@ -74,6 +74,7 @@ Clip actions carry `rbx_clip`; materials may carry `rbx_library`.
 - A check is wrong for an asset class: set metadata on that asset (`allow_open`, `pivot = "custom"`, `budget`, `qa = "skip"`). Do not change global limits.
 - `appearance_declared` fails: bake the look (`factory.py bake ... --mode palette`), or tag library materials `rbx_library`.
 - `texture_colorspace` fails: a map's image is in the wrong space, or one image feeds both colour and data. FBX stores no colour space, so on an `.fbx` the check passes with a note.
+- On a re-imported `.glb`, `texture_suffix` passes with a note: the exporter packs metalness and roughness into one embedded image. Suffixes matter for the PNGs next to an FBX. A re-imported clip file passes `clip_meta` with a note, because action metadata does not travel; check it against the sidecar instead.
 - `uv_unit_square` fails after a bake: the packing margin pushed islands out. `bake.atlas_uvs` refits to 0..1.
 - `rig_profile_sides` fails: Left bones sit at -X. A character facing -Y has its left at +X.
 - `rig_profile_rest_pose` fails: a limb chain does not extend away from its shoulder or hip.

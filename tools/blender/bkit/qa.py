@@ -312,6 +312,10 @@ def mesh_checks(obj, meta, weld=0.0, imported=None):
         for c in textures.image_checks(image, image_roles, min(max_size, textures.JUSTIFIED_MAX)):
             if c["name"] == "texture_colorspace" and imported == ".fbx" and not c["pass"]:
                 c.update({"pass": True, "detail": c["detail"] + "; FBX stores no colour space (the importer guessed; the Roblox slot decides)"})
+            if c["name"] == "texture_suffix" and imported in (".glb", ".gltf") and not c["pass"]:
+                # glTF packs metalness and roughness into one image (B, G channels) and embeds it;
+                # Reimport's file-name suffixes apply to maps next to an FBX.
+                c.update({"pass": True, "detail": c["detail"] + "; embedded glTF image (the exporter packs metallicRoughness)"})
             checks.append(_check(c["name"], c["pass"], c["value"], c["limit"], level=c["level"], detail=c["detail"]))
     checks.append(appearance_check(obj, mats, roles, meta))
 

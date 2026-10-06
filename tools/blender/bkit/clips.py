@@ -90,8 +90,12 @@ def clip_range(action):
 
 
 def clips_of(rig):
-    """The rig's clip actions in order (rbx_clips), skipping names that no longer exist."""
-    return [bpy.data.actions[n] for n in env.get_meta(rig).get("clips") or [] if n in bpy.data.actions]
+    """The rig's clip actions in order (rbx_clips), skipping names that no longer exist and
+    actions without `rbx_clip`. A re-imported GLB or FBX keeps the rig's `rbx_clips` list (object
+    extras) but its actions come back without their custom properties: the sidecar is the record
+    there."""
+    actions = (bpy.data.actions.get(n) for n in env.get_meta(rig).get("clips") or [])
+    return [a for a in actions if a is not None and clip_meta(a)]
 
 
 def entry(action):
@@ -136,7 +140,12 @@ def clip_checks(rig):
 
     actions = clips_of(rig)
     if not actions:
-        return []
+        listed = env.get_meta(rig).get("clips") or []
+        if not listed:
+            return []
+        # Imported file: the clip metadata did not travel; the sidecar and glb/fbx_problems check it.
+        return [_check("clip_meta", True, 0, len(listed), level="warning",
+                       detail="clip metadata is not in this file (imported): the clips/1 sidecar carries it")]
     checks = []
     names = [clip_meta(a)["name"] for a in actions]
     dupes = sorted({n for n in names if names.count(n) > 1})

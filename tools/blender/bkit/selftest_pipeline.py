@@ -462,6 +462,13 @@ def case_gameplay_templates(out):
         if kind in templates.CLIP_RIGS:
             assert report["clips"]["clips"] == ["idle", "walk"] and not report["clips"]["problems"], report["clips"]
         done.append(kind)
+    # The shipped clip files pass file QA on their own (fresh data: actions without rbx_clip).
+    for kind in templates.CLIP_RIGS:
+        folder = out / "templates" / kind
+        sidecar = json.loads((folder / f"{kind}_clips.json").read_text())
+        for file in [sidecar["files"]["glb"], *sidecar["files"]["fbx"].values()]:
+            summary = qa.check_file(folder / file)["summary"]
+            assert summary["pass"], (file, summary["errors"])
     exp = json.loads((out / "templates" / "checkpoint_gate" / "checkpoint_gate_expectation.json").read_text())
     files = [out / "templates" / "checkpoint_gate" / f"checkpoint_gate.{f}" for f in ("fbx", "glb")]
     good = compare.compare_files(files, exp)
@@ -470,7 +477,7 @@ def case_gameplay_templates(out):
     bad = compare.compare_files(files[:1], wrong)
     detail = next(c for c in bad["files"][0]["checks"] if c["name"] == "scale")
     assert not bad["pass"] and detail.get("detail") == "metre/stud mismatch", detail
-    return f"{len(done)} templates pass QA, glTF validation and compare-export"
+    return f"{len(done)} templates pass QA, glTF validation and compare-export; clip GLB/FBX pass file QA"
 
 
 def case_kit(out):

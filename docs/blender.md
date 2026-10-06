@@ -95,6 +95,7 @@ Pending T3 probes run by the owner in the unpublished diagnostic place after a m
 Until those run, B06 and B07 stay BLOCKED_EXTERNAL.
 
 UNVERIFIED:
+- how Studio's glTF import treats the packed metallicRoughness image the exporter writes (QA accepts its name on a `.glb`; the FBX route ships separate `_Roughness`/`_Metalness` files);
 - FBX markers reaching Studio;
 - custom properties becoming attributes;
 - where Import 3D stores animations. The Clip Editor saves to RBX_ANIMSAVES, and since 2026-08-04 it auto-saves animations from imported models (research).
@@ -120,4 +121,6 @@ UNVERIFIED:
   - the FBX animation recipe was not Roblox's: forced start/end keys and simplification were on;
   - materials were looked up by localised node name;
   - CONCAVE UV packing took minutes;
-  - the conveyor's +X chevron arm was coplanar with the belt.
+  - the conveyor's +X chevron arm was coplanar with the belt;
+  - a relative output folder made Blender resolve baked map paths against the filesystem root;
+  - `qa` crashed on re-imported clip files, whose actions come back without `rbx_clip`.
