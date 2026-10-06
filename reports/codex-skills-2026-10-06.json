@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "date": "2026-10-06",
+  "probe": "`codex debug prompt-input \"generate a seeded cave layout\"` run in a clean export of the branch (`git archive`, fresh `git init`, empty CODEX_HOME, no login); the rendered model-visible input was parsed for its skills list",
+  "codex_cli": "0.160.1",
+  "repo_skills": 20,
+  "repo_skills_listed_by_codex": 20,
+  "missing": [],
+  "codex_skill_root": ".agents/skills",
+  "agents_md_in_prompt": true,
+  "not_checked": "a live Codex model turn choosing and following a skill (needs a Codex login on the PC)"
+}

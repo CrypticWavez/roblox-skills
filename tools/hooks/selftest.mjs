@@ -610,7 +610,7 @@ else {
 	const prompts = new Set(Object.entries(codexServers).flatMap(([s, c]) => Object.entries(c.tools ?? {}).filter(([, t]) => t.approval_mode === "prompt").map(([t]) => `mcp__${s}__${t}`)));
 	const settings = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")).permissions;
 	const known = new Set([...settings.allow, ...settings.ask].filter((p) => p.startsWith("mcp__")));
-	for (const t of BLENDER_TOOLS) known.add(`mcp__blender__${t}`);
+	if (codexServers.blender) for (const t of BLENDER_TOOLS) known.add(`mcp__blender__${t}`);
 	for (const t of prompts) known.add(t);
 	const names = [...known].sort();
 	const asked = await runAll(names.map((name) => () => run(process.execPath, [join(here, "guard_mcp.mjs")], { tool_name: name, tool_input: {} })));

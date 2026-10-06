@@ -228,6 +228,8 @@ def check_starter(gate, strict):
         else:
             if (ROOT / "roblox.yml").exists():  # Selene's generated Roblox std (CI); avoids a second download
                 shutil.copy(ROOT / "roblox.yml", dest / "roblox.yml")
+            # The documented next step; the Codex hook commands resolve the repo root with git.
+            subprocess.run(["git", "init", "-q", str(dest)], capture_output=True, text=True, timeout=60)
             cmd = [sys.executable, "tools/check.py", "--tier", "pre-commit"] + (["--strict"] if strict else [])
             try:
                 proc = subprocess.run(cmd, cwd=dest, capture_output=True, text=True, timeout=300)
@@ -240,6 +242,7 @@ def check_starter(gate, strict):
             not_passed = [s for s in ("stylua", "skills-sync", "lune-specs", "rojo-build") if status.get(s) != "PASS"]
             if code != 0 or not_passed:
                 problems.append(f"FAIL game-repo gate: failed={report.get('failed')} not passed={not_passed}")
+            shutil.rmtree(dest / ".git", ignore_errors=True)  # --update checks below run on an uncommitted copy
             expect([str(ROOT / "build" / "starter-inside")], 2, "overlaps the factory")
             expect([str(dest)], 2, "is not empty")
             expect(["--update", str(dest)], 0, "unchanged")

@@ -18,7 +18,7 @@ Current schema(s) and their historic versions, write paths, product catalogue, r
 `packages/Runtime/ReceiptLedger.luau` (`ReceiptLedger.new({ store, namespace, universeId, products })`, `ledger:process(receipt)`), `packages/Runtime/RobloxReceiptAdapter.luau` (`Adapter.store(dataStore)`, `Adapter.callback(ledger, onResult)` for `ProcessReceipt`), `packages/Runtime/CommerceCatalog.luau`, `knowledge/records/analytics-release-policy.json`, `references/legacy-datastore-migration.md`.
 
 ## Tools
-Lune specs with a fake store (pattern: `tests/inherited.spec.luau`, `tests/runtime/run.luau`); Studio MCP `execute_luau` on the diagnostic place only (DataStore writes and purchase prompts in Luau are gated by the hooks).
+Lune specs with a fake store (pattern: `tests/inherited.spec.luau`, `tests/runtime/run.luau`); Studio MCP `execute_luau` on the diagnostic place only (DataStore writes and purchase prompts in Luau ask first in Claude Code and are denied in Codex; completed purchases are denied in both).
 
 ## Procedure
 1. Schema inventory: keys, version field, defaults, size, write frequency, writers. Every profile has `schemaVersion` and a forward-only migration chain with a test per step.

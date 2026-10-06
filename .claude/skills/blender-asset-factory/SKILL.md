@@ -23,7 +23,7 @@ Asset kind (a key of `templates.TEMPLATES`), target size in studs, triangle/mate
 - `python3 tools/blender/factory.py template <kind> <out_dir>` (bpy wheel) or `blender -b --python tools/blender/factory.py -- template <kind> <out_dir>`; `templates <out_dir> [--no-previews]` builds all 13 kinds.
 - `bkit.ops`: `box`, `cylinder`, `sphere`, `icosphere`, `wedge`, `extrude`, `inset`, `noise_displace`, `bevel`, `boolean`, `mirror`, `array`, `solidify`, `curve_tube`, `apply_modifiers`, `apply_transforms`, `set_origin_base_center`, `join`, `box_uv`, `pbr_material`, `assign`, `triangles`, `voxel_remesh`, `quadriflow`, `lod_chain`, `armature`, `bind_rigid`, `bind_auto`, `limit_weights`, `keyframe_clip`, `export_fbx`, `export_glb`.
 - `bkit.render.render_objects(objects, out_dir, prefix)` for preview stills of any object set.
-- Blender MCP (`mcp-for-blender`, telemetry off) on Ethan's machine: `execute_blender_code` calling the same ops, `get_viewport_screenshot`, `get_scene_info`.
+- Blender MCP (`mcp-for-blender`, telemetry off) on Ethan's machine: `execute_blender_code` calling the same ops, `look` (viewport image; 2.1.8 has no `get_viewport_screenshot`), `get_scene_info`. Tool list and rules: `docs/mcp.md`.
 
 ## Procedure
 1. Start from the nearest template: `factory.py template <kind> build/blender` saves `<kind>/<kind>.blend`, runs QA, exports `<kind>.fbx`/`<kind>.glb` only when QA has no errors, and writes `qa.json` plus `<kind>.front.png`/`<kind>.three-quarter.png`.

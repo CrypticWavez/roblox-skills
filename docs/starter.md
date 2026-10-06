@@ -4,7 +4,7 @@ The factory never decides game content. `tools/new_project.py` turns an explicit
 
 ```
 python3 tools/new_project.py <dest> [--name NAME] [--packages SceneKit ProcGen Pipeline ...]
-cd <dest> && rokit install && python3 tools/check.py      # then git init, commit, push to a new repo
+cd <dest> && git init && rokit install && python3 tools/check.py   # then commit, push to a new repo
 ```
 
 ## What is copied
@@ -13,7 +13,8 @@ cd <dest> && rokit install && python3 tools/check.py      # then git init, commi
 | `packages/SceneKit`, `ProcGen`, `Pipeline` (default) | factory `packages/` byte for byte (LF); packages they require are added automatically. `Runtime`, `Creator`, `Diagnostics` only with `--packages` (first-pass modules, Studio halves only partly re-verified; commerce and UI are game decisions) |
 | `default.project.json`: packages under `ReplicatedStorage.Workbench` (same path as the factory's projects and skills), empty `src/shared`, `src/server`, `src/client` | `templates/starter/` |
 | `rokit.toml`, `stylua.toml`, `selene.toml`, `tests/run.luau`, `tools/sync_skills.py`, `tools/hooks/*` | factory, verbatim |
-| `.claude/settings.json` (hooks, permissions; allow rules for factory-only scripts dropped), `.mcp.json` (`Roblox_Studio` only) | generated from the factory's files |
+| `.claude/settings.json` (hooks, permissions; allow rules for factory-only scripts dropped), `.mcp.json` (`Roblox_Studio` only), `.codex/config.toml` (same sandbox and approvals, `Roblox_Studio` only) | generated from the factory's files |
+| `.codex/hooks.json`, `.codex/rules/factory.rules` (the same guards for Codex; they find the repo root with git, so `git init` first) | factory, verbatim |
 | `tests/packages.spec.luau` (every copied module loads; ProcGen/SceneKit determinism; Pipeline smoke hashes equal the factory's Studio-verified golden), `tools/check.py` (trimmed gate: StyLua, JSON, secrets, skills, hooks, Selene, Lune, Rojo build), `.github/workflows/ci.yml` (`--strict`), `.gitignore`, `.gitattributes`, `AGENTS.md`/`CLAUDE.md` (safety rules; game decisions TBD), `docs/decisions.md`, `README.md` | `templates/starter/` (`{{NAME}}`, `{{CREATED}}` filled; `.tmpl` keeps the game's instruction files from loading inside the factory) |
 | 14 game-facing skills, mirrored to `.claude/skills` | factory `.agents/skills/` (list in `SKILLS`) |
 | `starter.json`: factory repository, commit, `packages_dirty`, per-package sha256 and file count, skills, smoke hashes | generated |

@@ -14,7 +14,7 @@ This repo builds reusable tools, neutral fixtures and research. It does not star
 | Need | Go to |
 |---|---|
 | Build environments (buildings, props, paths, terrain, lighting, measurement) | skill `roblox-scene-authoring`, `packages/SceneKit/` |
-| Seeded layouts + validators (dungeon, cave, arena, settlement) | skill `roblox-procedural-generation`, `packages/ProcGen/` |
+| Seeded layouts + validators (dungeon, cave, arena, settlement, forest) | skill `roblox-procedural-generation`, `packages/ProcGen/` |
 | Blender assets, QA, Roblox import round trip | skills `blender-asset-factory`, `blender-asset-qa`, `blender-roblox-roundtrip`, `tools/blender/` |
 | Studio control and testing modes | skill `roblox-studio-testing`, `docs/mcp.md` |
 | Seeing results | skill `visual-qa` |

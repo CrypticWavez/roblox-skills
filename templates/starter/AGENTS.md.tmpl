@@ -31,6 +31,7 @@ Filled from the game-build request and the owner's later answers, never guessed.
 | Factory packages (scene authoring, procedural generation, import checks) | `packages/`, synced to `ReplicatedStorage.Workbench` |
 | Specs | `tests/*.spec.luau`, run by `lune run tests/run.luau` |
 | Gate | `python3 tools/check.py [--tier fast] [--strict]` |
+| Publish/spend guards (Claude and Codex) | `tools/hooks/`, `.claude/settings.json`, `.codex/` (Codex applies them once the project and its hooks are trusted: `/hooks`) |
 | Skills | `.agents/skills/` (Codex), mirrored to `.claude/skills/` by `python3 tools/sync_skills.py` |
 | Decisions | `docs/decisions.md` |
 

@@ -20,15 +20,15 @@ The destination directory (new or empty, outside this repo and outside any other
 ## Tools
 - `python3 tools/new_project.py <dest> [--name NAME] [--packages ...]`: scaffold; prints the packages (with added dependencies) and the factory commit; writes `starter.json`.
 - `python3 tools/new_project.py --update <game repo> [--packages ...] [--force]`: refresh `packages/` and `starter.json` from this factory.
-- In the new repo: `rokit install`, `python3 tools/check.py` (StyLua, JSON, secrets, skills, hooks, Selene, Lune specs, Rojo build), `lune run tests/run.luau`, `rojo build default.project.json -o build/game.rbxl`.
+- In the new repo: `git init`, `rokit install`, `python3 tools/check.py` (StyLua, JSON, secrets, skills, hooks, Selene, Lune specs, Rojo build), `lune run tests/run.luau`, `rojo build default.project.json -o build/game.rbxl`.
 - Gate step `starter-smoke` in this repo (`python3 tools/check.py`) proves the starter still produces a green repo.
 
 ## Procedure
 1. Confirm the request is explicit and names where the repository goes; if not, ask. Do not choose a genre, theme, world, characters, economy or UI.
 2. Run `python3 tools/new_project.py <dest> --name <Name>`; add `--packages Runtime` (or `Creator`, `Diagnostics`) only when the request needs them.
-3. In `<dest>`: `rokit install`, then `python3 tools/check.py`; every step except a SKIPPED Selene (needs `selene generate-roblox-std`) must pass.
+3. In `<dest>`: `git init` (the Codex hooks find the repo root with git), `rokit install`, then `python3 tools/check.py`; every step except a SKIPPED Selene (needs `selene generate-roblox-std`) must pass.
 4. Copy decisions the request states into the `Game decisions` table of `<dest>/AGENTS.md` and a dated row in `<dest>/docs/decisions.md`; leave every other field TBD.
-5. `git init`, commit, and give the owner the commands to create and push the remote; never publish the place or upload assets.
+5. Commit, and give the owner the commands to create and push the remote; never publish the place or upload assets.
 6. Updates later: commit and branch in the game repo, run `--update` from the factory, review `git diff`, run its gate.
 
 ## Outputs

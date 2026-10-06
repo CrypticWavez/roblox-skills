@@ -1,0 +1,17 @@
+{
+  "schema": "skill-usage-probe/1",
+  "date": "2026-10-06",
+  "client": "Claude Code subagent (general-purpose) started in this repo with no skill named in its prompt",
+  "prompt": "In the repo at <repo>, I need a seeded cave layout from the factory. Generate one for seed 7, check that it passes the factory's validators, and tell me its manifest hash and the validator results. Do not modify any tracked file in the repo; put any outputs you write under <scratch>. Use whatever guidance the repo provides for this kind of task.",
+  "first_tool_call": {"tool": "Skill", "skill": "roblox-procedural-generation"},
+  "tool_calls": 13,
+  "result": {
+    "generator": "Cave.generate({ seed = 7 }) then Manifest.fromLayout",
+    "manifest_hash_default_size": "1289b461",
+    "manifest_hash_48x36": "70ed6128",
+    "validators_passed": "11 of 11 (ProcGen Validate.grid plus SceneKit Validate.scene after Layout.toScene)",
+    "repeatable": "same hash in the same process and in a fresh process",
+    "tracked_files_changed": 0
+  },
+  "conclusion": "Claude selected and loaded the matching repo skill from the task description alone, then followed its procedure."
+}

@@ -7,8 +7,8 @@ Use it only for an explicit game-build request (AGENTS.md: a game starts in a se
 It copies infrastructure, never game content: the factory packages (default SceneKit, ProcGen,
 Pipeline; required packages are added automatically), a Rojo project with empty src/server,
 src/client and src/shared, the pinned toolchain, StyLua/Selene configs, the Lune runner with one
-starter spec, a trimmed gate, CI, the Claude hooks and settings, the Studio MCP entry, game-repo
-AGENTS.md/CLAUDE.md with every game-design field left TBD, and the game-facing skills.
+starter spec, a trimmed gate, CI, the Claude hooks and settings, the Codex hooks, rules and config, the Studio
+MCP entry, game-repo AGENTS.md/CLAUDE.md with every game-design field left TBD, and the game-facing skills.
 starter.json records the factory commit and a content hash per package.
 
 Refuses a dest inside this repo, inside another git repository, or non-empty (a lone .git, as in
@@ -209,6 +209,25 @@ def write_mcp(dest):
     write_json(dest / ".mcp.json", mcp)
 
 
+def write_codex(dest):
+    """The factory's Codex hooks and rules verbatim, and its config.toml with only MCP_SERVERS."""
+    for rel in (".codex/hooks.json", ".codex/rules/factory.rules"):
+        copy_file(ROOT / rel, dest / rel)
+    kept, pending, keep = [], [], True
+    for line in (ROOT / ".codex" / "config.toml").read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.startswith("#"):
+            pending.append(line)  # comments and blank lines belong to the table that follows them
+            continue
+        if line.startswith("["):
+            server = re.match(r"\[mcp_servers\.([\w-]+)", line)
+            keep = not server or server.group(1) in MCP_SERVERS
+        if keep:
+            kept += pending + [line]
+        pending = []
+    text = re.sub(r"\n{3,}", "\n\n", "\n".join(kept + pending)).rstrip("\n") + "\n"
+    (dest / ".codex" / "config.toml").write_text(text, encoding="utf-8")
+
+
 def scaffold(dest, name, requested):
     check_new_dest(dest)
     created = not dest.exists()
@@ -245,6 +264,7 @@ def write_starter_repo(dest, name, requested):
         copy_tree(ROOT / rel, dest / rel)
     write_claude_settings(dest)
     write_mcp(dest)
+    write_codex(dest)
     for pkg in packages:
         copy_tree(PACKAGES / pkg, dest / "packages" / pkg)
     for skill in SKILLS:
@@ -271,7 +291,7 @@ def write_starter_repo(dest, name, requested):
     print(f"  skills: {len(SKILLS)}; factory commit: {starter['factory']['commit'] or 'unknown'}")
     if starter["factory"]["packages_dirty"]:
         print("  note: the factory's packages/ has uncommitted changes; the hashes describe the working tree")
-    print("next: cd into it, `rokit install`, `python3 tools/check.py`, then git init and commit.")
+    print("next: cd into it, `git init` (the Codex hooks find the repo root with git), `rokit install`, `python3 tools/check.py`, then commit.")
     print("Fill the TBD game decisions in AGENTS.md from the game-build request; log them in docs/decisions.md.")
     return 0
 
