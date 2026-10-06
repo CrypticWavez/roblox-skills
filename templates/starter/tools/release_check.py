@@ -63,7 +63,7 @@ DOCS = "https://create.roblox.com/docs/en-us/"
 ITEMS = [
     # Automated (A): run by this tool.
     {"id": "A01", "tier": "A", "title": "Project hygiene and engine settings",
-     "spec": "No Rojo project overrides FilteringEnabled or turns LoadStringEnabled on. default.project.json maps the boot entry points (ReplicatedFirst.Loading, ReplicatedStorage.Shared, ServerScriptService.Server, StarterPlayerScripts.Client). Authoring packages, ServerPackages and src/server never map into a replicated service. Engine properties set in a project match the decided production/brief.json engine values.",
+     "spec": "No Rojo project overrides FilteringEnabled or turns LoadStringEnabled on. default.project.json maps the boot entry points (ReplicatedFirst.Loading, ReplicatedStorage.Shared, ServerScriptService.Server, StarterPlayerScripts.Client). Authoring packages, the Wally folders (Packages, ServerPackages, DevPackages; names compared case-insensitively, since Packages/ is the factory packages/ folder on Windows and macOS) and src/server never map into a replicated service. Engine properties set in a project match the decided production/brief.json engine values.",
      "source": "starter layout; engine settings from the brief"},
     {"id": "A02", "tier": "A", "title": "Remotes go through RemoteGuard",
      "spec": "No code in src/ connects OnServerEvent or assigns OnServerInvoke directly: server handlers are registered through GameKit/RemoteGuard (rate limits, schema checks) or generated from a Blink schema (paths listed in release.json generated).",
@@ -413,9 +413,11 @@ def check_a01(ctx):
                     problems.append(f"{path.name}: {'.'.join(trail)} turns LoadStringEnabled on")
             target = node_path(node)
             if replicated and target:
-                head = target.split("/")
-                if target == "packages" or (head[0] == "packages" and len(head) == 2 and head[1] in AUTHORING) \
-                        or target in WALLY_DIRS - {"Packages"} or target.startswith("src/server"):
+                # Folded: on Windows and macOS (case-insensitive) Wally's Packages/ is the factory packages/ folder.
+                head = target.lower().split("/")
+                if (len(head) == 1 and head[0] in {d.lower() for d in WALLY_DIRS}) \
+                        or (head[0] == "packages" and len(head) == 2 and head[1] in {a.lower() for a in AUTHORING}) \
+                        or target.startswith("src/server"):
                     problems.append(f"{path.name}: {'.'.join(trail)} maps {target} into a replicated service (server or authoring code reaches clients)")
             for key, child in node.items():
                 if not key.startswith("$"):

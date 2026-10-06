@@ -226,6 +226,30 @@ class PaidRandomTag(ReleaseFixtureCase):
                       problems_of(report, "A05"))
 
 
+class ProjectMappings(ReleaseFixtureCase):
+    def test_wally_packages_never_map_into_a_replicated_service_in_any_case(self):
+        # On Windows and macOS Packages/ opens the factory packages/ folder, authoring packages included.
+        for target in ("Packages", "packages", "PACKAGES", "devpackages", "Packages/SceneKit"):
+            with self.subTest(target=target):
+                dest = self.tmp / f"map-{target.replace('/', '-')}"
+                dest.mkdir()
+                materialise(dest)
+                path = dest / "default.project.json"
+                project = json.loads(path.read_text(encoding="utf-8"))
+                project["tree"]["ReplicatedStorage"]["Extra"] = {"$path": {"optional": target}}
+                path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+                report = release_check.run_checks(dest)
+                self.assertEqual(failing(report), ["A01"])
+                self.assertTrue(any(f"maps {target} into a replicated service" in p for p in problems_of(report, "A01")))
+
+    def test_server_storage_may_hold_server_packages(self):
+        dest, _ = self.tree()
+        project = json.loads((dest / "default.project.json").read_text(encoding="utf-8"))
+        self.assertEqual(project["tree"]["ServerStorage"]["ServerPackages"], {"$path": {"optional": "ServerPackages"}})
+        self.assertNotIn("Packages", project["tree"]["ReplicatedStorage"])
+        self.assertEqual(statuses(release_check.run_checks(dest))["A01"], "PASS")
+
+
 class OwnerItems(ReleaseFixtureCase):
     def owner_file(self, dest, records, exceptions=()):
         path = dest / "release" / "owner-fixture.json"

@@ -30,6 +30,11 @@ TOOLS = ("rojo", "lune", "stylua")
 SKIP_EXIT = 3  # tools/check.py passes skip_codes=(3,) for starter-smoke-full
 
 
+def has_entry(directory, name):
+    """True when directory holds an entry named exactly name (Path.exists folds case on Windows and macOS)."""
+    return directory.is_dir() and name in {p.name for p in directory.iterdir()}
+
+
 class Smoke:
     def __init__(self):
         self.results = []
@@ -99,7 +104,7 @@ def all_packages_repo(smoke, base):
     wally = (dest / "wally.toml").read_text(encoding="utf-8") if (dest / "wally.toml").is_file() else ""
     smoke.add("SmokeAll: ProfileStore pinned =1.0.3 (server)", 'ProfileStore = "lm-loleris/profilestore@=1.0.3"' in wally)
     smoke.add("SmokeAll: Jest Lua pinned =3.10.0 (dev)", 'Jest = "jsdotlua/jest@=3.10.0"' in wally)
-    smoke.add("SmokeAll: wally never ran (no wally.lock, no Packages/)", not (dest / "wally.lock").exists() and not (dest / "Packages").exists())
+    smoke.add("SmokeAll: wally never ran (no wally.lock, no Packages/)", not has_entry(dest, "wally.lock") and not has_entry(dest, "Packages"))
     smoke.add("SmokeAll: THIRD_PARTY_NOTICES.md written", (dest / "THIRD_PARTY_NOTICES.md").is_file())
 
 

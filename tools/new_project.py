@@ -323,6 +323,9 @@ def apply_package_nodes(project, packages, root):
     if isinstance(workbench, dict) and workbench.get("$path") == "packages":
         del replicated["Workbench"]  # starter/1 layout: every package replicated to clients
         notes.append("removed ReplicatedStorage.Workbench (starter/1); packages now map by class")
+    if isinstance(replicated, dict) and replicated.get("Packages") == {"$path": {"optional": "Packages"}}:
+        del replicated["Packages"]  # Wally's shared folder; on Windows and macOS it is packages/ (every package again)
+        notes.append("removed ReplicatedStorage.Packages (Packages/ is the factory packages/ folder on Windows and macOS)")
     old_service, old_folder = OLD_LEGACY_HOME
     old = tree.get(old_service, {}).get(old_folder) if isinstance(tree.get(old_service), dict) else None
     if isinstance(old, dict) and all(isinstance(v, dict) and str(v.get("$path", "")).startswith("packages/")
@@ -351,6 +354,10 @@ def check_bundles(bundles, deps):
     unknown = sorted(set(bundles) - set(deps["bundles"]))
     if unknown:
         raise Refused(f"unknown dependency bundle(s) {unknown}; available: {sorted(deps['bundles'])}")
+    shared = [n for n in bundle_packages(sorted(set(bundles)), deps) if deps["packages"][n]["realm"] == "shared"]
+    if shared:
+        raise Refused(f"{shared}: shared-realm Wally dependencies are refused while the factory kits live in packages/ "
+                      "(Wally installs them into Packages/, the same folder on case-insensitive filesystems: Windows, macOS)")
     return sorted(set(bundles))
 
 

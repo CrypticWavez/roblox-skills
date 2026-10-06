@@ -20,6 +20,8 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tests" / "fakes"))
+from case_insensitive_fs import case_insensitive_paths  # noqa: E402
 
 
 def load_tool(name, alias):
@@ -66,6 +68,23 @@ class MissingTools(unittest.TestCase):
         finally:
             shutil.rmtree(empty, ignore_errors=True)
         self.assertEqual([r["status"] for r in gate.results], ["SKIPPED", "FAIL"], gate.results)
+
+
+class ExactNames(unittest.TestCase):
+    def test_packages_is_not_found_through_the_factory_packages_folder(self):
+        tmp = Path(tempfile.mkdtemp(prefix="smoke-names-"))
+        try:
+            (tmp / "packages" / "ProcGen").mkdir(parents=True)
+            self.assertFalse(smoke.has_entry(tmp, "Packages"))
+            with case_insensitive_paths():
+                self.assertTrue((tmp / "Packages").exists())  # what Windows and macOS answer
+                self.assertFalse(smoke.has_entry(tmp, "Packages"))
+                self.assertTrue(smoke.has_entry(tmp, "packages"))
+            (tmp / "wally.lock").write_text("", encoding="utf-8")
+            self.assertTrue(smoke.has_entry(tmp, "wally.lock"))
+            self.assertFalse(smoke.has_entry(tmp / "missing", "wally.lock"))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 if __name__ == "__main__":

@@ -17,9 +17,10 @@ Steps:
 - brief: production/brief.json (game-brief/1) and production/pipeline.json are valid for the current
   stage (TBD allowed before alpha except fields of passed stages' brief gates; passed stages need their
   owner and playtest gates recorded by the owner), and the AGENTS.md decision tables match the brief;
-- deps: wally.toml is private with exact `=x.y.z` pins from the deps.json allowlist in the right realm,
-  wally.lock is committed and lists only allowlisted packages, THIRD_PARTY_NOTICES.md names each
-  dependency and its licence, rokit.toml pins are exact;
+- deps: wally.toml is private with exact `=x.y.z` pins from the deps.json allowlist in the right realm
+  (server or dev: shared-realm [dependencies] install into Packages/, which is packages/ on Windows and
+  macOS, and are refused), wally.lock is committed and lists only allowlisted packages,
+  THIRD_PARTY_NOTICES.md names each dependency and its licence, rokit.toml pins are exact;
 - blink: compiles every .blink schema (only when one exists);
 - asset-provenance: asset ids are registered in assets/provenance.json; place content uses approved ids.
 """
@@ -378,8 +379,10 @@ def deps_problems(root):
         if not ROKIT_PIN.match(str(pin)):
             problems.append(f"rokit.toml: {tool} = {pin!r} is not an exact owner/repo@x.y.z pin")
     if not wally.is_file():
+        # Exact names: on Windows and macOS (case-insensitive) root / "Packages" would open the factory packages/.
+        names = {p.name for p in root.iterdir() if p.is_dir()}
         for folder in ("Packages", "ServerPackages", "DevPackages"):
-            if (root / folder).is_dir() and any((root / folder).iterdir()):
+            if folder in names and any((root / folder).iterdir()):
                 problems.append(f"{folder}/ has content but there is no wally.toml")
         return problems, "no Wally dependencies"
     manifest = read_toml(wally)
@@ -388,6 +391,10 @@ def deps_problems(root):
     wanted = {}
     for table in ("dependencies", "server-dependencies", "dev-dependencies"):
         for alias, spec in (manifest.get(table) or {}).items():
+            if table == "dependencies":  # Wally's shared realm
+                problems.append(f"wally.toml [{table}] {alias}: shared-realm dependencies are refused while the factory kits live in "
+                                "packages/ (Wally installs them into Packages/, the same folder on Windows and macOS)")
+                continue
             match = EXACT_PIN.match(str(spec))
             if not match:
                 problems.append(f"wally.toml [{table}] {alias} = {spec!r}: needs an exact pin scope/name@=x.y.z")

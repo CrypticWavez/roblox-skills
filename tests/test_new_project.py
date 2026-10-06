@@ -6,7 +6,8 @@ Scaffolds into temporary directories outside this repository. Covers package cla
 layout (leaf copies for kits, no FilteringEnabled), the tier parse into starter.json, dependency
 bundles (exact pins, licence notices, wally never run), --update (user files preserved; edited
 packages, skills, hooks and managed files refused; stale ones refreshed; starter/1 layout migrated)
-and the refusals.
+and the refusals. Case-insensitive filesystems (Windows, macOS), where Wally's Packages/ is the factory
+packages/ folder, are simulated with tests/fakes/case_insensitive_fs.py and git's core.ignorecase.
 """
 import contextlib
 import importlib.util
@@ -24,7 +25,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
+sys.path.insert(0, str(ROOT / "tests" / "fakes"))
 import new_project as np  # noqa: E402
+from case_insensitive_fs import case_insensitive_paths  # noqa: E402
 
 
 def quiet(fn, *args):
@@ -38,6 +41,24 @@ def tree_node(project, *names):
     for name in names:
         node = node.get(name) if isinstance(node, dict) else None
     return node
+
+
+def mapped_paths(node, trail=()):
+    """(trail, $path target) for every node of a Rojo tree; optional paths unwrapped."""
+    if not isinstance(node, dict):
+        return
+    raw = node.get("$path")
+    raw = raw.get("optional") if isinstance(raw, dict) else raw
+    if isinstance(raw, str):
+        yield ".".join(trail), raw
+    for key, child in node.items():
+        if not key.startswith("$"):
+            yield from mapped_paths(child, trail + (key,))
+
+
+def entry_names(directory):
+    """Stored names in directory (Path.exists would fold case on Windows and macOS)."""
+    return {p.name for p in directory.iterdir()}
 
 
 class Scaffold(unittest.TestCase):
@@ -75,7 +96,7 @@ class PackageClasses(Scaffold):
         self.assertNotIn("FilteringEnabled", text)
         for path in [("ReplicatedFirst", "Loading"), ("ReplicatedStorage", "Shared"), ("ServerScriptService", "Server"),
                      ("StarterPlayer", "StarterPlayerScripts", "Client"), ("StarterGui",), ("ServerStorage", "Assets"),
-                     ("ServerStorage", "ServerPackages"), ("ReplicatedStorage", "Packages")]:
+                     ("ServerStorage", "ServerPackages")]:
             self.assertIsInstance(tree_node(project, *path), dict, ".".join(path))
         authoring = tree_node(project, "ServerStorage", "Authoring")
         self.assertEqual(sorted(k for k in authoring if not k.startswith("$")), ["Pipeline", "ProcGen", "SceneKit"])
@@ -87,6 +108,10 @@ class PackageClasses(Scaffold):
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Legacy"))
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Workbench"))
         self.assertEqual(tree_node(project, "ServerStorage", "ServerPackages", "$path"), {"optional": "ServerPackages"})
+        # Wally's Packages/ is packages/ on Windows and macOS: mapping it would map every factory package again.
+        self.assertIsNone(tree_node(project, "ReplicatedStorage", "Packages"))
+        whole = [(trail, target) for trail, target in mapped_paths(project["tree"]) if target.lower().strip("/") == "packages"]
+        self.assertEqual(whole, [])
         for rel in ["src/shared/Boot.luau", "src/shared/Config.luau", "src/shared/KitLoader.luau", "src/server/init.server.luau",
                     "src/server/Phases.luau", "src/client/init.client.luau", "src/client/Phases.luau",
                     "src/first/Loading.client.luau", "src/localization/strings.csv", "tests/boot.spec.luau",
@@ -102,7 +127,29 @@ class PackageClasses(Scaffold):
                             for k, v in brief.items()))
         self.assertIn("| Workspace.AuthorityMode | engine.authority_mode | TBD |", (dest / "AGENTS.md").read_text(encoding="utf-8"))
         self.assertNotIn("{{", (dest / "AGENTS.md").read_text(encoding="utf-8"))
-        self.assertIn("Packages/", (dest / ".gitignore").read_text(encoding="utf-8"))
+        ignore = (dest / ".gitignore").read_text(encoding="utf-8").splitlines()
+        self.assertIn("ServerPackages/", ignore)
+        self.assertIn("DevPackages/", ignore)
+        self.assertEqual([line for line in ignore if line.strip().strip("/").lower() == "packages"], [])
+
+    def test_gitignore_keeps_packages_tracked_under_ignorecase(self):
+        # git init sets core.ignorecase=true on NTFS and APFS; ignore rules then match case-insensitively.
+        if shutil.which("git") is None:
+            self.skipTest("git not installed")
+        dest, _ = self.scaffold(packages=["ProcGen"])
+        subprocess.run(["git", "init", "-q", str(dest)], check=True, capture_output=True)
+
+        def ignored(rel):
+            proc = subprocess.run(["git", "-c", "core.ignorecase=true", "check-ignore", "-q", rel], cwd=dest, capture_output=True)
+            self.assertIn(proc.returncode, (0, 1), proc.stderr)
+            return proc.returncode == 0
+
+        self.assertFalse(ignored("packages/ProcGen/Rng.luau"))
+        self.assertTrue(ignored("ServerPackages/_Index/x.lua"))
+        self.assertTrue(ignored("DevPackages/_Index/x.lua"))
+        with (dest / ".gitignore").open("a", encoding="utf-8") as handle:
+            handle.write("Packages/\n")  # the old Wally line hides the factory packages under ignorecase
+        self.assertTrue(ignored("packages/ProcGen/Rng.luau"))
 
     def test_kits_get_leaf_copies_and_dependencies(self):
         dest, out = self.scaffold(packages=["GameKit"])
@@ -168,8 +215,8 @@ class DependencyBundles(Scaffold):
         proc = self.run_cli("--name", "scratch", "--out", str(dest), "--deps", "persistence", "studio-tests", path=str(fake_bin))
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertFalse(marker.exists(), "the starter ran wally or rokit")
-        self.assertFalse((dest / "wally.lock").exists())
-        self.assertFalse((dest / "Packages").exists())
+        self.assertNotIn("wally.lock", entry_names(dest))
+        self.assertNotIn("Packages", entry_names(dest))
         wally = (dest / "wally.toml").read_text(encoding="utf-8")
         self.assertIn('ProfileStore = "lm-loleris/profilestore@=1.0.3"', wally)
         self.assertIn('Jest = "jsdotlua/jest@=3.10.0"', wally)
@@ -191,6 +238,26 @@ class DependencyBundles(Scaffold):
         self.assertEqual(proc.returncode, 2)
         self.assertIn("unknown dependency bundle", proc.stderr)
         self.assertFalse((self.tmp / "X").exists())
+
+    def test_shared_realm_bundles_are_refused(self):
+        deps = np.load_deps()
+        self.assertEqual([n for n, e in deps["packages"].items() if e["realm"] == "shared"], [])
+        deps["packages"]["someone/shared-lib"] = {**deps["packages"]["lm-loleris/profilestore"], "realm": "shared", "alias": "SharedLib"}
+        deps["bundles"]["shared-lib"] = {"packages": ["someone/shared-lib"], "tools": ["wally"], "why": "synthetic"}
+        self.assertEqual(np.check_bundles(["persistence"], deps), ["persistence"])
+        with self.assertRaises(np.Refused) as ctx:
+            np.check_bundles(["persistence", "shared-lib"], deps)
+        self.assertIn("someone/shared-lib", str(ctx.exception))
+        self.assertIn("shared-realm", str(ctx.exception))
+        dest = self.tmp / "Shared"
+        original = np.load_deps
+        np.load_deps = lambda: deps
+        try:
+            with self.assertRaises(np.Refused):
+                quiet(np.scaffold, dest, "Shared", np.DEFAULT_PACKAGES, ["shared-lib"])
+        finally:
+            np.load_deps = original
+        self.assertFalse(dest.exists())
 
     def test_merge_wally_refuses_a_changed_pin_without_force(self):
         deps = np.load_deps()
@@ -294,6 +361,20 @@ class Update(Scaffold):
         project = self.read_json(dest / "default.project.json")
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Legacy"))
         self.assertIn("Runtime", tree_node(project, "ReplicatedStorage", "Kits"))
+
+    def test_update_removes_the_replicated_wally_packages_mapping(self):
+        dest, _ = self.scaffold()
+        path = dest / "default.project.json"
+        project = self.read_json(path)
+        project["tree"]["ReplicatedStorage"]["Packages"] = {"$path": {"optional": "Packages"}}  # earlier starter/2 template
+        path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertIn("removed ReplicatedStorage.Packages", out)
+        project = self.read_json(path)
+        self.assertIsNone(tree_node(project, "ReplicatedStorage", "Packages"))
+        self.assertIn("Shared", tree_node(project, "ReplicatedStorage"))
+        self.assertEqual(tree_node(project, "ServerStorage", "ServerPackages", "$path"), {"optional": "ServerPackages"})
 
     def test_update_migrates_a_starter1_layout(self):
         dest, _ = self.scaffold()
@@ -400,6 +481,34 @@ class GameRepoGateSteps(Scaffold):
     def test_deps_step_passes_without_wally(self):
         dest, _ = self.scaffold()
         self.assertEqual(self.check.deps_problems(dest)[0], [])
+
+    def test_deps_step_compares_exact_folder_names(self):
+        dest, _ = self.scaffold()
+        with case_insensitive_paths():
+            # On Windows and macOS root / "Packages" opens the factory packages/ folder ...
+            self.assertTrue((dest / "Packages").is_dir() and any((dest / "Packages").iterdir()))
+            self.assertNotIn("Packages", entry_names(dest))
+            # ... so a fresh scaffold (no wally.toml) must still pass the deps step there.
+            self.assertEqual(self.check.deps_problems(dest)[0], [])
+        (dest / "ServerPackages").mkdir()
+        (dest / "ServerPackages" / "x.lua").write_text("return nil\n", encoding="utf-8")
+        (dest / "Packages").mkdir()  # possible only on a case-sensitive filesystem
+        (dest / "Packages" / "x.lua").write_text("return nil\n", encoding="utf-8")
+        problems = self.check.deps_problems(dest)[0]
+        self.assertIn("ServerPackages/ has content but there is no wally.toml", problems)
+        self.assertIn("Packages/ has content but there is no wally.toml", problems)
+
+    def test_deps_step_refuses_shared_realm_dependencies(self):
+        dest, _ = self.scaffold(bundles=["persistence"])
+        (dest / "wally.lock").write_text('[[package]]\nname = "lm-loleris/profilestore"\nversion = "1.0.3"\n', encoding="utf-8")
+        self.assertEqual(self.check.deps_problems(dest)[0], [])
+        wally = dest / "wally.toml"
+        text = wally.read_text(encoding="utf-8")
+        self.assertIn("[dependencies]\n", text)
+        wally.write_text(text.replace("[dependencies]\n", '[dependencies]\nProfileStore2 = "lm-loleris/profilestore@=1.0.3"\n'),
+                         encoding="utf-8")
+        problems = self.check.deps_problems(dest)[0]
+        self.assertTrue(any("[dependencies] ProfileStore2: shared-realm dependencies are refused" in p for p in problems), problems)
 
     def test_skills_packages_step(self):
         dest, _ = self.scaffold()
