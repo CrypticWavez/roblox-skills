@@ -10,8 +10,9 @@
    exact pins (ProfileStore 1.0.3 server, Jest Lua 3.10.0 dev) and neither wally.lock nor Packages/
    exists (the starter never runs wally).
 The factory gate's starter-smoke step runs the default repo's full pre-commit gate; this script adds
-the release, production and all-packages paths. Missing rojo, lune or stylua: SKIPPED (exit 0, or 1
-with --strict). --keep DIR scaffolds into DIR (outside this repo) and leaves the repos there.
+the release, production and all-packages paths. Missing rojo, lune or stylua: SKIPPED (exit 3, which
+the factory gate reports as SKIPPED, never as a pass; exit 1 with --strict). --keep DIR scaffolds into
+DIR (outside this repo) and leaves the repos there.
 Publishes, uploads, installs and buys nothing.
 """
 import argparse
@@ -25,6 +26,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 NEW_PROJECT = [sys.executable, str(ROOT / "tools" / "new_project.py")]
 EXPECTED_FRESH_FAILURES = ["A08", "A09", "A17"]
+TOOLS = ("rojo", "lune", "stylua")
+SKIP_EXIT = 3  # tools/check.py passes skip_codes=(3,) for starter-smoke-full
 
 
 class Smoke:
@@ -100,15 +103,15 @@ def all_packages_repo(smoke, base):
     smoke.add("SmokeAll: THIRD_PARTY_NOTICES.md written", (dest / "THIRD_PARTY_NOTICES.md").is_file())
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--keep", help="scaffold into this directory (outside the factory) and keep the repos")
     ap.add_argument("--strict", action="store_true", help="a missing tool fails instead of skipping")
-    args = ap.parse_args()
-    missing = [tool for tool in ("rojo", "lune", "stylua") if shutil.which(tool) is None]
+    args = ap.parse_args(argv)
+    missing = [tool for tool in TOOLS if shutil.which(tool) is None]
     if missing:
         print(f"[skip] starter smoke: {', '.join(missing)} not installed")
-        return 1 if args.strict else 0
+        return 1 if args.strict else SKIP_EXIT
     smoke = Smoke()
     if args.keep:
         base = Path(args.keep).expanduser().resolve()

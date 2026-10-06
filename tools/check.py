@@ -25,7 +25,8 @@ assets/provenance.json), rojo-sourcemap (each fixtures/*.project.json maps and e
 packages/ and fixtures/ is reachable from one), and gate-selftest (each of them rejects a broken input).
 --live-links additionally requests every external URL; it is opt-in only (live checks are flaky), so no
 tier or CI job runs it by default.
-Missing tools (stylua, node, selene, lune, rojo, bpy) are reported as SKIPPED, never as passes, and a
+Missing tools (stylua, node, selene, lune, rojo, bpy) are reported as SKIPPED, never as passes (exit 3 of
+tools/starter_smoke.py, which lacks rojo, lune or stylua, is starter-smoke-full SKIPPED), and a
 SKIPPED step fails the run (default tier and the installed git hook included) unless it is selene, which
 needs network to generate its Roblox std, luau-lsp-analyze (needs the pinned luau-lsp; exit 3 of
 tools/luau_analyze.py), or named with --allow-skip. --strict allows no skips at all;
@@ -933,7 +934,7 @@ def main():
                 gate.cmd(f"preview-{fixture}", blender + ["render-manifest", manifest, "build/previews"], timeout=900)
         # Luau type analysis against the pinned Roblox definitions; exit 3 means luau-lsp or rojo is absent.
         gate.cmd("luau-lsp-analyze", [sys.executable, "tools/luau_analyze.py"], timeout=900, skip_codes=(3,))
-        gate.cmd("starter-smoke-full", [sys.executable, "tools/starter_smoke.py", *(["--strict"] if args.strict else [])], timeout=900)
+        gate.cmd("starter-smoke-full", [sys.executable, "tools/starter_smoke.py", *(["--strict"] if args.strict else [])], timeout=900, skip_codes=(3,))
 
     failed = [r["name"] for r in gate.results if r["status"] == "FAIL"]
     skipped = [r["name"] for r in gate.results if r["status"] == "SKIPPED"]
