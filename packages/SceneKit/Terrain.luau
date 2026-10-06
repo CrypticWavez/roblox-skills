@@ -179,11 +179,19 @@ function Terrain.toOps(hm: Heightmap): { Op }
 	return ops
 end
 
+-- Air ball (cave mouth, tunnel bend). Errors on a missing coordinate or a non-positive radius.
 function Terrain.carve(center: { number }, radius: number): Op
+	assert(#center == 3, "Terrain.carve: center needs {x, y, z}")
+	assert(radius > 0, "Terrain.carve: radius must be positive")
 	return { op = "FillBall", pos = center, radius = radius, material = "Air" }
 end
 
+-- Water box between two corners. Errors unless min < max on every axis.
 function Terrain.water(min: { number }, max: { number }): Op
+	assert(#min == 3 and #max == 3, "Terrain.water: corners need {x, y, z}")
+	for axis = 1, 3 do
+		assert(min[axis] < max[axis], "Terrain.water: min must be below max on every axis")
+	end
 	return {
 		op = "FillBlock",
 		pos = { (min[1] + max[1]) / 2, (min[2] + max[2]) / 2, (min[3] + max[3]) / 2 },

@@ -1,7 +1,7 @@
 --!strict
 -- Scene-level validation: part budget, door/ceiling/stair clearances from authoring
 -- metadata, stair headroom, stairs/ramps cut by other structure, props intersecting structure
--- and unsupported props.
+-- and unsupported props; scenes with lights or signs also get light_placement and sign_text.
 local Measure = require("./Measure")
 local Scene = require("./Scene")
 local Vec = require("./Vec")
@@ -113,6 +113,8 @@ end
 
 -- A stair/ramp part sunk deeper than this (1/1000 stud) into other structure is cut, not touching.
 local STAIR_CUT_DEPTH = EPS
+-- Same depth for a prop sunk into structure.
+local PROP_CLIP_DEPTH = EPS
 
 -- Widest run of a door opening that stays clear once every other collidable part intruding into
 -- its passage is subtracted. The passage is the opening rectangle extruded through the wall plus
@@ -312,7 +314,9 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 		limit = Measure.GUIDE.characterHeight + 0.5,
 	})
 
-	-- Props intersecting structure and props with nothing under them.
+	-- Props intersecting structure and props with nothing under them. A world-AABB overlap is
+	-- confirmed on the oriented boxes, so a prop standing against a wall of a building built at
+	-- 30 degrees is not reported for its inflated bounding box (axis-aligned results are unchanged).
 	local clipping, floating = {}, {}
 	local groundY = options and options.groundY or 0
 	for i, spec in scene.specs do
@@ -322,7 +326,10 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 			for j, other in scene.specs do
 				if STRUCTURE[other.role] then
 					local omin, omax = bounds[j][1], bounds[j][2]
-					if overlapVolume(pmin, pmax, omin, omax) > 0.05 then
+					if
+						overlapVolume(pmin, pmax, omin, omax) > 0.05
+						and Validate.penetration(spec, other) > PROP_CLIP_DEPTH
+					then
 						table.insert(clipping, spec.id)
 						break
 					end
@@ -357,6 +364,95 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 		limit = 0,
 		detail = table.concat(floating, ",", 1, math.min(#floating, 5)),
 	})
+	Validate.dressing(scene, checks)
+	return checks
+end
+
+local LIGHT_CLASSES = { PointLight = true, SpotLight = true, SurfaceLight = true }
+local MAX_LIGHT_RANGE = 60 -- engine cap for PointLight/SpotLight/SurfaceLight Range
+
+-- Appends light_placement (valid class, range within the engine cap, and every fixture recorded
+-- for a room inside that room's box) and sign_text (non-empty text) when the scene has any light
+-- or sign; scenes without them get neither check, so their reports are unchanged.
+function Validate.dressing(scene: Scene, checks: { Check }): { Check }
+	local byId, lights, signs = {}, 0, 0
+	local badLights, badSigns = {}, {}
+	for _, spec in scene.specs do
+		byId[spec.id :: string] = spec
+		local light = spec.light
+		if light then
+			lights += 1
+			if not LIGHT_CLASSES[light.class] then
+				table.insert(
+					badLights,
+					string.format("%s class %s", tostring(spec.id), tostring(light.class))
+				)
+			elseif (light.range or 16) <= 0 or (light.range or 16) > MAX_LIGHT_RANGE then
+				table.insert(
+					badLights,
+					string.format("%s range %s", tostring(spec.id), tostring(light.range))
+				)
+			end
+		end
+		if spec.sign then
+			signs += 1
+			local text = spec.sign.text
+			if type(text) ~= "string" or string.match(text, "^%s*$") then
+				table.insert(badSigns, tostring(spec.id))
+			end
+		end
+	end
+	local records = (scene.meta :: any).lights or {}
+	for _, record in records do
+		local spec = byId[record.id]
+		if spec == nil then
+			table.insert(badLights, record.id .. " missing")
+		else
+			-- Fixture corners in the room's frame (u along `dir`, v up from the floor, w across).
+			local dir = record.dir
+			local across = { x = -dir.z, y = 0, z = dir.x }
+			local hx, hy, hz = spec.size.x / 2, spec.size.y / 2, spec.size.z / 2
+			local inside = true
+			for _, sx in { -1, 1 } do
+				for _, sy in { -1, 1 } do
+					for _, sz in { -1, 1 } do
+						local corner =
+							Vec.add(spec.pos, Vec.rotate({ x = sx * hx, y = sy * hy, z = sz * hz }, spec.rot))
+						local d = Vec.sub(corner, record.pos)
+						if
+							math.abs(Vec.dot(d, dir)) > record.half[1] + EPS
+							or math.abs(Vec.dot(d, across)) > record.half[2] + EPS
+							or d.y < -EPS
+							or d.y > record.height + EPS
+						then
+							inside = false
+						end
+					end
+				end
+			end
+			if not inside then
+				table.insert(badLights, record.id .. " outside " .. record.room)
+			end
+		end
+	end
+	if lights > 0 or #records > 0 then
+		table.insert(checks, {
+			name = "light_placement",
+			pass = #badLights == 0,
+			value = #badLights,
+			limit = 0,
+			detail = table.concat(badLights, "; ", 1, math.min(#badLights, 5)),
+		})
+	end
+	if signs > 0 then
+		table.insert(checks, {
+			name = "sign_text",
+			pass = #badSigns == 0,
+			value = #badSigns,
+			limit = 0,
+			detail = table.concat(badSigns, ",", 1, math.min(#badSigns, 5)),
+		})
+	end
 	return checks
 end
 

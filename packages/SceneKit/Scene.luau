@@ -9,6 +9,18 @@ local Scene = {}
 Scene.__index = Scene
 
 export type V3 = Vec.V3
+-- Optional dressing carried by a part: Apply adds the light as a child of the part and the sign
+-- as a SurfaceGui + TextLabel on its `face`. Both enter the manifest (and its hash) only when set.
+export type LightSpec = {
+	class: "PointLight" | "SpotLight" | "SurfaceLight",
+	brightness: number?,
+	range: number?,
+	color: { number }?,
+	face: string?, -- Enum.NormalId name (SpotLight / SurfaceLight)
+	angle: number?,
+	shadows: boolean?,
+}
+export type SignSpec = { text: string, face: string?, textColor: { number }?, pixelsPerStud: number? }
 export type PartSpec = {
 	id: string?,
 	shape: ("Block" | "Wedge" | "Cylinder" | "Ball" | "CornerWedge")?,
@@ -23,6 +35,8 @@ export type PartSpec = {
 	canCollide: boolean?,
 	group: string?,
 	attributes: { [string]: any }?,
+	light: LightSpec?,
+	sign: SignSpec?,
 }
 
 export type Scene = typeof(setmetatable(
@@ -158,7 +172,8 @@ function Scene.transformed<T>(self: Scene, offset: V3, yaw: number, body: () -> 
 		spec.rot = { x = rot.x, y = (rot.y + yaw) % 360, z = rot.z }
 	end
 	for key, list in self.meta :: any do
-		for index = firstMeta[key], #list do
+		-- Keys first created inside `body` (e.g. meta.lights) start at their first record.
+		for index = firstMeta[key] or 1, #list do
 			local record = list[index]
 			if type(record) == "table" and record.pos then
 				record.pos = move(record.pos)
@@ -178,6 +193,17 @@ function Scene.counts(self: Scene): { [string]: number }
 		counts[spec.role] = (counts[spec.role] or 0) + 1
 	end
 	return counts
+end
+
+local function deepCopy(value: any): any
+	if type(value) ~= "table" then
+		return value
+	end
+	local copy = {}
+	for key, item in value do
+		copy[key] = deepCopy(item)
+	end
+	return copy
 end
 
 -- Compact, rounded, sortable representation for manifests and diffs.
@@ -207,6 +233,9 @@ function Scene.manifest(self: Scene)
 			material = spec.material,
 			color = spec.color,
 			transparency = spec.transparency,
+			-- Copies, so a manifest stays a snapshot when the spec is edited afterwards.
+			light = deepCopy(spec.light),
+			sign = deepCopy(spec.sign),
 		})
 	end
 	local min, max = self:bounds()
@@ -224,7 +253,25 @@ function Scene.manifest(self: Scene)
 	}
 end
 
--- Diff two manifests by part id: added, removed, changed (any of size/pos/rot/material/color).
+local function sameValue(p: any, q: any): boolean
+	if type(p) ~= "table" or type(q) ~= "table" then
+		return p == q
+	end
+	for key, value in p do
+		if not sameValue(value, q[key]) then
+			return false
+		end
+	end
+	for key in q do
+		if p[key] == nil then
+			return false
+		end
+	end
+	return true
+end
+
+-- Diff two manifests by part id: added, removed, changed (any of size/pos/rot/material/color,
+-- light or sign).
 function Scene.compare(a, b)
 	local index = {}
 	for _, part in a.parts do
@@ -243,6 +290,8 @@ function Scene.compare(a, b)
 		return p.material == q.material
 			and p.shape == q.shape
 			and (p.transparency or 0) == (q.transparency or 0)
+			and sameValue(p.light, q.light)
+			and sameValue(p.sign, q.sign)
 	end
 	for _, part in b.parts do
 		local old = index[part.id]

@@ -5,6 +5,7 @@
 --   SceneKit.Building.create(scene, { footprint = { x = 0, z = 0, w = 32, d = 24 } })
 --   print(SceneKit.Validate.summary(SceneKit.Validate.scene(scene)).pass)
 --   SceneKit.Apply.scene(scene, workspace)
+--   SceneKit.Model.inspect(SceneKit.Model.selection()) -- existing instances (Studio selection)
 return {
 	Apply = require("./Apply"),
 	Building = require("./Building"),
@@ -12,6 +13,7 @@ return {
 	Layout = require("./Layout"),
 	Lighting = require("./Lighting"),
 	Measure = require("./Measure"),
+	Model = require("./Model"),
 	Paths = require("./Paths"),
 	Props = require("./Props"),
 	Scene = require("./Scene"),

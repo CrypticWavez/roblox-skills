@@ -1,9 +1,11 @@
 --!strict
 -- Architectural primitives (walls with openings, floors with holes, roofs, stairs, ramps,
 -- railings, columns, arches, trim, foundations) and a composed Building.create that turns
--- footprint + storey requirements into a validated, dressed-ready shell.
+-- footprint + storey requirements into a validated, dressed-ready shell; Building.decorate
+-- dresses its rooms with lights and neutral props.
 local Rng = require("../ProcGen/Rng")
 local Measure = require("./Measure")
+local Props = require("./Props")
 local Scene = require("./Scene")
 local Vec = require("./Vec")
 
@@ -618,6 +620,45 @@ function Building.subdivide(
 	return rooms, partitions
 end
 
+-- Wall faces and openings of one storey in the building's own frame, kept on the summary that
+-- Building.create returns so Building.decorate can find walls, doors and windows per room. `axis`
+-- is the axis the face is perpendicular to ("z": the face is the line z = line, running along x
+-- from lo to hi); `inset` is how far the solid wall reaches into a room from that line.
+export type WallFace = { axis: "x" | "z", line: number, lo: number, hi: number, inset: number }
+export type OpeningSpan = {
+	axis: "x" | "z",
+	line: number,
+	lo: number,
+	hi: number,
+	bottom: number,
+	top: number,
+	kind: string,
+}
+
+local function addSpans(
+	out: { OpeningSpan },
+	from: { number },
+	to: { number },
+	line: number,
+	openings: { Opening }
+)
+	local axis: "x" | "z" = if math.abs(from[2] - to[2]) < 1e-6 then "z" else "x"
+	local along = if axis == "z" then 1 else 2
+	local sign = if to[along] >= from[along] then 1 else -1
+	for _, opening in openings do
+		local centre = from[along] + sign * opening.at
+		table.insert(out, {
+			axis = axis,
+			line = line,
+			lo = centre - opening.width / 2,
+			hi = centre + opening.width / 2,
+			bottom = opening.bottom,
+			top = opening.bottom + opening.height,
+			kind = opening.kind or "gap",
+		})
+	end
+end
+
 export type BuildingOptions = {
 	name: string?,
 	footprint: Rect,
@@ -650,7 +691,16 @@ function Building.create(scene: Scene, options: BuildingOptions)
 	local stairsWanted = storeys > 1 and options.stairs ~= false
 	local stairWidth, stairRun = 5, 1.5
 	local railDepth = 0.4 -- Building.railing post size
-	local summary = { name = options.name or "Building", storeys = storeys, rooms = {}, ridge = 0 }
+	local summary = {
+		name = options.name or "Building",
+		storeys = storeys,
+		rooms = {},
+		ridge = 0,
+		footprint = fp,
+		storeyHeight = storeyHeight,
+		floors = {}, -- per storey: base, clearHeight, rooms (meta records), walls, openings
+		frontDoor = nil :: { x: number, z: number, y: number, width: number, height: number }?,
+	}
 
 	return scene:group(options.name or "Building", function()
 		Building.foundation(scene, { rect = fp, y = y0, height = foundationH })
@@ -680,6 +730,13 @@ function Building.create(scene: Scene, options: BuildingOptions)
 			}
 		end
 		local doorAt = fp.w / 2 + rng:range(-1, 1) * math.max(0, fp.w / 2 - door.width - 4)
+		summary.frontDoor = {
+			x = fp.x + doorAt,
+			z = fp.z,
+			y = y0 + foundationH,
+			width = door.width,
+			height = door.height,
+		}
 		for storey = 0, storeys - 1 do
 			scene:group("Storey" .. (storey + 1), function()
 				local base = y0 + foundationH + storey * storeyHeight
@@ -722,6 +779,7 @@ function Building.create(scene: Scene, options: BuildingOptions)
 				do
 					table.insert(frontOpenings, opening)
 				end
+				local spans: { OpeningSpan } = {}
 				Building.wall(scene, {
 					from = { fp.x, fp.z + t / 2 },
 					to = { fp.x + fp.w, fp.z + t / 2 },
@@ -730,21 +788,30 @@ function Building.create(scene: Scene, options: BuildingOptions)
 					thickness = t,
 					openings = frontOpenings,
 				})
+				addSpans(spans, { fp.x, fp.z + t / 2 }, { fp.x + fp.w, fp.z + t / 2 }, inner.z, frontOpenings)
 				local backReserved = if stairHole then { { 0, fp.w } } else {}
+				local backOpenings = Building.windowRun(fp.w, {
+					width = win.width,
+					height = win.height,
+					sill = win.sill,
+					spacing = win.spacing,
+					reserved = backReserved,
+				})
 				Building.wall(scene, {
 					from = { fp.x + fp.w, fp.z + fp.d - t / 2 },
 					to = { fp.x, fp.z + fp.d - t / 2 },
 					y = base,
 					height = storeyHeight,
 					thickness = t,
-					openings = Building.windowRun(fp.w, {
-						width = win.width,
-						height = win.height,
-						sill = win.sill,
-						spacing = win.spacing,
-						reserved = backReserved,
-					}),
+					openings = backOpenings,
 				})
+				addSpans(
+					spans,
+					{ fp.x + fp.w, fp.z + fp.d - t / 2 },
+					{ fp.x, fp.z + fp.d - t / 2 },
+					inner.z + inner.d,
+					backOpenings
+				)
 				local sideLength = fp.d - 2 * t
 				for _, side in { { fp.x + t / 2, 1 }, { fp.x + fp.w - t / 2, -1 } } do
 					local x, dir = side[1], side[2]
@@ -766,6 +833,7 @@ function Building.create(scene: Scene, options: BuildingOptions)
 						thickness = t,
 						openings = sideWindows,
 					})
+					addSpans(spans, from, to, if dir > 0 then inner.x else inner.x + inner.w, sideWindows)
 				end
 				local clearHeight = storeyHeight - floorT
 				-- Interior rooms in front of the stair hall.
@@ -791,26 +859,43 @@ function Building.create(scene: Scene, options: BuildingOptions)
 						{ reserved = reserved, doorWidth = 5, thickness = 0.5 }
 					)
 				end
+				local walls: { WallFace } = {
+					{ axis = "z", line = inner.z, lo = inner.x, hi = inner.x + inner.w, inset = 0 },
+					{ axis = "z", line = inner.z + inner.d, lo = inner.x, hi = inner.x + inner.w, inset = 0 },
+					{ axis = "x", line = inner.x, lo = inner.z, hi = inner.z + inner.d, inset = 0 },
+					{ axis = "x", line = inner.x + inner.w, lo = inner.z, hi = inner.z + inner.d, inset = 0 },
+				}
 				for _, partition in partitions do
 					local partitionDoor = partition.door
+					local partitionOpenings: { Opening } = if partitionDoor
+						then {
+							{
+								at = partitionDoor.at,
+								width = partitionDoor.width,
+								bottom = 0,
+								height = math.min(8, clearHeight - 1),
+								kind = "door",
+							},
+						}
+						else {}
 					Building.wall(scene, {
 						from = partition.from,
 						to = partition.to,
 						y = base,
 						height = clearHeight,
 						thickness = 0.5,
-						openings = if partitionDoor
-							then {
-								{
-									at = partitionDoor.at,
-									width = partitionDoor.width,
-									bottom = 0,
-									height = math.min(8, clearHeight - 1),
-									kind = "door",
-								},
-							}
-							else {},
+						openings = partitionOpenings,
 					})
+					local alongX = math.abs(partition.from[2] - partition.to[2]) < 1e-6
+					local along, across = if alongX then 1 else 2, if alongX then 2 else 1
+					table.insert(walls, {
+						axis = if alongX then "z" else "x",
+						line = partition.from[across],
+						lo = math.min(partition.from[along], partition.to[along]),
+						hi = math.max(partition.from[along], partition.to[along]),
+						inset = 0.25,
+					})
+					addSpans(spans, partition.from, partition.to, partition.from[across], partitionOpenings)
 				end
 				if stairHole then
 					-- The stair hall stays open to the rooms (no wall line between them).
@@ -839,15 +924,26 @@ function Building.create(scene: Scene, options: BuildingOptions)
 						})
 					end
 				end
+				local floorRooms = {}
 				for index, room in rooms do
-					table.insert(scene.meta.rooms, {
+					local record = {
 						id = summary.name .. "/S" .. (storey + 1) .. "R" .. index,
 						rect = room,
 						floorY = base,
 						clearHeight = clearHeight,
-					})
+					}
+					table.insert(scene.meta.rooms, record)
+					table.insert(floorRooms, record)
 					table.insert(summary.rooms, room)
 				end
+				table.insert(summary.floors, {
+					storey = storey + 1,
+					base = base,
+					clearHeight = clearHeight,
+					rooms = floorRooms,
+					walls = walls,
+					openings = spans,
+				})
 				if scene.style.trim then
 					Building.trim(scene, { rect = fp, y = base + storeyHeight, height = 0.6, depth = 0.4 })
 				end
@@ -866,6 +962,365 @@ function Building.create(scene: Scene, options: BuildingOptions)
 		summary.ridge = roof.ridgeHeight
 		return summary
 	end)
+end
+
+-- Neutral placeholder interior props (swap for approved assets later via the `asset` attribute).
+Building.DECOR_PROPS = {
+	{ asset = "PropCrate", size = { x = 2, y = 2, z = 2 } },
+	{ asset = "PropBench", size = { x = 4, y = 1.6, z = 1.5 } },
+	{ asset = "PropCabinet", size = { x = 3, y = 4, z = 1.5 } },
+} :: { Props.PropKind }
+
+export type DecorateOptions = {
+	seed: (number | string)?,
+	lights: ("ceiling" | "wall" | "mixed" | false)?,
+	props: ({ Props.PropKind } | false)?,
+	propsPerRoom: { number }?, -- { min, max } placements tried per room (default { 1, 3 })
+	doorClearance: number?, -- studs kept free in front of doorways and open sides (default 4)
+	brightness: number?,
+	sign: string?, -- placeholder text for a sign above the front door (opt-in)
+}
+
+-- Keep-out box in the building frame: x/z extents plus a height band above the room floor.
+type Blocker = { x0: number, x1: number, z0: number, z1: number, y0: number, y1: number }
+
+local EPS = 1e-6
+local GAP = 0.1 -- clearance every placed item keeps from wall faces
+
+-- The four sides of a room: line, inward direction, along-range, wall inset (nil when the side
+-- is open, e.g. towards the stair hall) and the openings on it.
+local function roomEdges(room: any, floor: any): { any }
+	local r = room.rect
+	local edges = {}
+	for _, e in
+		{
+			{ axis = "z", line = r.z, inward = 1 },
+			{ axis = "x", line = r.x + r.w, inward = -1 },
+			{ axis = "z", line = r.z + r.d, inward = -1 },
+			{ axis = "x", line = r.x, inward = 1 },
+		}
+	do
+		local lo = if e.axis == "z" then r.x else r.z
+		local hi = if e.axis == "z" then r.x + r.w else r.z + r.d
+		local inset: number? = nil
+		for _, wall in floor.walls do
+			if
+				wall.axis == e.axis
+				and math.abs(wall.line - e.line) < EPS
+				and wall.lo <= lo + EPS
+				and wall.hi >= hi - EPS
+			then
+				inset = wall.inset
+				break
+			end
+		end
+		local openings = {}
+		for _, span in floor.openings do
+			if
+				span.axis == e.axis
+				and math.abs(span.line - e.line) < EPS
+				and span.lo < hi
+				and span.hi > lo
+			then
+				table.insert(openings, span)
+			end
+		end
+		table.insert(edges, {
+			axis = e.axis,
+			line = e.line,
+			inward = e.inward,
+			lo = lo,
+			hi = hi,
+			inset = inset,
+			face = e.line + e.inward * (inset or 0),
+			openings = openings,
+		})
+	end
+	return edges
+end
+
+-- Box spanning a0..a1 along an edge and d0..d1 studs into the room from the edge line.
+local function edgeBox(
+	edge: any,
+	a0: number,
+	a1: number,
+	d0: number,
+	d1: number,
+	y0: number,
+	y1: number
+): Blocker
+	local c0, c1 = edge.line + edge.inward * d0, edge.line + edge.inward * d1
+	local n0, n1 = math.min(c0, c1), math.max(c0, c1)
+	if edge.axis == "z" then
+		return { x0 = a0, x1 = a1, z0 = n0, z1 = n1, y0 = y0, y1 = y1 }
+	end
+	return { x0 = n0, x1 = n1, z0 = a0, z1 = a1, y0 = y0, y1 = y1 }
+end
+
+-- Free runs along `edge` for an item `depth` deep standing GAP off the wall face, spanning
+-- heights y0..y1 above the floor, once every overlapping blocker is cut out.
+local function freeRuns(
+	edge: any,
+	depth: number,
+	y0: number,
+	y1: number,
+	blockers: { Blocker }
+): { { number } }
+	local inset = edge.inset or 0
+	local band = edgeBox(edge, edge.lo, edge.hi, inset + GAP, inset + GAP + depth, y0, y1)
+	local runs = { { edge.lo, edge.hi } }
+	for _, b in blockers do
+		if
+			b.x0 < band.x1 - EPS
+			and b.x1 > band.x0 + EPS
+			and b.z0 < band.z1 - EPS
+			and b.z1 > band.z0 + EPS
+			and b.y0 < y1 - EPS
+			and b.y1 > y0 + EPS
+		then
+			local a0 = if edge.axis == "z" then b.x0 else b.z0
+			local a1 = if edge.axis == "z" then b.x1 else b.z1
+			local kept = {}
+			for _, run in runs do
+				if a1 <= run[1] or a0 >= run[2] then
+					table.insert(kept, run)
+				else
+					if a0 > run[1] then
+						table.insert(kept, { run[1], a0 })
+					end
+					if a1 < run[2] then
+						table.insert(kept, { a1, run[2] })
+					end
+				end
+			end
+			runs = kept
+		end
+	end
+	return runs
+end
+
+local function longestRun(runs: { { number } }): { number }?
+	local best = nil
+	for _, run in runs do
+		if best == nil or run[2] - run[1] > best[2] - best[1] + EPS then
+			best = run
+		end
+	end
+	return best
+end
+
+local function edgePoint(edge: any, u: number, y: number): V3
+	if edge.axis == "z" then
+		return { x = u, y = y, z = edge.face }
+	end
+	return { x = edge.face, y = y, z = u }
+end
+
+local function edgeNormal(edge: any): V3
+	if edge.axis == "z" then
+		return { x = 0, y = 0, z = edge.inward }
+	end
+	return { x = edge.inward, y = 0, z = 0 }
+end
+
+-- Dress the rooms of a building made by Building.create, deterministically for a seed: one light
+-- per room (ceiling, wall or a seeded mix; a wall light falls back to the ceiling when no wall
+-- run is free) and up to propsPerRoom neutral props against walls (Props.alignToWall for one,
+-- Props.distribute for a row). Nothing is placed within `doorClearance` of a doorway or of a
+-- room's open side (stair hall), across a window below its head, or into a wall (items keep
+-- 0.1 stud off wall faces and partition ends). `building` is the summary Building.create returned;
+-- when the building was placed with Scene.transformed, call this inside the same block (rooms are
+-- recorded in the building's own frame). opts.sign adds a placeholder sign above the front door.
+-- Returns the ids of the lights, props and signs added, the room count and the props that did
+-- not fit (`skipped`, as "roomId:asset").
+function Building.decorate(scene: Scene, building: any, options: DecorateOptions?)
+	assert(
+		type(building) == "table" and building.floors ~= nil,
+		"Building.decorate needs the summary returned by Building.create"
+	)
+	local o: DecorateOptions = options or {}
+	local kinds: { Props.PropKind } = if o.props == false
+		then {}
+		else (o.props or Building.DECOR_PROPS) :: any
+	local perRoom = o.propsPerRoom or { 1, 3 }
+	local clearance = o.doorClearance or 4
+	local lightMode = if o.lights == nil then "ceiling" else o.lights
+	local rng = Rng.new(o.seed or scene.seed):fork("decorate/" .. building.name)
+	local result = { lights = {}, props = {}, signs = {}, rooms = 0, skipped = {} }
+
+	local function dressRoom(room: any, floor: any)
+		result.rooms += 1
+		local roomRng = rng:fork(room.id)
+		local blockers: { Blocker } = {}
+		local walls = {}
+		for _, edge in roomEdges(room, floor) do
+			if edge.inset then
+				table.insert(walls, edge)
+				-- The wall's own thickness inside the room plus the gap, for items on the sides meeting it.
+				table.insert(
+					blockers,
+					edgeBox(edge, edge.lo, edge.hi, 0, edge.inset + GAP, -math.huge, math.huge)
+				)
+				for _, span in edge.openings do
+					if span.kind == "window" then
+						table.insert(
+							blockers,
+							edgeBox(
+								edge,
+								span.lo - 0.25,
+								span.hi + 0.25,
+								0,
+								edge.inset + GAP + 0.5,
+								span.bottom - 0.1,
+								span.top + 0.25
+							)
+						)
+					else
+						table.insert(
+							blockers,
+							edgeBox(edge, span.lo - 0.5, span.hi + 0.5, 0, clearance, -math.huge, math.huge)
+						)
+					end
+				end
+			else
+				table.insert(blockers, edgeBox(edge, edge.lo, edge.hi, 0, clearance, -math.huge, math.huge))
+			end
+		end
+
+		local r = room.rect
+		local reach = math.max(r.w, r.d)
+		local mode = if lightMode == "mixed" then roomRng:pick({ "ceiling", "wall" }) else lightMode
+		local light = nil
+		if mode == "wall" then
+			local mountY = room.clearHeight - 1.5
+			local bestEdge, bestRun = nil, nil
+			for _, edge in walls do
+				local run = longestRun(freeRuns(edge, 0.4, mountY - 0.4, mountY + 0.4, blockers))
+				if
+					run
+					and run[2] - run[1] >= 1.4
+					and (bestRun == nil or run[2] - run[1] > bestRun[2] - bestRun[1] + EPS)
+				then
+					bestEdge, bestRun = edge, run
+				end
+			end
+			if bestEdge and bestRun then
+				local u = (bestRun[1] + bestRun[2]) / 2
+				light = Props.light(scene, {
+					mount = "wall",
+					pos = edgePoint(bestEdge, u, room.floorY + mountY),
+					normal = edgeNormal(bestEdge),
+					room = room,
+					class = "SpotLight",
+					angle = 120,
+					range = math.clamp(reach + 4, 12, 60),
+					brightness = o.brightness or 1.5,
+				})
+				table.insert(
+					blockers,
+					edgeBox(
+						bestEdge,
+						u - 0.9,
+						u + 0.9,
+						0,
+						bestEdge.inset + GAP + 0.4,
+						mountY - 0.4,
+						mountY + 0.4
+					)
+				)
+			end
+		end
+		if light == nil and lightMode ~= false then
+			light = Props.light(scene, {
+				mount = "ceiling",
+				pos = { x = r.x + r.w / 2, y = room.floorY + room.clearHeight, z = r.z + r.d / 2 },
+				room = room,
+				range = math.clamp(reach * 0.75 + 4, 12, 60),
+				brightness = o.brightness or 1.2,
+			})
+		end
+		if light then
+			table.insert(result.lights, light.id)
+		end
+
+		local attempts = if #kinds > 0 and #walls > 0 then roomRng:int(perRoom[1], perRoom[2]) else 0
+		for _ = 1, attempts do
+			local kind = roomRng:pick(kinds)
+			local first = roomRng:int(1, #walls)
+			local placed = false
+			for step = 0, #walls - 1 do
+				local edge = walls[(first - 1 + step) % #walls + 1]
+				local run = longestRun(freeRuns(edge, kind.size.z, 0, kind.size.y, blockers))
+				if run and run[2] - run[1] >= kind.size.x + 2 * GAP then
+					-- Centres keep half a prop plus the gap from the run ends.
+					local lo, hi = run[1] + kind.size.x / 2 + GAP, run[2] - kind.size.x / 2 - GAP
+					local n = edgeNormal(edge)
+					local offset = Vec.scale(n, kind.size.z / 2 + GAP)
+					local pitch = kind.size.x + 0.5
+					local count = math.min(3, 1 + math.floor((hi - lo) / pitch))
+					local from, to
+					local specs
+					if count >= 2 and roomRng:chance(0.5) then
+						from = roomRng:range(lo, hi - (count - 1) * pitch)
+						to = from + (count - 1) * pitch
+						specs = Props.distribute(
+							scene,
+							kind,
+							Vec.add(edgePoint(edge, from, room.floorY), offset),
+							Vec.add(edgePoint(edge, to, room.floorY), offset),
+							count
+						)
+					else
+						from = roomRng:range(lo, hi)
+						to = from
+						specs = { Props.alignToWall(scene, kind, edgePoint(edge, from, room.floorY), n, GAP) }
+					end
+					table.insert(
+						blockers,
+						edgeBox(
+							edge,
+							from - kind.size.x / 2 - 0.3,
+							to + kind.size.x / 2 + 0.3,
+							0,
+							edge.inset + GAP + kind.size.z,
+							0,
+							kind.size.y
+						)
+					)
+					for _, spec in specs do
+						table.insert(result.props, spec.id)
+					end
+					placed = true
+					break
+				end
+			end
+			if not placed then
+				table.insert(result.skipped, room.id .. ":" .. kind.asset)
+			end
+		end
+	end
+
+	scene:group(building.name, function()
+		scene:group("Decor", function()
+			for _, floor in building.floors do
+				for _, room in floor.rooms do
+					dressRoom(room, floor)
+				end
+			end
+			local door = building.frontDoor
+			if o.sign ~= nil and door and door.height + 2 <= building.storeyHeight then
+				local sign = Props.sign(scene, {
+					pos = { x = door.x, y = door.y + door.height + 1.25, z = door.z },
+					normal = { x = 0, y = 0, z = -1 },
+					text = o.sign,
+					width = math.min(door.width, 5),
+					height = 1.5,
+				})
+				table.insert(result.signs, sign.id)
+			end
+		end)
+	end)
+	return result
 end
 
 return Building

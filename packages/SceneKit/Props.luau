@@ -153,4 +153,118 @@ function Props.alignToWall(scene: Scene, kind: PropKind, wallPoint: V3, normal: 
 	return Props.place(scene, kind, Vec.add(wallPoint, Vec.scale(n, offset)), yaw)
 end
 
+export type RoomRecord = {
+	id: string,
+	rect: { x: number, z: number, w: number, d: number },
+	floorY: number,
+	clearHeight: number,
+}
+
+-- Light fixture: a small non-colliding part carrying a `light` spec (Apply adds the
+-- PointLight/SpotLight/SurfaceLight). mount "ceiling": `pos` is a point on the ceiling's underside
+-- and the fixture hangs below it, lighting downward. mount "wall": `pos` is a point on the wall
+-- face, `normal` points into the room and the fixture's front faces along it. With `room` (a
+-- scene.meta.rooms record) the room's box is recorded in scene.meta.lights so Validate can check
+-- the fixture stays inside it, also after Scene.transformed.
+function Props.light(
+	scene: Scene,
+	options: {
+		pos: V3,
+		mount: ("ceiling" | "wall")?,
+		normal: V3?,
+		class: ("PointLight" | "SpotLight" | "SurfaceLight")?,
+		room: RoomRecord?,
+		size: V3?,
+		brightness: number?,
+		range: number?,
+		color: { number }?,
+		angle: number?,
+		shadows: boolean?,
+		asset: string?,
+	}
+)
+	local mount = options.mount or "ceiling"
+	local class = options.class or (if mount == "wall" then "SpotLight" else "PointLight")
+	local size, pos, yaw, face
+	if mount == "ceiling" then
+		size = options.size or { x = 1.6, y = 0.3, z = 1.6 }
+		pos = { x = options.pos.x, y = options.pos.y - size.y / 2, z = options.pos.z }
+		yaw, face = 0, "Bottom"
+	else
+		assert(mount == "wall", "Props.light: mount must be ceiling or wall")
+		assert(options.normal, "Props.light: a wall mount needs the wall normal")
+		local n = Vec.unit({ x = options.normal.x, y = 0, z = options.normal.z })
+		size = options.size or { x = 1.2, y = 0.8, z = 0.4 }
+		pos = Vec.add(options.pos, Vec.scale(n, size.z / 2))
+		-- Same yaw as alignToWall: the part's front face (-Z) turns to face `normal`.
+		yaw, face = math.deg(math.atan2(n.x, n.z)) + 180, "Front"
+	end
+	local spec = scene:add({
+		role = "fixture",
+		name = options.asset or "LightFixture",
+		size = size,
+		pos = pos,
+		rot = { x = 0, y = yaw, z = 0 },
+		material = "Neon",
+		color = options.color or { 255, 244, 229 },
+		canCollide = false,
+		attributes = { asset = options.asset or "placeholder/light-fixture" },
+		light = {
+			class = class,
+			brightness = options.brightness or 1,
+			range = options.range or 16,
+			color = options.color or { 255, 244, 229 },
+			face = if class == "PointLight" then nil else face,
+			angle = if class == "PointLight" then nil else (options.angle or 90),
+			shadows = options.shadows,
+		},
+	})
+	local room = options.room
+	if room then
+		local meta = scene.meta :: any
+		meta.lights = meta.lights or {}
+		table.insert(meta.lights, {
+			id = spec.id,
+			room = room.id,
+			-- Room box as centre-on-floor + wall axis so Scene.transformed moves it with the fixture.
+			pos = { x = room.rect.x + room.rect.w / 2, y = room.floorY, z = room.rect.z + room.rect.d / 2 },
+			dir = { x = 1, y = 0, z = 0 },
+			half = { room.rect.w / 2, room.rect.d / 2 },
+			height = room.clearHeight,
+		})
+	end
+	return spec
+end
+
+-- Sign: a thin plate on a wall face (`pos` on the face, `normal` pointing away from the wall)
+-- whose front carries a SurfaceGui + TextLabel. Text is placeholder only (default "SIGN_A");
+-- Validate's sign_text check rejects empty text.
+function Props.sign(
+	scene: Scene,
+	options: {
+		pos: V3,
+		normal: V3,
+		text: string?,
+		width: number?,
+		height: number?,
+		depth: number?,
+		canCollide: boolean?,
+	}
+)
+	local n = Vec.unit({ x = options.normal.x, y = 0, z = options.normal.z })
+	local depth = options.depth or 0.2
+	return scene:add({
+		role = "sign",
+		name = "Sign",
+		size = { x = options.width or 4, y = options.height or 1.5, z = depth },
+		pos = Vec.add(options.pos, Vec.scale(n, depth / 2)),
+		rot = { x = 0, y = math.deg(math.atan2(n.x, n.z)) + 180, z = 0 },
+		material = "SmoothPlastic",
+		color = { 235, 235, 230 },
+		canCollide = options.canCollide == true,
+		attributes = { asset = "placeholder/sign" },
+		sign = { text = if options.text == nil then "SIGN_A" else options.text, face = "Front" },
+	})
+end
+
 return Props
