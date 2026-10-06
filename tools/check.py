@@ -4,11 +4,16 @@
               + fixture hashes (~17 s, ~13 s of it Lune specs; the content checks take < 1 s)
   pre-release pre-commit + Blender templates/QA + round trip + QA self-test + previews (minutes)
 
-  python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden] [--install-git-hook]
-                         [--live-links] [--allow-skip STEP]
+  python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden[=NAME,...]]
+                         [--install-git-hook] [--live-links] [--allow-skip STEP]
 
---update-golden rewrites both goldens, tests/golden/fixture-hashes.json and tests/golden/studio-smoke.json
-(tools/lune/smoke_hashes.luau, run before the Lune specs that check it); without it a missing golden FAILs.
+--update-golden rewrites every golden: tests/golden/fixture-hashes.json, tests/golden/studio-smoke.json
+(tools/lune/smoke_hashes.luau, run before the Lune specs that check it) and the spec goldens of
+tests/lib/Golden.luau (the Lune specs get FACTORY_UPDATE_GOLDEN=1). --update-golden=NAME[,NAME] rewrites
+only the named ones: fixture-hashes, studio-smoke, or spec golden names (passed to the specs as
+FACTORY_UPDATE_GOLDEN=NAME,...); a named spec golden that no spec wrote FAILs (step golden-update), so a
+typo cannot pass silently. Without the flag a missing golden FAILs, and FACTORY_UPDATE_GOLDEN is removed
+from every step's environment, so a stray shell variable cannot rewrite a golden.
 
 Content checks: doc-links (relative Markdown links and heading anchors resolve, URLs are well formed),
 knowledge-index (knowledge/INDEX.md is current), knowledge-paths (each knowledge record's cited paths
@@ -44,6 +49,10 @@ ROOT = Path(__file__).resolve().parent.parent
 TEXT_SUFFIXES = {".luau", ".lua", ".py", ".mjs", ".js", ".json", ".md", ".toml", ".yml", ".yaml", ".txt"}
 SKIP_DIRS = {".git", "build", ".venv", "node_modules", "__pycache__"}
 GOLDEN = ROOT / "tests" / "golden" / "fixture-hashes.json"
+GOLDEN_DIR = GOLDEN.parent
+GOLDEN_ENV = "FACTORY_UPDATE_GOLDEN"  # read by tests/lib/Golden.luau
+GATE_GOLDENS = ("fixture-hashes", "studio-smoke")  # written by this gate, not by specs
+GOLDEN_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]*$")  # same rule as tests/lib/Golden.luau
 INHERITED_SPECS = [
     "tests/runtime/run.luau",
     "tests/creator/animation.luau",
@@ -173,6 +182,56 @@ def check_selene(gate):
     gate.cmd("selene", ["selene", "packages"])
 
 
+def golden_scope(value):
+    """--update-golden value -> None (flag absent), "all" (bare flag) or a frozenset of golden names.
+    Raises ValueError for an empty or malformed name."""
+    if value is None:
+        return None
+    if value == "all":
+        return "all"
+    names = [name.strip() for name in value.split(",")]
+    bad = [name for name in names if not GOLDEN_NAME.match(name)]
+    if bad:
+        raise ValueError(f"--update-golden: bad golden name(s) {bad} (lower-case letters, digits, _ . -)")
+    return frozenset(names)
+
+
+def golden_updates(scope, name):
+    return scope == "all" or (scope is not None and scope != "all" and name in scope)
+
+
+def golden_env(scope, base):
+    """Environment for the Lune specs: FACTORY_UPDATE_GOLDEN only when this run updates spec goldens."""
+    env = {key: value for key, value in base.items() if key != GOLDEN_ENV}
+    if scope == "all":
+        env[GOLDEN_ENV] = "1"
+    elif scope:
+        spec_names = sorted(scope - set(GATE_GOLDENS))
+        if spec_names:
+            env[GOLDEN_ENV] = ",".join(spec_names)
+    return env
+
+
+def golden_snapshot(directory=GOLDEN_DIR):
+    return {p.name[: -len(".json")]: p.read_bytes() for p in sorted(directory.glob("*.json"))} if directory.is_dir() else {}
+
+
+def golden_report(scope, before, after):
+    """(problems, note) after an update run: a named spec golden that no spec wrote is a problem."""
+    problems = []
+    if scope not in (None, "all"):
+        problems = [
+            f"tests/golden/{name}.json was not written by any spec (typo, or the spec did not run?)"
+            for name in sorted(scope - set(GATE_GOLDENS))
+            if name not in after
+        ]
+    added = sorted(set(after) - set(before))
+    changed = sorted(name for name in set(after) & set(before) if after[name] != before[name])
+    removed = sorted(set(before) - set(after))
+    parts = [f"{kind}: {', '.join(names)}" for kind, names in (("added", added), ("rewrote", changed), ("removed", removed)) if names]
+    return problems, "; ".join(parts) or "no golden changed"
+
+
 def check_fixtures(gate, update):
     if shutil.which("lune") is None:
         gate.add("fixture-build", "SKIPPED", "lune not installed")
@@ -184,12 +243,14 @@ def check_fixtures(gate, update):
     report = json.loads((ROOT / "build/fixtures/report.json").read_text())
     hashes = {k: v["hash"] for k, v in report["fixtures"].items()}
     if update:
+        old = json.loads(GOLDEN.read_text()) if GOLDEN.exists() else {}
         GOLDEN.parent.mkdir(parents=True, exist_ok=True)
         GOLDEN.write_text(json.dumps(hashes, indent=2, sort_keys=True) + "\n")
-        gate.add("fixture-hashes", "PASS", "golden updated")
+        changed = sorted(k for k in set(hashes) | set(old) if hashes.get(k) != old.get(k))
+        gate.add("fixture-hashes", "PASS", f"golden updated ({', '.join(changed) if changed else 'no hash changed'})")
         return
     if not GOLDEN.exists():  # a deleted golden must not turn hash drift into a pass
-        gate.add("fixture-hashes", "FAIL", f"{GOLDEN.relative_to(ROOT).as_posix()} is missing (intended? rerun with --update-golden)")
+        gate.add("fixture-hashes", "FAIL", f"{GOLDEN.relative_to(ROOT).as_posix()} is missing (intended? rerun with --update-golden=fixture-hashes)")
         return
     golden = json.loads(GOLDEN.read_text())
     drift = {
@@ -199,7 +260,7 @@ def check_fixtures(gate, update):
     }
     detail = "; ".join(f"{kind}: {', '.join(names)}" for kind, names in drift.items() if names)
     if detail:
-        detail += " (intended? rerun with --update-golden)"
+        detail += " (intended? rerun with --update-golden=fixture-hashes)"
     gate.add("fixture-hashes", "FAIL" if detail else "PASS", detail)
 
 
@@ -749,6 +810,31 @@ def check_gate_selftest(gate):
         mapped = sourcemap_files(tree, root / "fixtures", root)
         if mapped != {"fixtures/x.project.json", "packages/A.luau"}:
             failures.append(f"rojo-sourcemap: sourcemap paths resolved to {sorted(mapped)}")
+
+        # --update-golden scoping: bare means all, names are validated, and the specs see only spec names.
+        stray = {"PATH": "p", GOLDEN_ENV: "1"}
+        scoped = golden_scope("fixture-hashes, gamekit_fsm,ui.layout")
+        checks = {
+            "absent flag is no update": golden_scope(None) is None and not golden_updates(None, "fixture-hashes"),
+            "bare flag is all": golden_scope("all") == "all" and golden_updates("all", "studio-smoke"),
+            "names parsed": scoped == frozenset({"fixture-hashes", "gamekit_fsm", "ui.layout"}),
+            "scoped update": golden_updates(scoped, "fixture-hashes") and not golden_updates(scoped, "studio-smoke"),
+            "stray variable removed": golden_env(None, stray) == {"PATH": "p"},
+            "all sets 1": golden_env("all", {})[GOLDEN_ENV] == "1",
+            "specs see spec names": golden_env(scoped, stray)[GOLDEN_ENV] == "gamekit_fsm,ui.layout",
+            "gate names stay out": GOLDEN_ENV not in golden_env(frozenset({"fixture-hashes"}), stray),
+        }
+        failures.extend(f"golden-scope: {label}" for label, ok in checks.items() if not ok)
+        for broken in ("", "a,,b", "../x", "Bad", "a b", "fixture-hashes,"):
+            try:
+                golden_scope(broken)
+                failures.append(f"golden-scope: accepted a broken input {broken!r}")
+            except ValueError:
+                pass
+        problems, note = golden_report(scoped, {"gamekit_fsm": b"1"}, {"gamekit_fsm": b"2", "fixture-hashes": b"x"})
+        expect("golden-update", problems, ["ui.layout.json was not written"], ["gamekit_fsm.json was not"])
+        if note != "added: fixture-hashes; rewrote: gamekit_fsm":
+            failures.append(f"golden-update: note {note!r}")
     gate.add("gate-selftest", "FAIL" if failures else "PASS", "\n".join(failures), round(time.time() - start, 2))
 
 
@@ -764,11 +850,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tier", default="pre-commit", choices=["fast", "pre-commit", "pre-release"])
     ap.add_argument("--strict", action="store_true", help="count SKIPPED steps as failures (CI)")
-    ap.add_argument("--update-golden", action="store_true")
+    ap.add_argument(
+        "--update-golden", nargs="?", const="all", default=None, metavar="NAME,...",
+        help="rewrite goldens: all when bare, else only the named ones (fixture-hashes, studio-smoke, spec golden names)",
+    )
     ap.add_argument("--install-git-hook", action="store_true")
     ap.add_argument("--live-links", action="store_true", help="also request every external URL (opt-in; never in CI)")
     ap.add_argument("--allow-skip", action="append", default=[], metavar="STEP", help="let a SKIPPED step (name or glob) pass; selene always may, except with --strict")
     args = ap.parse_args()
+    try:
+        scope = golden_scope(args.update_golden)
+    except ValueError as err:
+        ap.error(str(err))
+    os.environ.pop(GOLDEN_ENV, None)  # only an explicit --update-golden may rewrite a golden
     if args.install_git_hook:
         hook = ROOT / ".git" / "hooks" / "pre-commit"
         # Default verdict: any SKIPPED step except selene fails the commit (a missing core tool is not a pass).
@@ -795,13 +889,19 @@ def main():
         selftest_env = {**os.environ, "FACTORY_PYTHON": sys.executable}  # secret-pattern parity check
         gate.cmd("hooks-selftest", ["node", "tools/hooks/selftest.mjs"], needs="node", env=selftest_env)
         check_selene(gate)
-        if args.update_golden:  # tests/scenekit.spec.luau checks this golden, so rewrite it before the specs run
+        before = golden_snapshot()
+        if golden_updates(scope, "studio-smoke"):  # tests/scenekit.spec.luau checks it, so rewrite it before the specs
             gate.cmd("studio-smoke-golden", ["lune", "run", "tools/lune/smoke_hashes.luau"], needs="lune")
-        gate.cmd("lune-specs", ["lune", "run", "tests/run.luau"], needs="lune")
+        gate.cmd("lune-specs", ["lune", "run", "tests/run.luau"], needs="lune", env=golden_env(scope, os.environ))
         for script in INHERITED_SPECS:  # the first pass's own Lune suites, re-run here
             gate.cmd(f"inherited-{Path(script).parent.name}-{Path(script).stem}", ["lune", "run", script], needs="lune")
-        check_fixtures(gate, args.update_golden)
+        check_fixtures(gate, golden_updates(scope, "fixture-hashes"))
+        if scope is not None:
+            problems, note = golden_report(scope, before, golden_snapshot())
+            gate.add("golden-update", "FAIL" if problems else "PASS", "\n".join([note] + problems))  # headline: a problem
         check_starter(gate, args.strict)
+    elif scope is not None:  # the fast tier runs no golden step, so the flag would silently do nothing
+        gate.add("golden-update", "FAIL", "--update-golden needs --tier pre-commit or pre-release")
     if args.tier == "pre-release":
         blender = blender_cmd()
         if blender is None:
