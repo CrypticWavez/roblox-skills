@@ -305,15 +305,38 @@ def mesh_checks(obj, meta, weld=0.0):
     arm_mod = next((m for m in obj.modifiers if m.type == "ARMATURE"), None)
     if arm_mod or meta.get("rigged"):
         rig = arm_mod.object if arm_mod else None
-        deform = {b.name for b in rig.data.bones if b.use_deform} if rig is not None and rig.type == "ARMATURE" else set()
-        bone_groups = {g.index for g in obj.vertex_groups if g.name in deform}
-        influences = [sum(1 for g in v.groups if g.group in bone_groups and g.weight > 1e-4) for v in mesh.vertices]
-        over = sum(1 for n in influences if n > ROBLOX_MAX_INFLUENCES)
-        unweighted = sum(1 for n in influences if n == 0)
-        checks.append(_check("bone_influences", over == 0, over, ROBLOX_MAX_INFLUENCES, detail="deform-bone groups only"))
-        checks.append(_check("unweighted_vertices", unweighted == 0, unweighted, 0, detail="no weight on any deform bone"))
+        stats = skin_stats(obj, rig)
+        checks.append(_check("bone_influences", stats["over_limit"] == 0, stats["over_limit"], ROBLOX_MAX_INFLUENCES, detail=f"deform-bone groups only; max {stats['max_influences']} per vertex"))
+        checks.append(_check("unweighted_vertices", stats["unweighted"] == 0, stats["unweighted"], 0, detail="no weight on any deform bone"))
+        checks.append(_check("weights_normalized", stats["unnormalized"] == 0, stats["unnormalized"], 0, level="warning", detail=f"deform weights per vertex sum to 1 +- {WEIGHT_SUM_TOL}"))
         checks.append(_check("armature_bound", rig is not None, bool(arm_mod), True))
     return checks
+
+
+WEIGHT_EPS = 1e-4  # a weight at or below this is not an influence
+WEIGHT_SUM_TOL = 0.01
+
+
+def skin_weights(obj, rig):
+    """Per vertex of `obj`, its deform-bone weights above WEIGHT_EPS as {group index: weight}.
+    Only vertex groups named after a deform bone of armature `rig` count (None: no bones)."""
+    deform = {b.name for b in rig.data.bones if b.use_deform} if rig is not None and rig.type == "ARMATURE" else set()
+    bone_groups = {g.index for g in obj.vertex_groups if g.name in deform}
+    return [{g.group: g.weight for g in v.groups if g.group in bone_groups and g.weight > WEIGHT_EPS} for v in obj.data.vertices]
+
+
+def skin_stats(obj, rig):
+    """Influence counts as the skinning checks (and `ops.bind_auto`) see them."""
+    weights = skin_weights(obj, rig)
+    counts = [len(w) for w in weights]
+    return {
+        "vertices": len(counts),
+        "max_influences": max(counts, default=0),
+        "over_limit": sum(1 for n in counts if n > ROBLOX_MAX_INFLUENCES),
+        "unweighted": counts.count(0),
+        "multi_influence": sum(1 for n in counts if n > 1),
+        "unnormalized": sum(1 for w in weights if w and abs(sum(w.values()) - 1) > WEIGHT_SUM_TOL),
+    }
 
 
 def armature_checks(obj, meta):

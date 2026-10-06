@@ -1,6 +1,6 @@
 ---
 name: blender-asset-qa
-description: Run the machine-readable Blender asset quality gate (transforms, scale, orientation, pivot, normals, non-manifold and degenerate geometry, loose verts, UVs, materials, texture paths, triangle limits and budgets, bone influences, unweighted verts, bone names, animation clips, FBX/GLB export re-import probe) on a .blend, .fbx, .glb or .gltf. Use after editing an asset, before any export or hand-off, and on third-party meshes.
+description: Run the machine-readable Blender asset quality gate (transforms, scale, orientation, pivot, normals, non-manifold and degenerate geometry, loose verts, UVs, materials, texture paths, triangle limits and budgets, bone influences, unweighted verts, weight normalisation, bone names, animation clips, FBX/GLB export re-import probe) on a .blend, .fbx, .glb or .gltf. Use after editing, remeshing, weighting or making LODs of an asset, before any export or hand-off, and on third-party meshes.
 ---
 
 # Blender asset QA
@@ -19,12 +19,12 @@ A `.blend`, `.fbx`, `.glb` or `.gltf` path. Optional `rbx_*` metadata on objects
 
 ## Tools
 - `python3 tools/blender/factory.py qa <file> [report.json]` (or `blender -b --python tools/blender/factory.py -- qa ...`); exit 1 on any error, 2 on an unsupported file type. `factory.py template` runs the same checks as its export gate.
-- `factory.py qa-selftest <out_dir>` after changing `qa.py` or an importer setting: known-good and known-bad assets must get the same verdict from source, FBX and GLB QA (`qa-selftest-report.json`, exit 1 on any disagreement).
+- `factory.py qa-selftest <out_dir>` after changing `qa.py`, an importer setting or the retopology/LOD/weighting ops: known-good and known-bad assets must get the expected verdict from source, FBX and GLB QA. The run includes an auto-weighted R15 humanoid, a heat-fallback skin, a QuadriFlow rock and static and skinned LOD chains (each LOD passes, triangles strictly decrease). It also covers over-influenced and unweighted skins, op refusals that must raise, and seeded-op geometry hashes for comparing bpy versions (`qa-selftest-report.json`, exit 1 on any disagreement).
 
 ## Procedure
 1. Run QA. A `.blend` also gets the export probe: the `<Kind>/Export` collections (the whole scene if there are none) are exported to FBX and GLB in a temp folder, re-imported and compared in rest pose (triangles, bounds, mesh names, animation). An `.fbx`/`.glb` is checked as imported (glTF seams joined by pairing coincident boundary edges, so touching closed shells stay separate; importer bone shapes skipped), so the factory's own exports can be re-checked.
 2. Read `summary.errors` first; each is `object:check` or `export:<detail>`. Errors: world scale not applied (parents included), armature rotation not applied, over the 20k Roblox triangle limit, non-manifold edges, degenerate faces, loose vertices, inconsistent normals, no UVs, unassigned material, missing texture file, more than 4 bone influences, vertices without deform-bone weight, skinned mesh without armature, bone count, missing `bone_names`, empty animation clip, `expected_dims` mismatch, Z not tallest with `up_axis_longest`, export probe mismatch, and a single-root export set whose origin is off the world origin (`studio_pivot_at_origin`: Studio puts the imported model's pivot at the file origin; kits with several roots only report their offsets).
-3. Decide on `summary.warnings`: category budgets (`BUDGETS`), open boundaries (Roblox collision prefers watertight), pivot not at base centre, zero-area UV faces, material count, unapplied mesh rotation, implausible size.
+3. Decide on `summary.warnings`: category budgets (`BUDGETS`), open boundaries (Roblox collision prefers watertight), pivot not at base centre, zero-area UV faces, material count, unapplied mesh rotation, implausible size, deform weights not summing to 1 (`weights_normalized`; `ops.limit_weights` fixes it).
 4. Fix in the source (template script or `.blend`) and re-run until there are no errors; record accepted warnings in the asset's provenance note.
 
 ## Outputs
@@ -37,6 +37,7 @@ JSON report: `objects[].checks[]` (`name`, `pass`, `level`, `value`, `limit`, `d
 - A check is wrong for an asset class: set metadata on that asset (`allow_open`, `pivot = "custom"`, `budget`, `qa = "skip"` for helper objects) instead of changing global limits in `qa.py`.
 - Probe mismatch: compare `export.formats.<fmt>.signature` with `export.source`; usual causes are unapplied modifiers, render-hidden meshes or an object outside the Export collection.
 - An unreadable `.fbx`/`.glb` makes the importer raise and the command fail: open it in Blender to see why.
+- A `.glb` hides skin-weight defects. Blender's glTF exporter keeps each vertex's 4 strongest influences, and a vertex with no weight re-imports fully bound to one bone. So `bone_influences` and `unweighted_vertices` only fail on the `.blend` or `.fbx` (pinned by the self-test's `over_influenced` and `unweighted` cases). Judge weights there.
 
 ## Related
 blender-asset-factory, blender-roblox-roundtrip, roblox-asset-intake.

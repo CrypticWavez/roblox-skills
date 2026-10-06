@@ -10,7 +10,8 @@ Commands:
   qa <file> [out]                    QA report (JSON) for a .blend/.fbx/.glb/.gltf; exit 1 on errors
   render-manifest <manifest> <dir>   render a SceneKit manifest (Cycles CPU)
   roundtrip <out_dir>                Blender-side round-trip: create, modify, export, reimport, diff
-  qa-selftest <out_dir>              known-good/known-bad assets: source, FBX and GLB QA must agree
+  qa-selftest <out_dir>              known-good/known-bad assets and the retopology/LOD/weighting
+                                     ops: source, FBX and GLB QA must give the expected verdicts
 """
 import json
 import sys

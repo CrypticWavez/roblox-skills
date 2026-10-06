@@ -310,7 +310,8 @@ def rig_test():
     bm.free()
     ops.assign(column, _mat("accent"))
     rig = ops.armature("RIG_Chain", [("Bone1", (0, 0, 0), (0, 0, 2), None), ("Bone2", (0, 0, 2), (0, 0, 4), "Bone1"), ("Bone3", (0, 0, 4), (0, 0, 6), "Bone2")], coll=exp)
-    ops.bind_rigid(column, rig, [(lambda w: w.z >= 4, "Bone3"), (lambda w: w.z >= 2, "Bone2"), (lambda w: True, "Bone1")])
+    # One continuous mesh bending along a chain: smooth (bone heat) weights, not rigid bands.
+    ops.bind_auto(column, rig)
     _finish(column, "test", rigged=True, expected_dims=[1.0, 1.0, 6.0])
     env.set_meta(rig, category="test", bone_names=["Bone1", "Bone2", "Bone3"])
     return [column, rig]

@@ -1,14 +1,17 @@
 """Reusable, deterministic modelling operations built on bmesh/modifiers (no viewport needed).
 
 Every op returns the object it created or changed so builders can chain them. Destructive
-steps (apply_modifiers, apply_transforms) are explicit; nothing is applied implicitly.
+steps (apply_modifiers, apply_transforms) are explicit; nothing is applied implicitly, except
+that the retopology ops (voxel_remesh, quadriflow) bake the modifier stack they replace.
 """
 import math
+import random
 from contextlib import contextmanager
 
 import bmesh
 import bpy
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, geometry, noise
+from mathutils.bvhtree import BVHTree
 
 from . import env
 
@@ -56,6 +59,15 @@ def cylinder(name, radius=0.5, depth=1.0, segments=16, location=(0, 0, 0), coll=
 def sphere(name, radius=0.5, segments=16, rings=8, location=(0, 0, 0), coll=None):
     bm = bmesh.new()
     bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=radius)
+    obj = _new_object(name, _mesh_from_bmesh(name, bm), coll)
+    obj.location = location
+    return obj
+
+
+def icosphere(name, radius=0.5, subdivisions=2, location=(0, 0, 0), coll=None):
+    """Evenly tessellated sphere (centre pivot): the usual base for rocks and blobs."""
+    bm = bmesh.new()
+    bmesh.ops.create_icosphere(bm, subdivisions=subdivisions, radius=radius)
     obj = _new_object(name, _mesh_from_bmesh(name, bm), coll)
     obj.location = location
     return obj
@@ -115,6 +127,25 @@ def inset(obj, directions=((0, 0, 1),), thickness=0.1, depth=0.0):
         for direction in directions:
             faces += [f for f in faces_facing(bm, direction) if f not in faces]
         bmesh.ops.inset_individual(bm, faces=faces, thickness=thickness, depth=depth)
+    _edit(obj, run)
+    return obj
+
+
+def noise_displace(obj, strength=0.5, scale=1.0, seed=0, octaves=4):
+    """Seeded fractal-noise displacement along vertex normals in object space: the scripted
+    stand-in for sculpting rocks, cliffs and terrain pieces (brush sculpting needs a viewport).
+    The seed picks an offset into Perlin noise space, so the same mesh, seed and settings give
+    the same vertices on every bpy version tested (5.0.1, 5.1.2, 5.2.2). Displacement is about
+    +-strength studs; scale is noise features per stud. Needs a welded mesh with enough
+    vertices to show (`icosphere`, `voxel_remesh`); split vertices would crack apart."""
+    rng = random.Random(seed)
+    offset = Vector([rng.uniform(-100.0, 100.0) for _ in range(3)])
+
+    def run(bm):
+        bm.normal_update()
+        moves = [(v, v.normal * (strength * noise.fractal(v.co * scale + offset, 1.0, 2.0, octaves))) for v in bm.verts]
+        for v, move in moves:
+            v.co += move
     _edit(obj, run)
     return obj
 
@@ -184,14 +215,28 @@ def curve_tube(name, points, radius=0.1, resolution=4, coll=None):
     return obj
 
 
-def apply_modifiers(obj):
+def _evaluated_mesh(obj, all_layers=False):
+    """A new mesh from obj with its modifier stack applied. all_layers keeps every data layer
+    (vertex groups included); the default keeps what display and export need."""
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    mesh = bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
+    if all_layers:
+        return bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph), preserve_all_data_layers=True, depsgraph=depsgraph)
+    return bpy.data.meshes.new_from_object(obj.evaluated_get(depsgraph))
+
+
+def _set_mesh(obj, mesh, keep=()):
+    """Give obj `mesh` and drop its modifiers except those in `keep`; frees the old mesh."""
     old = obj.data
-    obj.modifiers.clear()
+    for mod in [m for m in obj.modifiers if m not in keep]:
+        obj.modifiers.remove(mod)
     obj.data = mesh
     if old.users == 0:
         bpy.data.meshes.remove(old)
+    return obj
+
+
+def apply_modifiers(obj):
+    _set_mesh(obj, _evaluated_mesh(obj))
     prune_material_slots(obj)
     return obj
 
@@ -305,6 +350,121 @@ def assign(obj, mat):
     return obj
 
 
+# ---------- retopology and LOD ----------
+
+def triangles(obj):
+    """Triangles of obj's evaluated mesh (modifiers applied), counted as QA counts them."""
+    evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    mesh = evaluated.to_mesh()
+    count = sum(len(p.vertices) - 2 for p in mesh.polygons)
+    evaluated.to_mesh_clear()
+    return count
+
+
+def _face_lookup(obj):
+    """BVH over obj's faces (object space) and each face's material index."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    indices = [f.material_index for f in bm.faces]
+    tree = BVHTree.FromBMesh(bm)
+    bm.free()
+    return tree, indices
+
+
+def _retopo_finish(obj, lookup, uv_scale):
+    """After a remesher: material index of the nearest source face, then box UVs."""
+    tree, indices = lookup
+    for poly in obj.data.polygons:
+        hit = tree.find_nearest(poly.center)
+        poly.material_index = indices[hit[2]] if hit[2] is not None else 0
+    prune_material_slots(obj)
+    if uv_scale:
+        box_uv(obj, uv_scale)
+    return obj
+
+
+def voxel_remesh(obj, voxel_size=0.1, uv_scale=0.25):
+    """Rebuild obj as one watertight, evenly spaced quad mesh (Remesh modifier, VOXEL mode),
+    fusing intersecting blockout parts into a single shell; the modifier stack is baked first.
+    Remeshing drops UVs, material indices and vertex groups: material indices are re-projected
+    from the nearest source face and box UVs re-applied (uv_scale None: no UVs), so remesh
+    before rigging. Raises ValueError when nothing is left (voxel_size too coarse for the shape)."""
+    apply_modifiers(obj)
+    lookup = _face_lookup(obj)
+    mod = obj.modifiers.new("Remesh", "REMESH")
+    mod.mode = "VOXEL"
+    mod.voxel_size = voxel_size
+    _set_mesh(obj, _evaluated_mesh(obj))
+    if not obj.data.polygons:
+        raise ValueError(f"voxel_remesh: {obj.name}: no faces left at voxel_size {voxel_size}")
+    return _retopo_finish(obj, lookup, uv_scale)
+
+
+def quadriflow(obj, target_faces=1000, seed=0, preserve_sharp=False, uv_scale=0.25):
+    """Quad retopology with Blender's QuadriFlow, headless and deterministic per seed (identical
+    vertices on bpy 5.0.1, 5.1.2 and 5.2.2); the face count lands near target_faces. Bakes the
+    modifier stack first. The input must be manifold with consistent normals and no degenerate
+    faces: QuadriFlow cancels otherwise and this raises RuntimeError with the mesh unchanged
+    (run `voxel_remesh` first on messy blockouts). Material indices re-projected and box UVs
+    re-applied as in voxel_remesh; vertex groups are lost, so retopologise before rigging."""
+    apply_modifiers(obj)
+    lookup = _face_lookup(obj)
+    with bpy.context.temp_override(active_object=obj, object=obj, selected_objects=[obj], selected_editable_objects=[obj]):
+        try:
+            result = bpy.ops.object.quadriflow_remesh(target_faces=target_faces, seed=seed, use_mesh_symmetry=False, use_preserve_sharp=preserve_sharp)
+        except RuntimeError as exc:
+            raise RuntimeError(f"quadriflow: {obj.name}: {str(exc).strip()}") from exc
+    if result != {"FINISHED"} or not obj.data.polygons:
+        raise RuntimeError(f"quadriflow: {obj.name}: QuadriFlow cancelled; it needs a manifold mesh with consistent normals and no degenerate faces")
+    return _retopo_finish(obj, lookup, uv_scale)
+
+
+def lod_chain(obj, ratios=(0.5, 0.25, 0.1), max_influences=4):
+    """Level-of-detail copies of obj (LOD0, left as it is): `<name>_LOD1`.. made with the Decimate
+    modifier (collapse) at each ratio of LOD0's triangles, at obj's transform and in its
+    collections, tagged `rbx_lod`/`rbx_lod_ratio`. Each copy bakes obj's modifiers except Armature,
+    which stays live; decimation blends vertex weights, so skinned copies get `limit_weights`
+    again. Raises ValueError (removing the copies) unless ratios strictly decrease within (0, 1)
+    and every level has strictly fewer triangles than the one before. Returns [obj, lod1, ...]."""
+    if not ratios or any(not 0 < r < 1 for r in ratios) or any(b >= a for a, b in zip(ratios, ratios[1:])):
+        raise ValueError(f"lod_chain: ratios must strictly decrease within (0, 1), got {list(ratios)}")
+    chain, counts = [obj], [triangles(obj)]
+    try:
+        for level, ratio in enumerate(ratios, start=1):
+            lod = obj.copy()
+            lod.data = obj.data.copy()
+            lod.name = f"{obj.name}_LOD{level}"
+            for coll in obj.users_collection:
+                coll.objects.link(lod)
+            chain.append(lod)
+            rigs = [m for m in lod.modifiers if m.type == "ARMATURE"]
+            for mod in rigs:
+                mod.show_viewport = False  # decimate the rest shape, not the posed one
+            decimate = lod.modifiers.new("Decimate", "DECIMATE")
+            decimate.ratio = ratio
+            _set_mesh(lod, _evaluated_mesh(lod, all_layers=True), keep=rigs)
+            lod.data.name = lod.name
+            for mod in rigs:
+                mod.show_viewport = True
+            prune_material_slots(lod)
+            if rigs and rigs[0].object is not None:
+                limit_weights(lod, rigs[0].object, max_influences)
+            env.set_meta(lod, lod=level, lod_ratio=ratio)
+            counts.append(triangles(lod))
+            if not 0 < counts[-1] < counts[-2]:
+                raise ValueError(f"lod_chain: {lod.name} has {counts[-1]} triangles; need 1 to {counts[-2] - 1} (ratio {ratio})")
+    except Exception:
+        for lod in chain[1:]:
+            mesh = lod.data
+            bpy.data.objects.remove(lod)
+            if mesh.users == 0:
+                bpy.data.meshes.remove(mesh)
+        raise
+    env.set_meta(obj, lod=0)
+    return chain
+
+
 # ---------- rigging and animation ----------
 
 def armature(name, bones, coll=None):
@@ -340,6 +500,85 @@ def bind_rigid(mesh_obj, arm_obj, assignments):
     mod = mesh_obj.modifiers.new("Armature", "ARMATURE")
     mod.object = arm_obj
     mesh_obj.parent = arm_obj
+    return mesh_obj
+
+
+def limit_weights(mesh_obj, arm_obj, max_influences=4, min_weight=0.01):
+    """Keep each vertex's `max_influences` strongest deform-bone weights (Roblox skins with at
+    most 4), drop weights under min_weight (the strongest always stays) and normalise the rest
+    to sum 1. Dropped memberships are removed, not zeroed. Weights at or below qa.WEIGHT_EPS do
+    not count (as in QA); a vertex with none stays unweighted and QA reports it."""
+    from . import qa
+
+    deform = {b.name for b in arm_obj.data.bones if b.use_deform}
+    groups = {g.index: g for g in mesh_obj.vertex_groups if g.name in deform}
+    for v in mesh_obj.data.vertices:
+        members = [(g.weight, g.group) for g in v.groups if g.group in groups]
+        ranked = sorted((m for m in members if m[0] > qa.WEIGHT_EPS), key=lambda m: (-m[0], m[1]))
+        keep = [m for m in ranked[:max_influences] if m[0] >= min_weight] or ranked[:1]
+        kept = {index for _, index in keep}
+        total = sum(weight for weight, _ in keep)
+        for _, index in members:
+            if index not in kept:
+                groups[index].remove([v.index])
+        for weight, index in keep:
+            groups[index].add([v.index], weight / total, "REPLACE")
+    return mesh_obj
+
+
+def _bind_nearest(mesh_obj, arm_obj, vertex_indices):
+    """Rigidly bind each vertex to the deform bone whose segment is nearest (world space)."""
+    bones = [b for b in arm_obj.data.bones if b.use_deform]
+    segments = [(b.name, arm_obj.matrix_world @ b.head_local, arm_obj.matrix_world @ b.tail_local) for b in bones]
+
+    def distance(point, head, tail):
+        closest, t = geometry.intersect_point_line(point, head, tail)
+        return (point - (head if t <= 0 else tail if t >= 1 else closest)).length
+
+    for index in vertex_indices:
+        point = mesh_obj.matrix_world @ mesh_obj.data.vertices[index].co
+        name = min(segments, key=lambda s: distance(point, s[1], s[2]))[0]
+        group = mesh_obj.vertex_groups.get(name) or mesh_obj.vertex_groups.new(name=name)
+        group.add([index], 1.0, "REPLACE")
+
+
+def bind_auto(mesh_obj, arm_obj, max_influences=4, min_weight=0.01, fallback="nearest"):
+    """Smooth skinning: Blender's automatic (bone heat) weights, then `limit_weights` (at most
+    `max_influences`, normalised). Bone heat can fail without raising (Blender only prints
+    "Bone Heat Weighting: failed to find solution") and leave vertices unweighted, typically a
+    separate shell no bone runs through. Those are never left silently: fallback="nearest"
+    binds each rigidly to its nearest deform bone and reports the count; fallback=None raises
+    RuntimeError. Apply transforms and modifiers first. Records `rbx_weighting` on mesh_obj:
+    method, raw_max_influences (heat output), max_influences, fallback_vertices, unused_bones."""
+    from . import qa
+
+    if not any(b.use_deform for b in arm_obj.data.bones):
+        raise ValueError(f"bind_auto: {arm_obj.name} has no deform bones")
+    for mod in [m for m in mesh_obj.modifiers if m.type == "ARMATURE"]:
+        mesh_obj.modifiers.remove(mod)
+    both = [mesh_obj, arm_obj]
+    with bpy.context.temp_override(active_object=arm_obj, object=arm_obj, selected_objects=both, selected_editable_objects=both):
+        result = bpy.ops.object.parent_set(type="ARMATURE_AUTO")
+    if result != {"FINISHED"}:
+        raise RuntimeError(f"bind_auto: automatic weights did not run on {mesh_obj.name} ({result})")
+    raw = qa.skin_stats(mesh_obj, arm_obj)["max_influences"]
+    limit_weights(mesh_obj, arm_obj, max_influences, min_weight)
+    missing = [i for i, w in enumerate(qa.skin_weights(mesh_obj, arm_obj)) if not w]
+    if missing:
+        message = f"bind_auto: bone heat left {len(missing)} of {len(mesh_obj.data.vertices)} vertices of {mesh_obj.name} unweighted"
+        if fallback != "nearest":
+            raise RuntimeError(message + " (pass fallback='nearest' to bind them to the nearest bone)")
+        _bind_nearest(mesh_obj, arm_obj, missing)
+        print(message + "; bound them rigidly to the nearest deform bone")
+    weights = qa.skin_weights(mesh_obj, arm_obj)
+    used = {mesh_obj.vertex_groups[i].name for w in weights for i in w}
+    env.set_meta(mesh_obj, weighting={
+        "method": "heat",
+        "raw_max_influences": raw,
+        "max_influences": max((len(w) for w in weights), default=0),
+        "fallback_vertices": len(missing),
+        "unused_bones": sorted(b.name for b in arm_obj.data.bones if b.use_deform and b.name not in used),
+    })
     return mesh_obj
 
 
