@@ -1,0 +1,32 @@
+{
+  "schema": "asset-provenance/1",
+  "policy": "Every real Roblox asset id in a committable file (rbxassetid://, rbxthumb://, roblox.com asset/place/bundle/badge/pass URLs, numeric AssetId/MeshId/TextureId/SoundId/AnimationId/ImageId/DecalId fields) must have an entry here; 0 is the only placeholder. Only entries with approval 'approved' (reviewer and script_review filled in by the roblox-asset-intake skill) may appear in place content (.luau, .lua, .rbxmx, .rbxlx, .project.json, .model.json, .meta.json). 'research_citation' ids may only be cited in docs and records; 'rejected' ids stay listed so the decision is not redone. Checked by the gate step asset-provenance in tools/check.py. Ids of private assets on the owner's account (such as the round-trip meshes) are never committed.",
+  "fields": {
+    "id": "Roblox asset id (positive integer)",
+    "kind": "model, mesh, image, audio, animation, plugin, place, bundle, badge or pass",
+    "name": "display name at the source",
+    "source": "URL where the asset was found",
+    "creator": "publisher at the source",
+    "license": "licence or terms as read at the source; 'not inspected' when unknown",
+    "approval": "approved, research_citation or rejected",
+    "reviewer": "who approved it (required for approved)",
+    "script_review": "script and security review findings (required for approved)",
+    "date": "date of the decision, YYYY-MM-DD",
+    "purpose": "why the id is in the repo and where it is cited",
+    "origin": "intake (reviewed in this repo) or inherited_unverified (copied in, never reviewed here)"
+  },
+  "assets": [
+    {
+      "id": 4725618216,
+      "kind": "plugin",
+      "name": "Moon Animator 2",
+      "source": "https://create.roblox.com/store/asset/4725618216/Moon-Animator-2",
+      "creator": "xsixx",
+      "license": "Creator Store purchase terms; not inspected",
+      "approval": "research_citation",
+      "date": "2026-10-05",
+      "purpose": "Cited as a researched optional tool in knowledge/records/tools-options.json (not selected). Never bought, installed, inserted or used in any place.",
+      "origin": "inherited_unverified"
+    }
+  ]
+}

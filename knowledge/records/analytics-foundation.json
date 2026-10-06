@@ -1,9 +1,11 @@
 {
   "id": "analytics-offline-session-foundation",
+  "scope": "workbench",
+  "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
   "type": "workflow",
   "title": "Privacy-bounded offline session analytics",
   "summary": "Executable validation and cohort reporting for local JSONL, with explicit observation windows, traffic exclusion and source-specific denominators. No live telemetry.",
-  "status": "partially_verified",
+  "status": "partially_verified_on_workbench",
   "tags": ["analytics", "privacy", "funnel", "acquisition", "test-exclusion", "setup-only"],
   "sources": [
     {"url": "https://create.roblox.com/docs/production/analytics/funnel-events", "accessed_at": "2026-10-05", "claim": "Roblox funnels can fill earlier steps when later steps are logged; local ordered diagnostic deliberately does not."},

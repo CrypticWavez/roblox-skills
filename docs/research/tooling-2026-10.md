@@ -196,7 +196,7 @@ Corrections and resolved UNVERIFIEDs:
 - https://create.roblox.com/docs/cloud/guides/usage-assets
 - https://create.roblox.com/docs/art/modeling/specifications , /3d-importer , /texture-specifications , /export-requirements
 - https://github.com/rojo-rbx/rojo/releases , https://github.com/rojo-rbx/rokit , https://github.com/lune-org/lune , https://github.com/JohnnyMorganz/luau-lsp/releases , https://github.com/jsdotlua/jest-lua
-- https://crates.io/api/v1/crates/{rojo,lune,stylua,selene,rokit,wally,pesde}
+- `https://crates.io/api/v1/crates/<name>` for rojo, lune, stylua, selene, rokit, wally and pesde
 - https://github.com/ahujasid/mcp-for-blender (README + src/blender_mcp/server.py)
 - https://pypi.org/project/mcp-for-blender/ , https://pypi.org/project/blender-mcp/ , https://pypi.org/project/bpy/
 - https://www.blender.org/download/lts/ , https://extensions.blender.org/add-ons/rigify/versions/ , https://extensions.blender.org/add-ons/looptools/ , https://projects.blender.org/blender/blender-addons

@@ -1,5 +1,7 @@
 {
   "id": "tools-options",
+  "scope": "repo",
+  "scope_note": "Copied from the owner's local workbench on 2026-10-05. A dated web research snapshot that cites only public URLs; prices and terms change, so re-check them before any decision. No tool was bought, installed or signed into.",
   "type": "tool_catalog",
   "title": "Focused optional art and authoring tools",
   "summary": "Figma, Aseprite, Moon Animator2, Krita, Audacity and native Studio alternatives. No optional tool purchased, installed or authenticated.",

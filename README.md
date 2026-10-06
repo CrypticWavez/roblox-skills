@@ -9,11 +9,23 @@ Reusable, game-neutral tooling for building Roblox experiences with Claude Code 
 
 ```sh
 rokit install                                  # rojo, lune, stylua, selene, luau-lsp (rokit.toml)
-python3 tools/check.py                         # pre-commit gate (format, JSON, secrets, skills, hooks, lint, specs, fixtures)
+python3 tools/check.py                         # pre-commit gate (see Gate below)
 lune run tools/lune/build_fixtures.luau build/fixtures   # five SETUP_ONLY places + manifests + report.json
 python3 tools/blender/factory.py templates build/blender  # needs `pip install bpy` (3.13) or an installed Blender
 python3 tools/check.py --tier pre-release      # adds Blender templates, round trip, QA self-test and previews
 ```
+
+## Gate
+
+`tools/check.py` is the one gate Claude, Codex, the git hook and CI run (skill `luau-quality` has the details and failure fixes).
+
+| Tier | Runs | Time |
+|---|---|---|
+| FAST_ON_EDIT | Claude hook on the edited file: format, JSON, secrets, SKILL.md rules | < 1 s |
+| PRE_COMMIT (`python3 tools/check.py`) | StyLua, JSON, secret scan, skills sync, gap matrix, Markdown links and URLs, [knowledge index](knowledge/INDEX.md) and record scopes, [fixtures README](fixtures/README.md), asset ids against [`assets/provenance.json`](assets/provenance.json), Rojo sourcemaps of every fixture project, a self-test of those content checks, hook self-test, Selene, Lune specs, fixture hashes | ~17 s |
+| PRE_RELEASE (`--tier pre-release`) | pre-commit plus Blender templates, round trip, QA self-test and previews | minutes |
+
+`--strict` (CI) fails on any SKIPPED step. `--live-links` also requests every external URL; it is opt-in and never runs in CI.
 
 | Path | What |
 |---|---|

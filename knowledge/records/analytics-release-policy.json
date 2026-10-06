@@ -1,5 +1,7 @@
 {
   "id": "analytics-release-commercial-review",
+  "scope": "workbench",
+  "scope_note": "Copied from the owner's local workbench on 2026-10-05. The paths, commands and receipts it cites exist only there, so this repo cannot reproduce its status; treat it as a lead to re-check, not as evidence.",
   "type": "quality_criterion",
   "title": "Release, earnings and policy review contract",
   "summary": "Dated official reference set for per-game release and commercial review; dynamic prices and policy eligibility must be rechecked, with no frozen payout or ranking assumptions.",
