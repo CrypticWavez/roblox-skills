@@ -187,5 +187,142 @@ class DefinitionsLockTest(unittest.TestCase):
         self.assertEqual(list(cache.iterdir()), [], "no temp files left behind")
 
 
+PLUGIN = ROOT / "plugins" / "luau-lsp" / ".claude-plugin" / "plugin.json"
+MARKETPLACE = ROOT / ".claude-plugin" / "marketplace.json"
+
+
+def plugin_server():
+    return json.loads(PLUGIN.read_text())["lspServers"]["luau-lsp"]
+
+
+def expand(text):
+    return text.replace("${CLAUDE_PROJECT_DIR}", str(ROOT))
+
+
+class LspSession:
+    """Minimal LSP client over stdio (Content-Length framing), enough for one push-diagnostics round trip."""
+
+    def __init__(self, cmd, settings):
+        import queue
+        import subprocess
+        import threading
+
+        self.settings = settings
+        self.messages = queue.Queue()
+        self.proc = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.next_id = 0
+        threading.Thread(target=self._read, daemon=True).start()
+
+    def _read(self):
+        stream = self.proc.stdout
+        while True:
+            length = None
+            while True:
+                line = stream.readline()
+                if not line:
+                    self.messages.put(None)
+                    return
+                line = line.strip()
+                if not line:
+                    break
+                name, _, value = line.decode("ascii").partition(":")
+                if name.lower() == "content-length":
+                    length = int(value)
+            self.messages.put(json.loads(stream.read(length)))
+
+    def send(self, payload):
+        body = json.dumps({"jsonrpc": "2.0", **payload}).encode("utf-8")
+        self.proc.stdin.write(b"Content-Length: %d\r\n\r\n" % len(body) + body)
+        self.proc.stdin.flush()
+
+    def request(self, method, params):
+        self.next_id += 1
+        self.send({"id": self.next_id, "method": method, "params": params})
+        return self.next_id
+
+    def wait(self, predicate, timeout):
+        """Answers the server's requests (configuration from the plugin's settings) until predicate matches."""
+        import queue
+        import time
+
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            try:
+                message = self.messages.get(timeout=max(0.1, deadline - time.monotonic()))
+            except queue.Empty:
+                break
+            if message is None:
+                raise AssertionError("luau-lsp exited")
+            if "method" in message and "id" in message:
+                result = None
+                if message["method"] == "workspace/configuration":
+                    result = [self.settings.get(item.get("section")) if item.get("section") else self.settings for item in message["params"]["items"]]
+                self.send({"id": message["id"], "result": result})
+            elif predicate(message):
+                return message
+        raise AssertionError("timed out waiting for luau-lsp")
+
+    def close(self):
+        try:
+            self.request("shutdown", None)
+            self.send({"method": "exit"})
+            self.proc.wait(timeout=10)
+        except Exception:  # noqa: BLE001  (best effort; kill below)
+            pass
+        if self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait()
+        for stream in (self.proc.stdin, self.proc.stdout):
+            try:
+                stream.close()
+            except OSError:
+                pass
+
+
+class ClaudePluginTest(unittest.TestCase):
+    def test_marketplace_lists_the_plugin(self):
+        market = json.loads(MARKETPLACE.read_text())
+        self.assertEqual(market["name"], "roblox-factory", "docs/pc-setup.md installs luau-lsp@roblox-factory")
+        entry = next(p for p in market["plugins"] if p["name"] == "luau-lsp")
+        self.assertEqual((ROOT / entry["source"]).resolve(), PLUGIN.parent.parent.resolve())
+
+    def test_plugin_matches_the_pins(self):
+        plugin = json.loads(PLUGIN.read_text())
+        server = plugin_server()
+        self.assertEqual(plugin["version"], luau_analyze.pinned_version(), "bump with rokit.toml")
+        self.assertEqual(server["command"], "luau-lsp", "the rokit-installed binary, never a machine path")
+        names = {entry["role"]: entry["name"] for entry in luau_defs.load_lock()["files"]}
+        self.assertIn(f"--definitions:@roblox=${{CLAUDE_PROJECT_DIR}}/build/luau-lsp/{names['definitions']}", server["args"])
+        self.assertIn(f"--docs=${{CLAUDE_PROJECT_DIR}}/build/luau-lsp/{names['docs']}", server["args"])
+        self.assertNotIn("--enable-crash-reporting", server["args"])
+        self.assertEqual(server["settings"]["luau-lsp"]["sourcemap"]["sourcemapFile"], luau_analyze.CACHE.relative_to(ROOT).as_posix() + "/sourcemap.json")
+        text = PLUGIN.read_text() + MARKETPLACE.read_text()
+        for needle in ("/home/", "/Users/", "C:\\\\", "/root/"):
+            self.assertNotIn(needle, text)
+
+    def test_language_server_reports_type_errors(self):
+        binary = luau_analyze.find_binary()
+        lock = luau_defs.load_lock()
+        if binary is None or any(state != "ok" for _, _, state in luau_defs.cached_state(lock)):
+            self.skipTest("needs a luau-lsp binary ($LUAU_LSP or PATH) and python3 tools/luau_defs.py")
+        server = plugin_server()
+        session = LspSession([binary, *(expand(a) for a in server["args"])], server["settings"])
+        self.addCleanup(session.close)
+        init = session.request("initialize", {
+            "processId": None, "rootUri": ROOT.as_uri(), "workspaceFolders": [{"uri": ROOT.as_uri(), "name": "factory"}],
+            "capabilities": {"workspace": {"configuration": True}, "textDocument": {"publishDiagnostics": {}}},
+        })
+        session.wait(lambda m: m.get("id") == init, 60)
+        session.send({"method": "initialized", "params": {}})
+        uri = (ROOT / "build" / "luau-lsp" / "plugin-smoke.luau").as_uri()  # never written: an open buffer only
+        source = '--!strict\nlocal count: number = "three"\nlocal part = Instance.new("Part")\npart.Anchored = 5\nreturn count, part\n'
+        session.send({"method": "textDocument/didOpen", "params": {"textDocument": {"uri": uri, "languageId": "luau", "version": 1, "text": source}}})
+        published = session.wait(lambda m: m.get("method") == "textDocument/publishDiagnostics" and m["params"]["uri"] == uri and m["params"]["diagnostics"], 120)
+        lines = sorted({d["range"]["start"]["line"] for d in published["params"]["diagnostics"]})
+        self.assertEqual(lines, [1, 3], published["params"]["diagnostics"])
+        self.assertTrue(any("boolean" in d["message"] for d in published["params"]["diagnostics"]), "Roblox definitions loaded: Part.Anchored is a boolean")
+        self.assertFalse((ROOT / "build" / "luau-lsp" / "plugin-smoke.luau").exists())
+
+
 if __name__ == "__main__":
     unittest.main()
