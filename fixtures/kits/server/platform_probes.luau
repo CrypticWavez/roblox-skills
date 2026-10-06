@@ -346,4 +346,74 @@ function probes.platform_policy_emulator(ctx: any)
 	ctx.check("bind_loads_present_player", bound:info(player) ~= nil)
 end
 
+-- PartyRoblox against the Party Simulator (Studio beta): start Server & Clients with at least two
+-- clients and put them in one simulated party first. Checks PartyId values, that
+-- GetPlayersByPartyId agrees with the PartyIds, that GetPartyAsync lists the local members (its
+-- support in the simulator is UNVERIFIED: this check is the evidence either way), and that a
+-- party ticket is accepted by GameKit/Queue.
+function probes.platform_party_simulator(ctx: any)
+	if not diagnostic(ctx) then
+		return
+	end
+	local player = firstPlayer(ctx)
+	if player == nil then
+		return
+	end
+	local PartyRoblox = ctx.kit("GameKit/PartyRoblox")
+	local Queue = ctx.kit("GameKit/Queue")
+	local env = ctx.env
+	local social = env.services.SocialService
+	local players = env.services.Players:GetPlayers()
+	local parties: { [string]: { number } } = {}
+	local typed = true
+	for _, member in players do
+		typed = typed and type(member.PartyId) == "string"
+		local id = PartyRoblox.partyId(member)
+		if id ~= nil then
+			parties[id] = parties[id] or {}
+			table.insert(parties[id], member.UserId)
+		end
+	end
+	ctx.check("party_ids_are_strings", typed)
+	local partyId = next(parties)
+	ctx.check(
+		"simulated_party_present",
+		partyId ~= nil,
+		"put two or more clients in one party in the Party Simulator, then run again"
+	)
+	if partyId == nil then
+		return
+	end
+	local expected = parties[partyId]
+	table.sort(expected)
+	local here = {}
+	for _, member in PartyRoblox.membersHere(social, partyId) do
+		table.insert(here, member.UserId)
+	end
+	ctx.check("members_here_match_party_ids", table.concat(here, ",") == table.concat(expected, ","), {
+		here = here,
+		expected = expected,
+	})
+	local ok, members = PartyRoblox.members(social, partyId, env)
+	local listed = {}
+	if ok then
+		for _, member in members do
+			listed[member.userId] = true
+		end
+	end
+	local all = ok
+	for _, userId in expected do
+		all = all and listed[userId] == true
+	end
+	ctx.check("party_async_lists_local_members", all, if ok then members else tostring(members))
+	local leader = env.services.Players:GetPlayerByUserId(expected[1])
+	local ticket = PartyRoblox.ticket(social, leader, { at = env.clock() })
+	ctx.check("ticket_holds_party", #ticket.players == #expected and ticket.id == "party:" .. partyId, ticket)
+	local queue = Queue.new({ teams = 1, teamSize = math.max(#expected, 1), skill = false }, env)
+	local added, why = queue:add(ticket)
+	ctx.check("queue_accepts_party_ticket", added, why)
+	local plan = queue:take(env.clock())
+	ctx.check("party_forms_one_match", #plan.matches == 1 and plan.matches[1].players == #expected, plan)
+end
+
 return probes

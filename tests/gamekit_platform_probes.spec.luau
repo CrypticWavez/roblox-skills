@@ -143,4 +143,31 @@ test("platform_policy_emulator passes against every FakePolicy preset", function
 	t.ok(summary ~= nil and not summary.ok, "malformed policy info must not pass the probe")
 end)
 
+test("platform_party_simulator passes with a simulated party and asks for one without", function(t)
+	local env = probeEnv()
+	local players = env.services.Players
+	players:join(102, "party-sim-1")
+	players:join(103, "party-sim-1")
+	players:join(104, "")
+	env:register("SocialService", FakePlatformRoblox.socialService(players))
+	expectPass(t, "platform_party_simulator", env)
+	-- no party configured: the probe fails with the setup hint instead of passing
+	local lonely = probeEnv()
+	lonely:register("SocialService", FakePlatformRoblox.socialService(lonely.services.Players))
+	local summary, lines = runProbe("platform_party_simulator", lonely)
+	t.ok(summary ~= nil and not summary.ok, "a session without a party must not pass")
+	t.ok(string.find(table.concat(lines, "\n"), "Party Simulator", 1, true) ~= nil)
+	-- GetPartyAsync failing is reported as a failed check, not an error
+	local failing = probeEnv()
+	failing.services.Players:join(105, "party-sim-2")
+	failing.services.Players:join(106, "party-sim-2")
+	local social = FakePlatformRoblox.socialService(failing.services.Players)
+	social:fail(10)
+	failing:register("SocialService", social)
+	local failed, failedLines = runProbe("platform_party_simulator", failing)
+	t.ok(failed ~= nil and not failed.ok)
+	t.ok(string.find(table.concat(failedLines, "\n"), "party_async_lists_local_members", 1, true) ~= nil)
+	t.eq(#failing.errors, 0, table.concat(failing.errors, "\n"))
+end)
+
 return cases

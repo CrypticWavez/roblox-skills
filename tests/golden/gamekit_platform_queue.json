@@ -1,0 +1,549 @@
+{
+  "left": {
+    "players": 8,
+    "tickets": 4
+  },
+  "timeline": [
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k003",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 260,
+          "teams": [
+            {
+              "players": [
+                3,
+                4,
+                5
+              ],
+              "skill": 3351,
+              "tickets": [
+                "k006"
+              ]
+            },
+            {
+              "players": [
+                1,
+                2,
+                9
+              ],
+              "skill": 3721,
+              "tickets": [
+                "k003",
+                "k010"
+              ]
+            }
+          ],
+          "tickets": [
+            "k003",
+            "k006",
+            "k010"
+          ],
+          "waited": 15
+        }
+      ],
+      "now": 15
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k009",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_a",
+          "spread": 498,
+          "teams": [
+            {
+              "players": [
+                15,
+                16,
+                8
+              ],
+              "skill": 4809,
+              "tickets": [
+                "k017",
+                "k009"
+              ]
+            },
+            {
+              "players": [
+                6,
+                7,
+                14
+              ],
+              "skill": 4236,
+              "tickets": [
+                "k008",
+                "k015"
+              ]
+            }
+          ],
+          "tickets": [
+            "k009",
+            "k008",
+            "k015",
+            "k017"
+          ],
+          "waited": 25
+        }
+      ],
+      "now": 35
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k012",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 156,
+          "teams": [
+            {
+              "players": [
+                20,
+                21,
+                13
+              ],
+              "skill": 1893,
+              "tickets": [
+                "k022",
+                "k014"
+              ]
+            },
+            {
+              "players": [
+                10,
+                11,
+                12
+              ],
+              "skill": 1995,
+              "tickets": [
+                "k012",
+                "k013"
+              ]
+            }
+          ],
+          "tickets": [
+            "k012",
+            "k013",
+            "k014",
+            "k022"
+          ],
+          "waited": 20
+        }
+      ],
+      "now": 40
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k020",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 470,
+          "teams": [
+            {
+              "players": [
+                17,
+                18,
+                19
+              ],
+              "skill": 3459,
+              "tickets": [
+                "k020"
+              ]
+            },
+            {
+              "players": [
+                29,
+                23,
+                22
+              ],
+              "skill": 2984,
+              "tickets": [
+                "k030",
+                "k024",
+                "k023"
+              ]
+            }
+          ],
+          "tickets": [
+            "k020",
+            "k023",
+            "k024",
+            "k030"
+          ],
+          "waited": 30
+        }
+      ],
+      "now": 70
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k026",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_a",
+          "spread": 596,
+          "teams": [
+            {
+              "players": [
+                24,
+                25,
+                31
+              ],
+              "skill": 2888,
+              "tickets": [
+                "k026",
+                "k032"
+              ]
+            },
+            {
+              "players": [
+                28,
+                34,
+                30
+              ],
+              "skill": 3058,
+              "tickets": [
+                "k029",
+                "k035",
+                "k031"
+              ]
+            }
+          ],
+          "tickets": [
+            "k026",
+            "k029",
+            "k031",
+            "k032",
+            "k035"
+          ],
+          "waited": 35
+        }
+      ],
+      "now": 80
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k028",
+          "partial": true,
+          "players": 5,
+          "pool": "pool_b",
+          "spread": 409,
+          "teams": [
+            {
+              "players": [
+                26,
+                27
+              ],
+              "skill": 3380,
+              "tickets": [
+                "k028"
+              ]
+            },
+            {
+              "players": [
+                32,
+                33,
+                38
+              ],
+              "skill": 3888,
+              "tickets": [
+                "k034",
+                "k039"
+              ]
+            }
+          ],
+          "tickets": [
+            "k028",
+            "k034",
+            "k039"
+          ],
+          "waited": 45
+        }
+      ],
+      "now": 90
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k041",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_a",
+          "spread": 64,
+          "teams": [
+            {
+              "players": [
+                41,
+                42,
+                43
+              ],
+              "skill": 2844,
+              "tickets": [
+                "k044"
+              ]
+            },
+            {
+              "players": [
+                39,
+                40,
+                37
+              ],
+              "skill": 2680,
+              "tickets": [
+                "k041",
+                "k038"
+              ]
+            }
+          ],
+          "tickets": [
+            "k041",
+            "k038",
+            "k044"
+          ],
+          "waited": 0
+        }
+      ],
+      "now": 95
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k037",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_a",
+          "spread": 117,
+          "teams": [
+            {
+              "players": [
+                49,
+                50,
+                51
+              ],
+              "skill": 1806,
+              "tickets": [
+                "k052"
+              ]
+            },
+            {
+              "players": [
+                35,
+                36,
+                52
+              ],
+              "skill": 2141,
+              "tickets": [
+                "k037",
+                "k053"
+              ]
+            }
+          ],
+          "tickets": [
+            "k037",
+            "k052",
+            "k053"
+          ],
+          "waited": 40
+        }
+      ],
+      "now": 120
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k049",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 786,
+          "teams": [
+            {
+              "players": [
+                47,
+                48,
+                54
+              ],
+              "skill": 3428,
+              "tickets": [
+                "k049",
+                "k055"
+              ]
+            },
+            {
+              "players": [
+                45,
+                46,
+                44
+              ],
+              "skill": 3009,
+              "tickets": [
+                "k047",
+                "k045"
+              ]
+            }
+          ],
+          "tickets": [
+            "k049",
+            "k045",
+            "k047",
+            "k055"
+          ],
+          "waited": 30
+        }
+      ],
+      "now": 140
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k059",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 340,
+          "teams": [
+            {
+              "players": [
+                61,
+                62,
+                63
+              ],
+              "skill": 1824,
+              "tickets": [
+                "k064"
+              ]
+            },
+            {
+              "players": [
+                59,
+                65,
+                58
+              ],
+              "skill": 2446,
+              "tickets": [
+                "k060",
+                "k066",
+                "k059"
+              ]
+            }
+          ],
+          "tickets": [
+            "k059",
+            "k060",
+            "k064",
+            "k066"
+          ],
+          "waited": 15
+        }
+      ],
+      "now": 160
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k054",
+          "partial": true,
+          "players": 4,
+          "pool": "pool_a",
+          "spread": 384,
+          "teams": [
+            {
+              "players": [
+                64,
+                53
+              ],
+              "skill": 2578,
+              "tickets": [
+                "k065",
+                "k054"
+              ]
+            },
+            {
+              "players": [
+                60,
+                66
+              ],
+              "skill": 2464,
+              "tickets": [
+                "k061",
+                "k067"
+              ]
+            }
+          ],
+          "tickets": [
+            "k054",
+            "k061",
+            "k065",
+            "k067"
+          ],
+          "waited": 45
+        }
+      ],
+      "now": 170
+    },
+    {
+      "expired": [],
+      "matches": [
+        {
+          "id": "match:k057",
+          "partial": false,
+          "players": 6,
+          "pool": "pool_b",
+          "spread": 265,
+          "teams": [
+            {
+              "players": [
+                67,
+                68,
+                69
+              ],
+              "skill": 4551,
+              "tickets": [
+                "k070"
+              ]
+            },
+            {
+              "players": [
+                55,
+                56,
+                57
+              ],
+              "skill": 4612,
+              "tickets": [
+                "k057",
+                "k058"
+              ]
+            }
+          ],
+          "tickets": [
+            "k057",
+            "k058",
+            "k070"
+          ],
+          "waited": 30
+        }
+      ],
+      "now": 175
+    }
+  ]
+}
