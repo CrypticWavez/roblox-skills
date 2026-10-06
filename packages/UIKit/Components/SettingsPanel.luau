@@ -181,7 +181,7 @@ local SettingsPanel = Build.component({
 		end
 
 		for path, row in handle.parts.rows do
-			local props = table.clone(row.props)
+			local props: { [string]: any } = table.clone(row.props)
 			if row.kind == "toggle" then
 				props.onChanged = function(value: boolean)
 					commit(path, value)

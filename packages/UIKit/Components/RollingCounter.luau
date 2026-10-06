@@ -11,7 +11,12 @@
 local Build = require("../Build")
 local Transitions = require("../Transitions")
 
-local SUFFIXES = { { 1e12, "T" }, { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } }
+local SUFFIXES = {
+	{ at = 1e12, suffix = "T" },
+	{ at = 1e9, suffix = "B" },
+	{ at = 1e6, suffix = "M" },
+	{ at = 1e3, suffix = "K" },
+}
 
 local function group(digits: string, separator: string): string
 	local out = digits
@@ -30,21 +35,19 @@ local function format(n: number, style: string?, decimals: number?, separator: s
 	local sep = separator or ","
 	local negative = n < 0
 	local a = math.abs(n)
-	local text
+	local text: string
 	if style == "compact" then
-		text = nil
+		local compact: string? = nil
 		for _, entry in SUFFIXES do
-			if a >= entry[1] then
-				local scaled = math.floor(a / entry[1] * 10) / 10
-				text = (
+			if a >= entry.at then
+				local scaled = math.floor(a / entry.at * 10) / 10
+				compact = (
 					if scaled % 1 == 0 then string.format("%d", scaled) else string.format("%.1f", scaled)
-				) .. entry[2]
+				) .. entry.suffix
 				break
 			end
 		end
-		if text == nil then
-			text = string.format("%d", math.round(a))
-		end
+		text = compact or string.format("%d", math.round(a))
 	elseif style == "fixed" then
 		local places = decimals or 2
 		local raw = string.format("%." .. places .. "f", a)

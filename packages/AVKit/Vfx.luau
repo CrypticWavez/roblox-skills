@@ -518,7 +518,9 @@ local function validateEmitter(report: Report, preset: any, emitter: any, where:
 			choice(report, where .. ".flipbook.mode", flipbook.mode, FLIPBOOK_MODES)
 			number(report, where .. ".flipbook.fps", flipbook.fps, 1, LIMITS.flipbookFpsMax, true)
 			boolean(report, where .. ".flipbook.startRandom", flipbook.startRandom)
-			local key = type(emitter.texture) == "string" and string.match(emitter.texture, "^asset:(.+)$")
+			local key = if type(emitter.texture) == "string"
+				then string.match(emitter.texture, "^asset:(.+)$")
+				else nil
 			local size = key and options.textureSizes and options.textureSizes[key]
 			if not key then
 				problem(

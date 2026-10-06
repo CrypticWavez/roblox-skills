@@ -463,12 +463,13 @@ function Cinematics.sample(cin: Cinematic, t: number): Sample
 		out.roll = lerpAngle(a.roll or 0, b.roll or 0, holdU)
 	else
 		local oa, ob = a.orientation :: Vec, b.orientation :: Vec
-		out.orientation = {
+		local orientation: Vec = {
 			lerpAngle(oa[1], ob[1], holdU),
 			lerpAngle(oa[2], ob[2], holdU),
 			lerpAngle(oa[3], ob[3], holdU),
 		}
-		out.roll = out.orientation[3]
+		out.orientation = orientation
+		out.roll = orientation[3]
 	end
 	for _, line in cin.subtitles or {} do
 		if time >= line.t and time < line.t + line.duration then

@@ -226,7 +226,7 @@ local function selectorOk(selector: string, queries: { [string]: boolean }): (bo
 		return queries[query] == true, "names no StyleQuery"
 	end
 	local tag, rest = string.match(selector, "^%.(%a+)(.*)$")
-	if tag == nil then
+	if tag == nil or rest == nil then -- rest is never nil when tag matched; this narrows it
 		return false, "must start with .Tag or @Query"
 	end
 	if rest == "" then

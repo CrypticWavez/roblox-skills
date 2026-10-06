@@ -87,7 +87,7 @@ export type ApplyOptions = {
 function StyleRoblox.apply(plan: Style.Plan, env: any, options: ApplyOptions?): any
 	local r = env and env.roblox
 	assert(r, "StyleRoblox.apply: env.roblox is required")
-	local o = options or {}
+	local o: ApplyOptions = options or {}
 	local setProperties = o.setProperties
 		or function(rule: any, properties: { [string]: any })
 			rule:SetProperties(properties)

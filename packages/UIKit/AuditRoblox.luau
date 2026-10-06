@@ -79,9 +79,10 @@ end
 
 -- TextFits per path after showing pseudo-localised text for one frame (text restored).
 function AuditRoblox.pseudoFits(root: any, env: any, textFits: ((any) -> boolean?)?): { [string]: boolean }
-	local read = textFits or function(instance: any): boolean?
-		return instance.TextFits
-	end
+	local read: (any) -> boolean? = textFits
+		or function(instance: any): boolean?
+			return instance.TextFits
+		end
 	local objects = textObjects(root)
 	local saved = {}
 	for _, item in objects do
@@ -121,7 +122,7 @@ export type Options = {
 
 -- The ui-audit/1 report for a live tree (yields). options.class defaults to AuditRoblox.class.
 function AuditRoblox.audit(root: any, env: any, options: Options?): Audit.Report
-	local o = options or {}
+	local o: Options = options or {}
 	env.wait()
 	local class = o.class or AuditRoblox.class(env)
 	local textFits = o.textFits or function(instance: any): boolean?

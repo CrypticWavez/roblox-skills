@@ -263,21 +263,21 @@ function Browser.mount(target: any, options: Options): any
 		}, ui, list)
 	end
 	local toggles = {
-		{ "Light theme", "theme", settings.theme == "light" },
-		{ "Reduced motion", "reducedMotion", settings.reducedMotion },
-		{ "Pseudo-loc", "pseudo", settings.pseudo },
+		{ text = "Light theme", key = "theme", value = settings.theme == "light" },
+		{ text = "Reduced motion", key = "reducedMotion", value = settings.reducedMotion },
+		{ text = "Pseudo-loc", key = "pseudo", value = settings.pseudo },
 	}
 	for index, item in toggles do
 		Toggle.mount({
-			text = item[1],
-			value = item[3],
+			text = item.text,
+			value = item.value,
 			width = 200,
 			layoutOrder = index,
 			onChanged = function(value: boolean)
-				if item[2] == "theme" then
+				if item.key == "theme" then
 					api:set({ theme = if value then "light" else "dark" })
 				else
-					api:set({ [item[2]] = value })
+					api:set({ [item.key] = value })
 				end
 			end,
 		}, ui, toolbar)

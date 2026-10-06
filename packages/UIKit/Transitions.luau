@@ -195,7 +195,10 @@ local function track(node: string, property: string, from: Value?, to: Value, op
 	}
 end
 
-local function phaseOf(options: any): string
+-- Locals holding a phase are annotated Phase: the checker widens a singleton result to string.
+type Phase = "in" | "out"
+
+local function phaseOf(options: any): Phase
 	local phase = options.phase or "in"
 	if phase ~= "in" and phase ~= "out" then
 		error("Transitions: phase must be in or out", 3)
@@ -213,12 +216,26 @@ export type Options = {
 	property: string?,
 	fade: boolean?,
 }
+-- Options plus from and scaleNode, spelled out flat: the 1.70.1 checker does not give a table
+-- literal's phase = "in" its singleton type through an `Options & { ... }` parameter.
+export type ScalePopOptions = {
+	phase: ("in" | "out")?,
+	duration: number?,
+	delay: number?,
+	ease: string?,
+	spring: Ease.SpringParams?,
+	node: string?,
+	property: string?,
+	fade: boolean?,
+	from: number?,
+	scaleNode: string?,
+}
 
 -- Opacity 1 -> 0 (in) or 0 -> 1 (out) on node.property (default root.GroupTransparency, a
 -- CanvasGroup, so children fade together).
 function Transitions.fade(options: Options?): Plan
 	local o: any = options or {}
-	local phase = phaseOf(o)
+	local phase: Phase = phaseOf(o)
 	local node, property = o.node or "root", o.property or "GroupTransparency"
 	local from, to = if phase == "in" then 1 else 0, if phase == "in" then 0 else 1
 	local ease = o.ease or (if phase == "in" then "Quad.Out" else "Quad.In")
@@ -234,7 +251,7 @@ end
 -- unless fade = false. base is the resting UDim2 { xs, xo, ys, yo }.
 function Transitions.slide(options: Options & { from: string?, distance: number?, base: { number }? }): Plan
 	local o: any = options
-	local phase = phaseOf(o)
+	local phase: Phase = phaseOf(o)
 	local base = o.base or { 0, 0, 0, 0 }
 	assert(type(base) == "table" and #base == 4, "Transitions.slide: base must be a UDim2 { xs, xo, ys, yo }")
 	local distance = o.distance or 24
@@ -286,9 +303,9 @@ end
 
 -- UIScale.Scale from `from` (default 0.92) to 1 (in) or back (out) on node "scale", with a
 -- Back.Out ease or a spring, plus a fade on node "root" unless fade = false.
-function Transitions.scalePop(options: Options & { from: number?, scaleNode: string? }): Plan
+function Transitions.scalePop(options: ScalePopOptions): Plan
 	local o: any = options or {}
-	local phase = phaseOf(o)
+	local phase: Phase = phaseOf(o)
 	local small = o.from or 0.92
 	local scaleNode = o.scaleNode or "scale"
 	local tracks = {
@@ -318,7 +335,7 @@ end
 -- from -0.5 (hidden) to 0.5 (shown) on X. reducedFade falls back to root.GroupTransparency.
 function Transitions.wipe(options: Options?): Plan
 	local o: any = options or {}
-	local phase = phaseOf(o)
+	local phase: Phase = phaseOf(o)
 	local hidden, shown = { -0.5, 0 }, { 0.5, 0 }
 	return finalize("wipe", phase, {
 		track(
@@ -340,7 +357,7 @@ end
 -- reduced motion it becomes a fade of node "cover".
 function Transitions.iris(options: Options & { size: number, coverNode: string? }): Plan
 	local o: any = options
-	local phase = phaseOf(o)
+	local phase: Phase = phaseOf(o)
 	assert(Check.finite(o.size) and o.size > 0, "Transitions.iris: size must be the open diameter in px")
 	local closed, open = { 0, 0, 0, 0 }, { 0, o.size, 0, o.size }
 	return finalize("iris", phase, {
@@ -622,7 +639,7 @@ function Transitions.runner(
 
 	local function write(active: Active, value: Value)
 		active.value = value
-		local ok, err = pcall(apply, active.target, active.track.property, value)
+		local ok: boolean, err: any = pcall(apply, active.target, active.track.property, value)
 		if not ok then
 			report("Transitions apply error: " .. tostring(err))
 		end

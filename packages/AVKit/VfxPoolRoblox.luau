@@ -283,7 +283,7 @@ function VfxPoolRoblox.new(env: any, options: Options)
 			return nil, reason
 		end
 		if preset.sound and options.sound and opts.silent ~= true then
-			local ok, err = pcall(options.sound, preset.sound, cframe, follow)
+			local ok: boolean, err: any = pcall(options.sound, preset.sound, cframe, follow)
 			if not ok then
 				report("VfxPoolRoblox: sound " .. preset.sound .. " failed: " .. tostring(err))
 			end

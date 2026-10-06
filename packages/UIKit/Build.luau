@@ -112,7 +112,7 @@ end
 -- deterministic) parented to parent.
 function Build.make(ctx: Context, className: string, props: { [string]: any }?, parent: any?): any
 	local instance = ctx.env.roblox.Instance.new(className)
-	local p = props or {}
+	local p: { [string]: any } = props or {}
 	if p.Name ~= nil then
 		instance.Name = p.Name
 	end
@@ -214,7 +214,7 @@ end
 -- A transparent Frame.
 function Build.frame(ctx: Context, name: string, props: { [string]: any }?, parent: any?): any
 	local p: { [string]: any } = { Name = name, BackgroundTransparency = 1, BorderSizePixel = 0 }
-	for key, value in props or {} do
+	for key, value in props or {} :: { [string]: any } do
 		p[key] = value
 	end
 	return Build.make(ctx, "Frame", p, parent)
@@ -224,7 +224,7 @@ end
 function Build.surface(ctx: Context, name: string, slot: string, props: { [string]: any }?, parent: any?): any
 	local p = Style.surface(ctx.tokens, slot, ctx.env)
 	p.Name = name
-	for key, value in props or {} do
+	for key, value in props or {} :: { [string]: any } do
 		p[key] = value
 	end
 	local frame = Build.make(ctx, "Frame", p, parent)
@@ -254,7 +254,7 @@ function Build.label(
 	p.RichText = false
 	p.AutoLocalize = false
 	p.TextXAlignment = ctx.env.roblox.Enum.TextXAlignment.Left
-	for key, value in props or {} do
+	for key, value in props or {} :: { [string]: any } do
 		p[key] = value
 	end
 	local label = Build.make(ctx, "TextLabel", p, parent)
@@ -412,11 +412,12 @@ function Build.props(schema: Schema, props: any, component: string): { [string]:
 end
 
 -- Shared schema fields.
-Build.TEXT = table.freeze({
+local TEXT: Schema = {
 	textKey = { kind = "key" },
 	text = { kind = "string", maxLength = 1024 },
 	textArgs = { kind = "table" },
-})
+}
+Build.TEXT = table.freeze(TEXT)
 
 -- A schema made of the shared text fields plus extra.
 function Build.schema(extra: Schema, withText: boolean?): Schema
@@ -787,12 +788,9 @@ function Build.pressable(handle: Handle, button: any, onActivated: (() -> ())?, 
 	end))
 end
 
+type FadeOptions = { duration: number?, delay: number?, ease: string? }
 export type FadeTree = {
-	plan: (
-		self: FadeTree,
-		phase: string,
-		options: { duration: number?, delay: number?, ease: string? }?
-	) -> (any, { [string]: any }),
+	plan: (self: FadeTree, phase: string, options: FadeOptions?) -> (any, { [string]: any }),
 	restore: (self: FadeTree) -> (),
 	count: number,
 }
@@ -840,12 +838,8 @@ function Build.fadeTree(root: any): FadeTree
 			entry.target[entry.property] = entry.rest
 		end
 	end
-	function tree.plan(
-		_self: any,
-		phase: string,
-		options: { duration: number?, delay: number?, ease: string? }?
-	): (any, { [string]: any })
-		local o = options or {}
+	function tree.plan(_self: any, phase: string, options: FadeOptions?): (any, { [string]: any })
+		local o: FadeOptions = options or {}
 		local duration = o.duration or 0.2
 		local ease = o.ease or (if phase == "out" then "Quad.In" else "Quad.Out")
 		local tracks, bindings = {}, {}

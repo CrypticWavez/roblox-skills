@@ -150,7 +150,7 @@ function Localize.format(template: string, args: { [any]: any }?): string
 		return template
 	end
 	return (
-		string.gsub(template, "{([%w_]+)}", function(name: string): string?
+		string.gsub(template, "{([%w_]+)}", function(name: string): string
 			local value = args[name]
 			if value == nil then
 				local index = tonumber(name)
@@ -159,7 +159,7 @@ function Localize.format(template: string, args: { [any]: any }?): string
 				end
 			end
 			if value == nil then
-				return nil
+				return "{" .. name .. "}" -- the whole match, as returning nil would keep it
 			end
 			return tostring(value)
 		end)
@@ -600,7 +600,7 @@ function Localize.validateStrings(strings: any, required: { string }?): (boolean
 	if count > 4096 then
 		table.insert(problems, "more than 4096 keys")
 	end
-	for _, key in required or {} do
+	for _, key in required or {} :: { string } do
 		if not textOk(strings[key], TEXT_MAX) then
 			table.insert(problems, "missing or invalid key: " .. tostring(key))
 		end

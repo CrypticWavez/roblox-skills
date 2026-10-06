@@ -27,11 +27,13 @@ Pool.DEFAULT_FIELDS = table.freeze({
 	width = table.freeze({ min = 0.01, max = 2 }),
 	particleCount = table.freeze({ min = 0, max = 48, integer = true }),
 })
-Pool.DEFAULT_RECIPES = table.freeze({
+-- recipe -> field -> value (typed as maps so `for name in DEFAULT_RECIPES` yields strings).
+local DEFAULT_RECIPES: { [string]: { [string]: number } } = {
 	telegraph = table.freeze({ duration = 0.8, priority = 8, radius = 1, width = 0.08, particleCount = 0 }),
 	impact = table.freeze({ duration = 0.3, priority = 5, radius = 0.5, width = 0.15, particleCount = 12 }),
 	reward = table.freeze({ duration = 0.7, priority = 2, radius = 0.4, width = 0.08, particleCount = 8 }),
-})
+}
+Pool.DEFAULT_RECIPES = table.freeze(DEFAULT_RECIPES)
 Pool.REDUCED_THRESHOLD = 7
 
 local function finite(value: any): boolean

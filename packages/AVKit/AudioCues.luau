@@ -59,7 +59,7 @@ local function cue(bus: string, priority: number, extra: { [string]: any }?): an
 		spatial = false,
 		loop = false,
 	}
-	for key, value in extra or {} do
+	for key, value in extra or {} :: { [string]: any } do
 		result[key] = value
 	end
 	return result

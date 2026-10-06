@@ -13,6 +13,12 @@ local VfxLibrary = {}
 
 VfxLibrary.SCHEMA = "vfx/1"
 
+-- vfx/1 lists hold records of differing shapes (Vfx.validate checks their keys and values); the
+-- `:: { Record }` casts stop the checker unifying every record in a list with the first one. A
+-- colour keypoint is { time, role }, which a Luau table type can only spell as { number | string }.
+type Record = { [string]: any }
+type ColorKeys = { { number | string } }
+
 local FADE_OUT = { { 0, 0 }, { 1, 1 } }
 local SHRINK = function(size: number): any
 	return { { 0, size }, { 1, 0 } }
@@ -54,7 +60,7 @@ local PRESETS: { [string]: any } = {
 				color = "bright",
 				lightEmission = 1,
 			},
-		},
+		} :: { Record },
 		lights = {
 			{
 				name = "glint",
@@ -198,11 +204,11 @@ local PRESETS: { [string]: any } = {
 				spread = { 10, 10 },
 				size = SHRINK(0.35),
 				transparency = { { 0, 0 }, { 0.7, 0.3 }, { 1, 1 } },
-				color = { { 0, "bright" }, { 1, "accent" } },
+				color = { { 0, "bright" }, { 1, "accent" } } :: ColorKeys,
 				lightEmission = 1,
 				acceleration = { y = -2 },
 			},
-		},
+		} :: { Record },
 		beams = {
 			{
 				name = "pillar",
@@ -269,7 +275,7 @@ local PRESETS: { [string]: any } = {
 				color = "bright",
 				lightEmission = 1,
 			},
-		},
+		} :: { Record },
 		reduced = { drop = { "glints" }, burstScale = 0.5 },
 	},
 	trail_basic = {
@@ -327,7 +333,7 @@ local PRESETS: { [string]: any } = {
 				lightInfluence = 1,
 				emissionDirection = "Front",
 			},
-		},
+		} :: { Record },
 		lights = {
 			{
 				name = "flash",
@@ -372,7 +378,7 @@ local PRESETS: { [string]: any } = {
 				spread = { 180, 180 },
 				size = { { 0, 1.5 }, { 1, 3 } },
 				transparency = { { 0, 0 }, { 1, 1 } },
-				color = { { 0, "bright" }, { 0.4, "accent" }, { 1, "negative" } },
+				color = { { 0, "bright" }, { 0.4, "accent" }, { 1, "negative" } } :: ColorKeys,
 				lightEmission = 0.8,
 				drag = 5,
 			},
@@ -408,7 +414,7 @@ local PRESETS: { [string]: any } = {
 				rotation = { 0, 360 },
 				rotSpeed = { -40, 40 },
 			},
-		},
+		} :: { Record },
 		lights = {
 			{
 				name = "blast",
@@ -484,7 +490,7 @@ local PRESETS: { [string]: any } = {
 				lightInfluence = 1,
 				orientation = "VelocityPerpendicular",
 			},
-		},
+		} :: { Record },
 		reduced = { drop = { "ring" }, burstScale = 0.5 },
 	},
 	confetti = {
@@ -794,7 +800,7 @@ local PRESETS: { [string]: any } = {
 				color = "neutral",
 				lightInfluence = 1,
 			},
-		},
+		} :: { Record },
 		reduced = { drop = { "smoke" }, burstScale = 0.5 },
 	},
 	charge_up = {
@@ -835,7 +841,7 @@ local PRESETS: { [string]: any } = {
 				lightEmission = 1,
 				lockedToPart = true,
 			},
-		},
+		} :: { Record },
 		lights = {
 			{ name = "glow", class = "PointLight", range = 8, brightness = 1.5, color = "accent" },
 		},

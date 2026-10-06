@@ -107,21 +107,41 @@ function FeelRoblox.new(env: any, options: Options)
 		vignetteGui.DisplayOrder = 50
 		vignetteGui.ResetOnSpawn = false
 		local sides = {
-			{ "Top", lib.UDim2.fromScale(1, 0.3), lib.UDim2.fromScale(0, 0), 90 },
-			{ "Bottom", lib.UDim2.fromScale(1, 0.3), lib.UDim2.fromScale(0, 0.7), 270 },
-			{ "Left", lib.UDim2.fromScale(0.25, 1), lib.UDim2.fromScale(0, 0), 0 },
-			{ "Right", lib.UDim2.fromScale(0.25, 1), lib.UDim2.fromScale(0.75, 0), 180 },
+			{
+				name = "Top",
+				size = lib.UDim2.fromScale(1, 0.3),
+				position = lib.UDim2.fromScale(0, 0),
+				rotation = 90,
+			},
+			{
+				name = "Bottom",
+				size = lib.UDim2.fromScale(1, 0.3),
+				position = lib.UDim2.fromScale(0, 0.7),
+				rotation = 270,
+			},
+			{
+				name = "Left",
+				size = lib.UDim2.fromScale(0.25, 1),
+				position = lib.UDim2.fromScale(0, 0),
+				rotation = 0,
+			},
+			{
+				name = "Right",
+				size = lib.UDim2.fromScale(0.25, 1),
+				position = lib.UDim2.fromScale(0.75, 0),
+				rotation = 180,
+			},
 		}
 		for _, side in sides do
 			local frame = lib.Instance.new("Frame")
-			frame.Name = side[1]
-			frame.Size = side[2]
-			frame.Position = side[3]
+			frame.Name = side.name
+			frame.Size = side.size
+			frame.Position = side.position
 			frame.BorderSizePixel = 0
 			frame.BackgroundColor3 = lib.Color3.new(0, 0, 0)
 			frame.BackgroundTransparency = 1
 			local gradient = lib.Instance.new("UIGradient")
-			gradient.Rotation = side[4]
+			gradient.Rotation = side.rotation
 			gradient.Transparency = lib.NumberSequence.new({
 				lib.NumberSequenceKeypoint.new(0, 0),
 				lib.NumberSequenceKeypoint.new(1, 1),
@@ -137,11 +157,11 @@ function FeelRoblox.new(env: any, options: Options)
 	local popupGuis: { [number]: any } = {}
 	local popupIdle: { any } = {}
 	local function popupGui(): any
-		local gui = table.remove(popupIdle)
-		if gui then
-			return gui
+		local idle = table.remove(popupIdle)
+		if idle then
+			return idle
 		end
-		gui = lib.Instance.new("BillboardGui")
+		local gui = lib.Instance.new("BillboardGui")
 		gui.Name = "FeelPopup"
 		gui.AlwaysOnTop = true
 		gui.Size = lib.UDim2.fromScale(3, 1)

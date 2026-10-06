@@ -60,7 +60,7 @@ export type Class = {
 
 local function conventionOf(info: Info): { [string]: any }
 	local out: { [string]: any } = table.clone(Breakpoints.CONVENTION :: any)
-	for key, value in info.convention or {} do
+	for key, value in info.convention or {} :: { [string]: any } do
 		if out[key] == nil then
 			error("Breakpoints: unknown convention key " .. tostring(key), 3)
 		end
@@ -178,7 +178,7 @@ export type Query = { name: string, conditions: { [string]: any } }
 -- StyleSheet and classify can disagree inside small panels: that is intended.
 function Breakpoints.queries(convention: { [string]: any }?): { Query }
 	local c: { [string]: any } = table.clone(Breakpoints.CONVENTION :: any)
-	for key, value in convention or {} do
+	for key, value in convention or {} :: { [string]: any } do
 		c[key] = value
 	end
 	return {

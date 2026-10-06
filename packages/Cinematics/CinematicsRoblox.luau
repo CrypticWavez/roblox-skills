@@ -195,7 +195,8 @@ function CinematicsRoblox.play(cin: Cinematics.Cinematic, options: Options): any
 		parts.progress.Size = r.UDim2.new(frame.skipProgress, 0, 0, 2)
 		for _, event in frame.events do
 			if options.onEvent then
-				local ok, err = pcall(options.onEvent, event.name, event.payload, frame.state == "skipped")
+				local ok: boolean, err: any =
+					pcall(options.onEvent, event.name, event.payload, frame.state == "skipped")
 				if not ok then
 					env.report("Cinematics onEvent error: " .. tostring(err))
 				end
@@ -220,7 +221,7 @@ function CinematicsRoblox.play(cin: Cinematics.Cinematic, options: Options): any
 		camera.FieldOfView = saved.FieldOfView
 		gui:Destroy()
 		if options.onFinished then
-			local ok, err = pcall(options.onFinished, state)
+			local ok: boolean, err: any = pcall(options.onFinished, state)
 			if not ok then
 				env.report("Cinematics onFinished error: " .. tostring(err))
 			end

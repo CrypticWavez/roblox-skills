@@ -138,6 +138,7 @@ export type Plan = {
 	crossfade: number,
 	fades: { Fade },
 }
+export type PlayOptions = { quantize: string?, crossfade: number? }
 
 function Music.new(config: any)
 	local problems = Music.validate(config)
@@ -159,11 +160,7 @@ function Music.new(config: any)
 		end
 	end
 
-	function api:play(
-		id: string,
-		now: number,
-		options: { quantize: string?, crossfade: number? }?
-	): (Plan?, string?)
+	function api:play(id: string, now: number, options: PlayOptions?): (Plan?, string?)
 		assert(finite(now), "Music: now must be a finite number")
 		if tracks[id] == nil then
 			return nil, "unknown_track"
@@ -171,7 +168,7 @@ function Music.new(config: any)
 		if current == id then
 			return nil, "already_playing"
 		end
-		local opts = options or {}
+		local opts: PlayOptions = options or {}
 		local quantize = opts.quantize or defaultQuantize
 		assert(table.find(Music.QUANTIZE, quantize), "Music: quantize must be none, beat or bar")
 		local crossfade = if opts.crossfade ~= nil then opts.crossfade else defaultCrossfade

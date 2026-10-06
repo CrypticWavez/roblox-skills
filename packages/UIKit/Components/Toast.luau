@@ -36,8 +36,10 @@ Toast.KINDS = table.freeze(KINDS)
 
 -- ------------------------------------------------------------------ queue (pure)
 
-function Toast.queue(options: { maxVisible: number?, maxQueued: number? }?): any
-	local o = options or {}
+export type QueueOptions = { maxVisible: number?, maxQueued: number? }
+
+function Toast.queue(options: QueueOptions?): any
+	local o: QueueOptions = options or {}
 	local maxVisible = o.maxVisible or 3
 	local maxQueued = o.maxQueued or 20
 	assert(maxVisible >= 1 and maxVisible <= 10, "Toast.queue: maxVisible must be 1-10")

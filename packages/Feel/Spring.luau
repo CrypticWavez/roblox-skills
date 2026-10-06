@@ -130,7 +130,7 @@ function Spring.new(value: any, options: Options?)
 		if type(value) == "number" then
 			spring.velocity += velocity
 		else
-			local nextVelocity = table.clone(spring.velocity)
+			local nextVelocity: { [any]: number } = table.clone(spring.velocity)
 			for _, key in keys do
 				nextVelocity[key] += velocity[key]
 			end

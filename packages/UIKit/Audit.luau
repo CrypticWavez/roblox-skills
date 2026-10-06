@@ -201,7 +201,8 @@ function Audit.run(nodes: { Node }, options: Options?): Report
 	local largeSize = o.largeSize or 24
 	local largeBoldSize = o.largeBoldSize or 19
 	local enabled: { [string]: boolean } = {}
-	for _, rule in o.rules or Audit.RULES do
+	local rules: { string } = o.rules or Audit.RULES
+	for _, rule in rules do
 		enabled[rule] = true
 	end
 	local findings: { Finding } = {}

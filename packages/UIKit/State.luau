@@ -121,7 +121,7 @@ local function propagate(roots: { Internal })
 			continue
 		end
 		for _, observer in table.clone(node.observers) do
-			local ok, err = pcall(observer, node.value, node.previous)
+			local ok: boolean, err: any = pcall(observer, node.value, node.previous)
 			if not ok then
 				report(node, "State observer error: " .. tostring(err))
 			end
@@ -284,7 +284,7 @@ end
 -- Runs fn with notifications held; observers run once after it returns (even if it raises).
 function State.batch(fn: () -> ())
 	batching += 1
-	local ok, err = pcall(fn)
+	local ok: boolean, err: any = pcall(fn)
 	batching -= 1
 	if batching == 0 then
 		flush()

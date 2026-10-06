@@ -44,6 +44,8 @@ local VirtualList = require("../Components/VirtualList")
 local Stories = {}
 
 export type Story = { name: string, build: (target: any) -> () -> () }
+-- An InventoryGrid slot (see its header): an item, or false for an empty slot.
+type Slot = { key: string, glyph: string?, image: string?, count: number? } | false
 
 -- The neutral setup-mode catalog the ShopCard story shows (placeholder id 0, disabled).
 Stories.CATALOG = Catalog.define({
@@ -302,7 +304,7 @@ function Stories.list(ctx: Build.Context): { Story }
 			InventoryGrid.mount({
 				capacity = 12,
 				columns = 4,
-				slots = { { key = "item_a", glyph = "A", count = 3 }, false, { key = "item_c", glyph = "C" } },
+				slots = { { key = "item_a", glyph = "A", count = 3 }, false, { key = "item_c", glyph = "C" } } :: { Slot },
 				selected = 1,
 			}, child, holder)
 		end),

@@ -33,14 +33,14 @@ function Popups.format(value: number): string
 	assert(finite(value), "Popups.format: value must be finite")
 	local sign = if value < 0 then "-" else ""
 	local magnitude = math.abs(value)
-	local units = { { 1e9, "B" }, { 1e6, "M" }, { 1e3, "K" } }
+	local units = { { at = 1e9, suffix = "B" }, { at = 1e6, suffix = "M" }, { at = 1e3, suffix = "K" } }
 	for _, unit in units do
-		if magnitude >= unit[1] then
-			local scaled = math.floor(magnitude / unit[1] * 10) / 10
+		if magnitude >= unit.at then
+			local scaled = math.floor(magnitude / unit.at * 10) / 10
 			local text = if scaled >= 100 or scaled % 1 == 0
 				then string.format("%d", math.floor(scaled))
 				else string.format("%.1f", scaled)
-			return sign .. text .. unit[2]
+			return sign .. text .. unit.suffix
 		end
 	end
 	if magnitude % 1 == 0 then

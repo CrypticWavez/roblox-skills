@@ -28,7 +28,9 @@ AudioGraph.EFFECTS_PER_BUS = 4 -- convention
 
 -- camelCase data key -> { property, min, max }. AudioCompressor ranges are documented (class page);
 -- AudioEqualizer and AudioReverb ranges are conventions inside the engine's ranges.
-local EFFECTS = {
+-- A field is a { string, number, number } tuple (bypass: { string }); Luau has no tuple table type.
+type EffectField = { string | number }
+local EFFECTS: { [string]: { [string]: EffectField } } = {
 	AudioCompressor = {
 		threshold = { "Threshold", -60, 0 },
 		ratio = { "Ratio", 1, 50 },
@@ -195,7 +197,7 @@ function AudioGraph.validate(graph: any): ({ string }, { string })
 				end
 				for index, effect in effects do
 					local at = where .. ".effects[" .. index .. "]"
-					local spec = type(effect) == "table" and EFFECTS[effect.class]
+					local spec = if type(effect) == "table" then EFFECTS[effect.class] else nil
 					if not spec then
 						problem(at .. ".class must be AudioCompressor, AudioEqualizer or AudioReverb")
 						continue
@@ -210,7 +212,7 @@ function AudioGraph.validate(graph: any): ({ string }, { string })
 								if type(effect[key]) ~= "boolean" then
 									problem(at .. ".bypass must be a boolean")
 								end
-							elseif not inRange(effect[key], field[2], field[3]) then
+							elseif not inRange(effect[key], field[2] :: number, field[3] :: number) then
 								problem(
 									string.format(
 										"%s.%s must be within %s..%s",
@@ -375,10 +377,10 @@ function AudioGraph.plan(graph: any, options: { silent: boolean? }?): Plan
 		local tail = fader
 		for index, effect in bus.effects or {} do
 			local node = string.format("%s_fx%d_%s", fader, index, effect.class)
-			local props = {}
+			local props: { [string]: any } = {}
 			for key, value in effect do
 				if key ~= "class" then
-					props[EFFECTS[effect.class][key][1]] = value
+					props[EFFECTS[effect.class][key][1] :: string] = value
 				end
 			end
 			table.insert(plan.nodes, { name = node, class = effect.class, bus = name, props = props })
