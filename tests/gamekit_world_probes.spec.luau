@@ -100,14 +100,19 @@ local function loader(path)
 	return module
 end
 
-local function run(only)
+-- options.place replaces FakeEnv's diagnostic place; options.prepare(env) edits the fakes.
+local function run(only, options)
+	local opts = options or {}
 	local game = roblox.Instance.new("DataModel")
 	local starter = game:GetService("StarterPlayer")
 	starter.CharacterUseJumpPower = false -- the default for new places (Lune's reflection says true)
-	local env = FakeEnv.new({ roblox = R })
+	local env = FakeEnv.new({ roblox = R, place = opts.place })
 	env:register("Workspace", workspaceStandIn(game:GetService("Workspace")))
 	env:register("StarterPlayer", starter)
 	env:register("PathfindingService", FakePathfinding.new({ roblox = roblox, route = route }))
+	if opts.prepare then
+		opts.prepare(env)
+	end
 	local lines = {}
 	local summary = Probe.runAll(registry, {
 		env = env,
@@ -145,6 +150,53 @@ for _, name in { "lvl_pathfinding_probe", "lvl_navagent_door", "lvl_kit_swap", "
 		t.eq(game:GetService("Workspace"):FindFirstChild("SETUP_ONLY_LevelProbe"), nil, "staging removed")
 	end)
 end
+
+local function errorLines(lines)
+	local out = {}
+	for _, line in lines do
+		if string.find(line, '"check":"error"', 1, true) then
+			table.insert(out, line)
+		end
+	end
+	return out
+end
+
+test("every level probe refuses a published place before it builds anything", function(t)
+	local published = { isStudio = true, gameId = 4242, placeId = 99 }
+	local summary, lines, game = run(nil, { place = published })
+	t.eq(summary.ok, false)
+	t.eq(summary.errors, 4, table.concat(lines, "\n"))
+	t.eq(summary.passed, 0, "no check ran on a published place")
+	local errors = errorLines(lines)
+	t.eq(#errors, 4)
+	for _, line in errors do
+		t.ok(string.find(line, "diagnostic places only", 1, true) ~= nil, line)
+	end
+	t.eq(#game:GetService("Workspace"):GetChildren(), 0, "nothing staged")
+	-- a live (non-Studio) place is refused the same way
+	local live = run({ "lvl_kit_swap" }, { place = { isStudio = false, gameId = 0, placeId = 0 } })
+	t.eq({ live.errors, live.passed }, { 1, 0 })
+end)
+
+test("a level probe that raises still removes its staging", function(t)
+	local summary, lines, game = run({ "lvl_pathfinding_probe", "lvl_course_run" }, {
+		prepare = function(env)
+			env:register("PathfindingService", {
+				CreatePath = function()
+					error("pathfinding exploded")
+				end,
+			})
+			env.services.Workspace.Raycast = function()
+				error("raycast exploded")
+			end
+		end,
+	})
+	t.eq(summary.errors, 2, table.concat(lines, "\n"))
+	local errors = table.concat(errorLines(lines), "\n")
+	t.ok(string.find(errors, "pathfinding exploded", 1, true) ~= nil, errors)
+	t.ok(string.find(errors, "raycast exploded", 1, true) ~= nil, errors)
+	t.eq(game:GetService("Workspace"):FindFirstChild("SETUP_ONLY_LevelProbe"), nil, "staging removed")
+end)
 
 test("a mismatched engine fails lvl_course_run's physics checks", function(t)
 	local game = roblox.Instance.new("DataModel")

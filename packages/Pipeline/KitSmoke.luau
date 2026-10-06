@@ -12,7 +12,9 @@
 -- Studio, a path loader in Lune), so Pipeline never requires a kit package itself. A registry that
 -- fails to load, a probe name that is not a lower_snake label, a value that is not a function and a
 -- name registered twice are problems: they are reported by the built-in probe kitsmoke_registries
--- (failed checks), never skipped silently. Read-only: it creates, changes and uploads nothing.
+-- (failed checks), never skipped silently. Not read-only: the probes it runs build and change
+-- staging content on the diagnostic place (Workspace folders, Lighting, MaterialService) and
+-- restore it; nothing is uploaded. Run it on the unpublished diagnostic place only.
 local KitSmoke = {}
 
 KitSmoke.SIDES = table.freeze({ "shared", "server", "client" })

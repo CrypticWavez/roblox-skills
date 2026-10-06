@@ -1,7 +1,8 @@
 --!strict
 -- G7 probe registry (prefixes level_, lvl_). Run in a play session on the unpublished diagnostic
 -- place built from fixtures/kits.project.json (tests/engine/lvl_<name>.luau are the RunScript
--- entries); each probe builds what it needs under Workspace.SETUP_ONLY_LevelProbe and removes it.
+-- entries); each probe refuses any other place (Env.assertDiagnostic), builds what it needs under
+-- Workspace.SETUP_ONLY_LevelProbe and removes it, also when the probe raises.
 --   lvl_pathfinding_probe  PathfindingService with NavAgentRoblox parameters: a wall with a gap,
 --                          a PathfindingModifier label priced out (Costs = math.huge) and a
 --                          PathfindingLink; the path succeeds, ends at the goal and avoids the zone
@@ -20,6 +21,7 @@ local probes = {}
 local FOLDER = "SETUP_ONLY_LevelProbe"
 
 local function stage(ctx: any): any
+	ctx.kit("GameKit/Env").assertDiagnostic(ctx.env, ctx.probe)
 	local workspace = ctx.env.services.Workspace
 	-- A Lune runner passes a Workspace stand-in table (Raycast over Lune parts); its `instance`
 	-- is the real parent. In Studio Workspace is the service itself.
@@ -34,6 +36,28 @@ local function stage(ctx: any): any
 	return folder
 end
 
+-- Wraps a probe body: refuses a non-diagnostic place and stages the folder first, then always runs
+-- the body's deferred cleanups (in reverse) and removes the folder, so a probe that raises leaves
+-- nothing behind. The error is re-raised for Probe.runAll to record as check "error".
+local function staged(body: (ctx: any, folder: any, defer: (fn: () -> ()) -> ()) -> ...any)
+	return function(ctx: any)
+		local folder = stage(ctx)
+		local cleanups = {}
+		local ok, err = pcall(body, ctx, folder, function(fn: () -> ())
+			table.insert(cleanups, fn)
+		end)
+		for index = #cleanups, 1, -1 do
+			pcall(cleanups[index])
+		end
+		pcall(function()
+			folder:Destroy()
+		end)
+		if not ok then
+			error(err, 0)
+		end
+	end
+end
+
 local function block(ctx: any, parent: any, name: string, size: { number }, pos: { number }): any
 	local R = ctx.env.roblox
 	local part = R.Instance.new("Part")
@@ -45,10 +69,9 @@ local function block(ctx: any, parent: any, name: string, size: { number }, pos:
 	return part
 end
 
-function probes.lvl_pathfinding_probe(ctx: any)
+probes.lvl_pathfinding_probe = staged(function(ctx: any, folder: any)
 	local NavAgentRoblox = ctx.kit("GameKit/NavAgentRoblox")
 	local R = ctx.env.roblox
-	local folder = stage(ctx)
 	-- Floor 120 x 60; a wall across x = 0 with a gap at z in [16, 26]; an avoid zone at z ~ 0.
 	block(ctx, folder, "Floor", { 120, 1, 60 }, { 0, -0.5, 0 })
 	block(ctx, folder, "WallA", { 2, 10, 44 }, { 0, 5, -8 })
@@ -92,13 +115,11 @@ function probes.lvl_pathfinding_probe(ctx: any)
 	end
 	ctx.check("avoids_priced_out_zone", inZone == 0, inZone)
 	ctx.check("crosses_wall_at_gap", throughGap, "a waypoint near x = 0 inside the gap")
-	folder:Destroy()
-end
+end)
 
-function probes.lvl_navagent_door(ctx: any)
+probes.lvl_navagent_door = staged(function(ctx: any, folder: any, defer: (fn: () -> ()) -> ())
 	local NavAgentRoblox = ctx.kit("GameKit/NavAgentRoblox")
 	local R = ctx.env.roblox
-	local folder = stage(ctx)
 	block(ctx, folder, "Floor", { 80, 1, 40 }, { 0, -0.5, 0 })
 	block(ctx, folder, "WallA", { 2, 10, 17 }, { 0, 5, -11.5 })
 	block(ctx, folder, "WallB", { 2, 10, 17 }, { 0, 5, 11.5 })
@@ -115,6 +136,9 @@ function probes.lvl_navagent_door(ctx: any)
 		end,
 	}
 	local controller = NavAgentRoblox.new(humanoid, root, { stuckTime = 5 }, ctx.env)
+	defer(function()
+		controller:destroy()
+	end)
 	local finished = nil
 	controller.finished:Connect(function(kind: string)
 		finished = kind
@@ -140,15 +164,12 @@ function probes.lvl_navagent_door(ctx: any)
 	ctx.check("arrived", last ~= nil and last.kind == "arrived", last and last.reason)
 	ctx.check("moved", #moves >= 2, #moves)
 	ctx.check("finished_signal", finished == "arrived", finished)
-	controller:destroy()
-	folder:Destroy()
-end
+end)
 
-function probes.lvl_kit_swap(ctx: any)
+probes.lvl_kit_swap = staged(function(ctx: any, folder: any)
 	local Course = ctx.kit("ProcGen/Course")
 	local Apply = ctx.kit("SceneKit/Apply")
 	local R = ctx.env.roblox
-	local folder = stage(ctx)
 	local scene = Course.toScene(Course.linear({ seed = 701, length = 8 }))
 	local _, root = Apply.scene(scene, folder, { env = R })
 	local before = {}
@@ -208,10 +229,9 @@ function probes.lvl_kit_swap(ctx: any)
 	end
 	ctx.check("attributes_kept", kept == expected, kept)
 	ctx.check("cframes_kept", worst < 1e-3, worst)
-	folder:Destroy()
-end
+end)
 
-function probes.lvl_course_run(ctx: any)
+probes.lvl_course_run = staged(function(ctx: any, folder: any)
 	local Course = ctx.kit("ProcGen/Course")
 	local Measure = ctx.kit("SceneKit/Measure")
 	local Apply = ctx.kit("SceneKit/Apply")
@@ -236,7 +256,6 @@ function probes.lvl_course_run(ctx: any)
 		useJumpPower = player.CharacterUseJumpPower,
 	})
 
-	local folder = stage(ctx)
 	local course = Course.linear({ seed = 701, length = 16 })
 	local _, root = Apply.scene(Course.toScene(course), folder, { env = R })
 	local params = R.RaycastParams.new()
@@ -279,7 +298,6 @@ function probes.lvl_course_run(ctx: any)
 	end
 	ctx.check("landings_in_place", #missed == 0, missed)
 	ctx.check("arcs_clear", #blocked == 0, blocked)
-	folder:Destroy()
-end
+end)
 
 return probes

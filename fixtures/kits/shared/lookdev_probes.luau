@@ -3,7 +3,9 @@
 -- engine-facing module of the look, sound and feel kits in a play session on the unpublished
 -- diagnostic place (fixtures/kits.project.json) and records ENGINE_CHECK lines; runners are
 -- tests/engine/<probe>.luau. Client-side probes (audio, feel) need a LocalScript runner: they
--- fail a "client_side" check on the server rather than pretend.
+-- fail a "client_side" check on the server rather than pretend. Every probe refuses any place but
+-- the unpublished diagnostic one first (Env.assertDiagnostic), removes what it builds and restores
+-- the Lighting and MaterialService state it changes, also when it raises.
 -- No requires: kit modules come from ctx.kit. Lune specs (tests/avkit_probes.spec.luau) run this
 -- registry against FakeEnv with env.engineOverrides for the engine methods Lune lacks (Emit,
 -- PivotTo, AudioPlayer:Play, LoadAnimation, GetServerTimeNow, MaterialService methods); Studio
@@ -12,6 +14,97 @@ local probes = {}
 
 local function overrides(ctx: any): any
 	return ctx.env.engineOverrides or {}
+end
+
+-- Wraps a probe body: refuses a non-diagnostic place before anything runs, then always runs the
+-- body's deferred cleanups (in reverse, each protected), so a probe that raises still removes what
+-- it built and restores what it changed. The error is re-raised for Probe.runAll to record as
+-- check "error".
+local function guarded(body: (ctx: any, defer: (fn: () -> ()) -> ()) -> ...any)
+	return function(ctx: any)
+		ctx.kit("GameKit/Env").assertDiagnostic(ctx.env, ctx.probe)
+		local cleanups = {}
+		local ok, err = pcall(body, ctx, function(fn: () -> ())
+			table.insert(cleanups, fn)
+		end)
+		for index = #cleanups, 1, -1 do
+			pcall(cleanups[index])
+		end
+		if not ok then
+			error(err, 0)
+		end
+	end
+end
+
+local function read(instance: any, key: string): (boolean, any)
+	return pcall(function(): any
+		return instance[key]
+	end)
+end
+
+-- Captures what SceneKit/Lighting.apply writes and returns the function that puts it back: the
+-- Lighting properties Lighting.inspect reads, every Lighting attribute, Workspace.GlobalWind, and
+-- the SceneKit-owned Atmosphere, Sky, post effects and Clouds. Those are set aside (unparented)
+-- for the run, so apply builds its own and the place's instances come back untouched.
+local function keepLighting(Lighting: any, lighting: any): () -> ()
+	local properties = {}
+	for key in Lighting.inspect(lighting).lighting do
+		local ok, value = read(lighting, key)
+		if ok then
+			properties[key] = value
+		end
+	end
+	local attributes = lighting:GetAttributes()
+	local root = lighting.Parent
+	local workspace = if root then root:FindFirstChildOfClass("Workspace") else nil
+	local windRead, wind = false, nil
+	if workspace then
+		windRead, wind = read(workspace, "GlobalWind")
+	end
+	local parents = { lighting }
+	local terrain = if workspace then workspace:FindFirstChildOfClass("Terrain") else nil
+	if terrain then
+		table.insert(parents, terrain)
+	end
+	local function owned(): { { child: any, parent: any } }
+		local out = {}
+		for _, parent in parents do
+			for _, child in parent:GetChildren() do
+				if child:GetAttribute(Lighting.OWNED_ATTRIBUTE) == true then
+					table.insert(out, { child = child, parent = parent })
+				end
+			end
+		end
+		return out
+	end
+	local setAside = owned()
+	for _, entry in setAside do
+		entry.child.Parent = nil
+	end
+	return function()
+		for _, entry in owned() do
+			entry.child:Destroy()
+		end
+		for _, entry in setAside do
+			entry.child.Parent = entry.parent
+		end
+		for key, value in properties do
+			pcall(function()
+				lighting[key] = value
+			end)
+		end
+		for name in lighting:GetAttributes() do
+			if attributes[name] == nil then
+				lighting:SetAttribute(name, nil)
+			end
+		end
+		for name, value in attributes do
+			lighting:SetAttribute(name, value)
+		end
+		if windRead then
+			workspace.GlobalWind = wind
+		end
+	end
 end
 
 local function clientOnly(ctx: any): boolean
@@ -32,13 +125,15 @@ end
 
 -- SceneKit/Lighting schema 2: every preset applies without conflicts, inspect reads it back,
 -- apply is order-independent and requires (LightingStyle) is reported, not written.
-function probes.av_lighting_presets(ctx: any)
+-- The Lighting state the place had is restored afterwards.
+probes.av_lighting_presets = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	local Lighting = ctx.kit("SceneKit/Lighting")
 	local env = ctx.env
 	local lighting = env.services.Lighting
 	if not ctx.check("lighting_service", lighting ~= nil) then
 		return
 	end
+	defer(keepLighting(Lighting, lighting))
 	for _, id in Lighting.list() do
 		local ok, report = pcall(Lighting.apply, lighting, id, env)
 		if ok then
@@ -64,12 +159,11 @@ function probes.av_lighting_presets(ctx: any)
 		{ direct = direct.lighting.Brightness, after = after.lighting.Brightness }
 	)
 	ctx.check("requires_reported", type(after.requires_ok) == "boolean", after.requires)
-	Lighting.apply(lighting, "lookdev_neutral", env)
-end
+end)
 
 -- AVKit/VfxPoolRoblox: all 21 presets play on a grid, bursts return to the pool, stopped loops
 -- linger then return, clones are reused, and flash items drop when flashes are off.
-function probes.av_vfx_grid(ctx: any)
+probes.av_vfx_grid = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	local VfxPoolRoblox = ctx.kit("AVKit/VfxPoolRoblox")
 	local VfxLibrary = ctx.kit("AVKit/VfxLibrary")
 	local env = ctx.env
@@ -77,7 +171,13 @@ function probes.av_vfx_grid(ctx: any)
 	local folder = lib.Instance.new("Folder")
 	folder.Name = "LookdevVfxGrid"
 	folder.Parent = env.services.Workspace
+	defer(function()
+		folder:Destroy()
+	end)
 	local pool = VfxPoolRoblox.new(env, { parent = folder, engine = overrides(ctx).vfx, capacity = 32 })
+	defer(function()
+		pool:destroy()
+	end)
 	local ids = VfxLibrary.list()
 	local loops = 0
 	local handles = {}
@@ -117,31 +217,36 @@ function probes.av_vfx_grid(ctx: any)
 	ctx.check("flash_light_dropped", flash ~= nil and flash.Enabled == false)
 	local _, reason = pool:play("speed_lines", lib.Vector3.new(12, 6, 30))
 	ctx.check("motion_skipped", reason == "reduced_motion", reason)
-	pool:destroy()
-	folder:Destroy()
-end
+end)
 
-local function audioSetup(ctx: any, options: any): (any, any)
+local function audioSetup(ctx: any, options: any, defer: (fn: () -> ()) -> ()): any
 	local env = ctx.env
 	local lib = env.roblox
 	local folder = lib.Instance.new("Folder")
 	folder.Name = "LookdevAudioGraph"
 	local soundService = env.services.SoundService
 	folder.Parent = if typeof(soundService) == "Instance" then soundService else env.services.Workspace
+	defer(function()
+		folder:Destroy()
+	end)
 	local AudioGraphRoblox = ctx.kit("AVKit/AudioGraphRoblox")
 	options.parent = folder
 	options.camera = env.services.Workspace and env.services.Workspace.CurrentCamera
 	options.engine = overrides(ctx).audio
-	return AudioGraphRoblox.new(env, options), folder
+	local mix = AudioGraphRoblox.new(env, options)
+	defer(function()
+		mix:destroy()
+	end)
+	return mix
 end
 
 -- AVKit/AudioGraphRoblox: the default audio-graph/1 builds on the Audio API and every Wire is
 -- Connected (all pins exist, no cycle).
-function probes.av_audiograph_wires(ctx: any)
+probes.av_audiograph_wires = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	if not clientOnly(ctx) then
 		return
 	end
-	local mix, folder = audioSetup(ctx, {})
+	local mix = audioSetup(ctx, {}, defer)
 	ctx.env.wait(0.1)
 	local report = mix:inspect()
 	ctx.check("wires_connected", report.wires > 0 and report.connected == report.wires, report.broken)
@@ -151,25 +256,23 @@ function probes.av_audiograph_wires(ctx: any)
 		report.defaultListenerLocation ~= nil,
 		{ defaultListenerLocation = report.defaultListenerLocation }
 	)
-	mix:destroy()
-	folder:Destroy()
-end
+end)
 
 -- AVKit/AudioGraphRoblox: a cue played on sfx reaches master: the master AudioAnalyzer peak rises
 -- above 0. The content is a built-in path whose AudioPlayer support is UNVERIFIED; a run may set
 -- env.lookdevAudioContent to an approved content string instead.
-function probes.av_audio_master_level(ctx: any)
+probes.av_audio_master_level = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	if not clientOnly(ctx) then
 		return
 	end
 	local env = ctx.env
 	local content = env.lookdevAudioContent or "rbxasset://sounds/action_footsteps_plastic.mp3"
-	local mix, folder = audioSetup(ctx, {
+	local mix = audioSetup(ctx, {
 		cues = {
 			probe_tone = { bus = "sfx", slot = "probe_tone", cooldown = 0, maxConcurrent = 1, volume = 0.5 },
 		},
 		assets = { probe_tone = content },
-	})
+	}, defer)
 	local voice, reason = mix:play("probe_tone")
 	ctx.check("cue_admitted", voice ~= nil, reason)
 	local peak = 0
@@ -179,14 +282,12 @@ function probes.av_audio_master_level(ctx: any)
 		peak = math.max(peak, mix:levels().peak)
 	end
 	ctx.check("master_peak_above_zero", peak > 0, { peak = peak, content = content })
-	mix:destroy()
-	folder:Destroy()
-end
+end)
 
 -- Feel/FeelRoblox: an animation marker fires a Feel cue; hit-stop pauses the track with
 -- AdjustSpeed(0) and restores it. The animation is a local KeyframeSequence registered with
 -- KeyframeSequenceProvider:RegisterKeyframeSequence (a Studio-only temporary id; nothing uploaded).
-function probes.feel_marker_cue(ctx: any)
+probes.feel_marker_cue = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	if not clientOnly(ctx) then
 		return
 	end
@@ -197,6 +298,9 @@ function probes.feel_marker_cue(ctx: any)
 	local workspace = env.services.Workspace
 	local rig = lib.Instance.new("Model")
 	rig.Name = "LookdevFeelRig"
+	defer(function()
+		rig:Destroy()
+	end)
 	local root = lib.Instance.new("Part")
 	root.Name = "HumanoidRootPart"
 	root.Anchored = true
@@ -225,7 +329,6 @@ function probes.feel_marker_cue(ctx: any)
 		return provider:RegisterKeyframeSequence(sequence)
 	end)
 	if not ctx.check("sequence_registered", registered, if registered then nil else tostring(id)) then
-		rig:Destroy()
 		return
 	end
 	local animation = lib.Instance.new("Animation")
@@ -240,6 +343,9 @@ function probes.feel_marker_cue(ctx: any)
 		cues = { probe_hit = { shake = "hit_light", hitStop = 0.1, visual = "animation", priority = 5 } },
 		engine = o.feel,
 	})
+	defer(function()
+		feel:destroy()
+	end)
 	feel:freeze(track)
 	feel:bindMarkers(track, { Hit = "probe_hit" }, function(param: any)
 		table.insert(fired, tostring(param))
@@ -257,17 +363,17 @@ function probes.feel_marker_cue(ctx: any)
 	ctx.check("marker_fired_once", #fired == 1, fired)
 	ctx.check("hit_stop_paused_track", sawFreeze)
 	ctx.check("speed_restored", track.Speed == 1, track.Speed)
-	feel:destroy()
-	rig:Destroy()
-end
+end)
 
 -- GameKit/WorldCycle: phases computed from Workspace:GetServerTimeNow() apply onto Lighting with
--- ClockTime on the clock, blends between presets, and the apply rate limit.
-function probes.worldcycle_phases(ctx: any)
+-- ClockTime on the clock, blends between presets, and the apply rate limit. The Lighting state the
+-- place had is restored afterwards.
+probes.worldcycle_phases = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	local WorldCycle = ctx.kit("GameKit/WorldCycle")
 	local Lighting = ctx.kit("SceneKit/Lighting")
 	local env = ctx.env
 	local lighting = env.services.Lighting
+	defer(keepLighting(Lighting, lighting))
 	local workspace = env.services.Workspace
 	local read = overrides(ctx).serverTime or function(): number
 		return workspace:GetServerTimeNow()
@@ -292,13 +398,13 @@ function probes.worldcycle_phases(ctx: any)
 	end
 	local cycle = WorldCycle.new()
 	ctx.check("rate_limited", cycle:step(now) ~= nil and cycle:step(now + 0.1) == nil)
-	Lighting.apply(lighting, "lookdev_neutral", env)
-end
+end)
 
 -- SceneKit/Materials tier 0: MaterialService:SetBaseMaterialOverride switches a base material to
 -- an existing MaterialVariant and back. Building the variant needs plugin security (BaseMaterial),
--- so run this probe through execute_luau; a play session reports variant_built = false.
-function probes.lookdev_material_override(ctx: any)
+-- so run this probe through execute_luau; a play session reports variant_built = false. The Sand
+-- override the place had is put back and the variant removed afterwards.
+probes.lookdev_material_override = guarded(function(ctx: any, defer: (fn: () -> ()) -> ())
 	local Materials = ctx.kit("SceneKit/Materials")
 	local env = ctx.env
 	local lib = env.roblox
@@ -333,18 +439,21 @@ function probes.lookdev_material_override(ctx: any)
 		return
 	end
 	variant.Parent = service
+	defer(function()
+		variant:Destroy()
+	end)
 	-- the object that carries the override methods (Lune specs pass a proxy; Studio uses the service)
 	local api = overrides(ctx).materialApi or service
+	local sand = lib.Enum.Material.Sand
+	local readBefore, before = pcall(function(): any
+		return api:GetBaseMaterialOverride(sand)
+	end)
+	defer(function()
+		api:SetBaseMaterialOverride(sand, if readBefore and type(before) == "string" then before else "")
+	end)
 	local report = Materials.applyOverrides(api, Materials.overridePlan(library), env)
 	ctx.check("override_set", #report.set == 1 and #report.failed == 0, report)
-	ctx.check(
-		"override_reads_back",
-		api:GetBaseMaterialOverride(lib.Enum.Material.Sand) == "lookdev_probe_sand"
-	)
-	pcall(function()
-		api:SetBaseMaterialOverride(lib.Enum.Material.Sand, "")
-	end)
-	variant:Destroy()
-end
+	ctx.check("override_reads_back", api:GetBaseMaterialOverride(sand) == "lookdev_probe_sand")
+end)
 
 return probes
