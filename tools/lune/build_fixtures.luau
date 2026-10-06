@@ -9,6 +9,7 @@ local serde = require("@lune/serde")
 
 local Arena = require("../../packages/ProcGen/Arena")
 local Cave = require("../../packages/ProcGen/Cave")
+local Course = require("../../packages/ProcGen/Course")
 local Dungeon = require("../../packages/ProcGen/Dungeon")
 local Forest = require("../../packages/ProcGen/Forest")
 local ForestScene = require("../../packages/ProcGen/ForestScene")
@@ -172,6 +173,25 @@ fixtures.forest = function()
 			ascii = Forest.toAscii(layout),
 		}
 end
+
+-- Course fixtures: one per ProcGen Course kind, default player (R15 guide numbers), validated
+-- with Validate.course (jump physics, checkpoints, loop, lanes, spawns).
+local function courseFixture(name: string, params: { [string]: any })
+	return function()
+		local course = Course.generate(params)
+		local scene = Course.toScene(course, "greybox", { name = name })
+		return scene, { procgen = PValidate.course(course), layoutHash = course.hash }
+	end
+end
+fixtures.course_linear =
+	courseFixture("SETUP_ONLY_CourseLinear", { kind = "linear", seed = 701, length = 24 })
+fixtures.course_tower = courseFixture("SETUP_ONLY_CourseTower", { kind = "tower", seed = 702, floors = 4 })
+fixtures.course_race_loop = courseFixture("SETUP_ONLY_CourseRaceLoop", { kind = "race_loop", seed = 703 })
+fixtures.course_lanes = courseFixture("SETUP_ONLY_CourseLanes", { kind = "lanes", seed = 704, lanes = 3 })
+fixtures.course_micro_arena = courseFixture(
+	"SETUP_ONLY_CourseMicroArena",
+	{ kind = "micro_arena", seed = 705, players = 8, edge = "wall" }
+)
 
 local only = process.args[2]
 local report = { generatedBy = "tools/lune/build_fixtures.luau", fixtures = {} }

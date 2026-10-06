@@ -1,6 +1,7 @@
 --!strict
 -- Layout validators. Each check returns { name, pass, value, limit, detail } so reports
--- are machine-readable and comparable across seeds.
+-- are machine-readable and comparable across seeds. Validate.course lives in CourseValidate.
+local CourseValidate = require("./CourseValidate")
 local Forest = require("./Forest")
 local Grid = require("./Grid")
 local RoomGraph = require("./RoomGraph")
@@ -657,6 +658,11 @@ function Validate.forest(layout, rules: Rules?): { Check }
 	)
 	return checks
 end
+
+-- Course generators (ProcGen/Course): jumps against the character's real jump physics, reachability,
+-- checkpoint gating and spacing, the difficulty curve, race loops, lane balance and arena spawn
+-- fairness. Checks and rules are listed in ProcGen/CourseValidate.
+Validate.course = CourseValidate.course
 
 function Validate.summary(checks: { Check }): { pass: boolean, failed: { string }, checks: { Check } }
 	local failed = {}

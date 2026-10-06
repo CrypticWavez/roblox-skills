@@ -1,6 +1,8 @@
 --!strict
 -- Instantiates a Scene. Runs in Roblox Studio (ChangeHistoryService undo waypoint) and in
 -- Lune (pass env = require("@lune/roblox")) so fixtures can be written as .rbxlx files.
+-- Apply.swap replaces placeholders with kit/1 pieces (SceneKit Kit), keeping their CFrames.
+local Kit = require("./Kit")
 local Manifest = require("../ProcGen/Manifest")
 local Scene = require("./Scene")
 
@@ -226,6 +228,149 @@ function Apply.terrain(ops: { any }, terrain: any, env: any?, options: { history
 		end
 	end, { history = options and options.history, env = e })
 	return #ops
+end
+
+export type SwapOptions = {
+	load: (piece: Kit.Piece) -> any, -- the piece's template Instance (Model or BasePart), cloned per use
+	fit: string?, -- Kit.fit mode: none (default), uniform, stretch (BaseParts only)
+	keepPlaceholders: boolean?, -- hide placeholders (Transparency 1, CanCollide off) instead of destroying
+	env: any?,
+	history: any?,
+	pivotTo: ((instance: any, cframe: any) -> ())?, -- default instance:PivotTo(cframe)
+	scaleTo: ((instance: any, scale: number) -> ())?, -- default model:ScaleTo(scale)
+}
+export type SwapReport = {
+	kit: string,
+	swapped: number,
+	procedural: number, -- placeholders whose piece SceneKit builds itself (left as they are)
+	missing: { string }, -- asset keys with no piece in the kit (sorted, unique)
+	failed: { string },
+	warnings: { string }, -- size mismatches reported by Kit.fit
+	unused: { string },
+}
+
+-- Swaps the placeholders under `root` (BaseParts with an `asset` attribute naming a kit/1 piece)
+-- for clones of the pieces from options.load, keeping every placeholder's CFrame: the piece pivot
+-- goes to placeholder.CFrame * Kit.fit offset, so its bounds sit centred on the placeholder box
+-- with the bottoms level. The clone takes the placeholder's name and attributes (gameplay
+-- bindings such as Checkpoint survive) plus KitId; collision "none" turns CanCollide off. One
+-- ChangeHistory recording. Tier T3 in Studio (probe lvl_kit_swap); Lune specs pass pivotTo.
+function Apply.swap(root: any, kit: any, options: SwapOptions): SwapReport
+	assert(
+		type(options) == "table" and type(options.load) == "function",
+		"Apply.swap: options.load is required"
+	)
+	local defined = Kit.define(kit)
+	local env = options.env or defaultEnv()
+	local pivotTo = options.pivotTo or function(instance: any, cframe: any)
+		instance:PivotTo(cframe)
+	end
+	local scaleTo = options.scaleTo or function(instance: any, scale: number)
+		instance:ScaleTo(scale)
+	end
+	local parts, placeholders = {}, {}
+	for _, descendant in root:GetDescendants() do
+		local asset = descendant:IsA("BasePart") and descendant:GetAttribute("asset")
+		if type(asset) == "string" then
+			local size = descendant.Size
+			local placeholder = {
+				asset = asset,
+				size = { x = size.X, y = size.Y, z = size.Z },
+				id = descendant:GetAttribute("SceneKitId") or descendant.Name,
+			}
+			table.insert(placeholders, placeholder)
+			parts[placeholder] = descendant
+		end
+	end
+	local matches, missing, unused = Kit.resolve(defined, placeholders, { fit = options.fit })
+	local report: SwapReport = {
+		kit = defined.id,
+		swapped = 0,
+		procedural = 0,
+		missing = {},
+		failed = {},
+		warnings = {},
+		unused = unused,
+	}
+	local missingKeys = {}
+	for _, placeholder in missing do
+		missingKeys[placeholder.asset] = true
+	end
+	for key in missingKeys do
+		table.insert(report.missing, key)
+	end
+	table.sort(report.missing)
+	Apply.withUndo("SceneKit kit swap " .. defined.id, function()
+		for _, match in matches do
+			local part = parts[match.placeholder]
+			local label = tostring(match.placeholder.id)
+			if match.procedural then
+				report.procedural += 1
+				continue
+			end
+			for _, problem in match.problems do
+				table.insert(report.warnings, label .. ": " .. problem)
+			end
+			local ok, template = pcall(options.load, match.piece :: Kit.Piece)
+			if not ok or template == nil then
+				table.insert(
+					report.failed,
+					label
+						.. ": load failed for "
+						.. match.key
+						.. (if ok then "" else " (" .. tostring(template) .. ")")
+				)
+				continue
+			end
+			local clone = template:Clone()
+			local scale = match.scale
+			local uniform = math.abs(scale.x - scale.y) < 1e-6 and math.abs(scale.y - scale.z) < 1e-6
+			if clone:IsA("BasePart") then
+				if scale.x ~= 1 or scale.y ~= 1 or scale.z ~= 1 then
+					clone.Size = env.Vector3.new(
+						clone.Size.X * scale.x,
+						clone.Size.Y * scale.y,
+						clone.Size.Z * scale.z
+					)
+				end
+			elseif not uniform then
+				table.insert(
+					report.failed,
+					label .. ": stretch needs a BasePart piece (models scale uniformly)"
+				)
+				clone:Destroy()
+				continue
+			elseif scale.x ~= 1 then
+				scaleTo(clone, scale.x)
+			end
+			local offset = match.offset
+			pivotTo(clone, part.CFrame * env.CFrame.new(offset.x, offset.y, offset.z))
+			clone.Name = part.Name
+			for key, value in part:GetAttributes() do
+				clone:SetAttribute(key, value)
+			end
+			clone:SetAttribute("KitId", defined.id)
+			if (match.piece :: Kit.Piece).collision == "none" then
+				local all = clone:GetDescendants()
+				table.insert(all, clone)
+				for _, item in all do
+					if item:IsA("BasePart") then
+						item.CanCollide = false
+					end
+				end
+			end
+			clone.Parent = part.Parent
+			if options.keepPlaceholders then
+				part.Transparency = 1
+				part.CanCollide = false
+				part:SetAttribute("KitSwapped", true)
+			else
+				part:Destroy()
+			end
+			report.swapped += 1
+		end
+	end, { history = options.history, env = env })
+	return report
 end
 
 return Apply

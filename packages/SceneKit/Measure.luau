@@ -73,9 +73,61 @@ function Measure.jumpReach(rise: number, engine: { [string]: number }?): number?
 end
 
 -- Can a player clear `gap` studs horizontally landing `rise` higher? margin keeps it fair.
-function Measure.canJump(gap: number, rise: number, margin: number?): boolean
-	local reach = Measure.jumpReach(rise)
+-- engine (a Measure.profile) replaces the default character's physics.
+function Measure.canJump(gap: number, rise: number, margin: number?, engine: { [string]: number }?): boolean
+	local reach = Measure.jumpReach(rise, engine)
 	return reach ~= nil and gap <= reach * (1 - (margin or 0.15))
+end
+
+export type Profile = {
+	gravity: number,
+	walkSpeed: number,
+	jumpHeight: number,
+	characterHeight: number,
+	characterWidth: number,
+}
+
+-- Jump and body numbers for the game's character: ENGINE and GUIDE defaults, overridden by
+-- `playerScale`. A number scales the body (height, width) only, because Roblox does not scale
+-- JumpHeight or WalkSpeed with avatar body scale; a table may set any Profile field and `scale`.
+-- Every value is checked (finite, > 0) so a course built for one profile is validated with it.
+function Measure.profile(playerScale: (number | { [string]: number })?): Profile
+	local over: { [string]: number } = if type(playerScale) == "number"
+		then { scale = playerScale }
+		else (playerScale or {}) :: { [string]: number }
+	local scale = over.scale or 1
+	local profile: Profile = {
+		gravity = over.gravity or Measure.ENGINE.gravity,
+		walkSpeed = over.walkSpeed or Measure.ENGINE.walkSpeed,
+		jumpHeight = over.jumpHeight or Measure.ENGINE.jumpHeight,
+		characterHeight = over.characterHeight or Measure.GUIDE.characterHeight * scale,
+		characterWidth = over.characterWidth or Measure.GUIDE.characterWidth * scale,
+	}
+	for key, value in profile :: any do
+		if type(value) ~= "number" or value ~= value or value <= 0 or value == math.huge then
+			error(
+				string.format(
+					"Measure.profile: %s must be a finite number > 0 (got %s)",
+					key,
+					tostring(value)
+				),
+				2
+			)
+		end
+	end
+	if type(scale) ~= "number" or scale ~= scale or scale <= 0 or scale == math.huge then
+		error("Measure.profile: scale must be a finite number > 0", 2)
+	end
+	return profile
+end
+
+-- Seconds in the air for a jump landing `rise` studs higher (nil above the jump height).
+function Measure.airTime(rise: number, engine: { [string]: number }?): number?
+	local reach = Measure.jumpReach(rise, engine)
+	if reach == nil then
+		return nil
+	end
+	return reach / (engine or Measure.ENGINE).walkSpeed
 end
 
 function Measure.doorClearance(width: number, height: number): { pass: boolean, comfortable: boolean }
