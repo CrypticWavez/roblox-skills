@@ -235,6 +235,35 @@ test("equip slots check the item's slot and protect equipped items", function(t)
 	t.ok((inv:apply({ { op = "remove", uid = "p1-1" } })))
 end)
 
+test("slot kinds let several slots hold items of one kind", function(t)
+	local inv = make({ equipSlots = { pet_1 = "slot_a", pet_2 = "slot_a", hand = "slot_b" }, capacity = 8 })
+	inv:add("follower_a", 3)
+	inv:add("gear_a")
+	t.ok((inv:apply({
+		{ op = "equip", uid = "p1-1", slot = "pet_1" },
+		{ op = "equip", uid = "p1-2", slot = "pet_2" },
+		{ op = "equip", uid = "p1-4", slot = "hand" },
+	})))
+	t.eq(inv:equipped(), { pet_1 = "p1-1", pet_2 = "p1-2", hand = "p1-4" })
+	t.eq(select(2, inv:apply({ { op = "equip", uid = "p1-3", slot = "hand" } })), "wrong_slot")
+	t.eq(select(2, inv:apply({ { op = "equip", uid = "p1-3", slot = "slot_a" } })), "unknown_slot")
+	t.ok((inv:apply({ { op = "equip", uid = "p1-1", slot = "pet_2" } })), "moving a uid frees its old slot")
+	t.eq(inv:equipped(), { pet_2 = "p1-1", hand = "p1-4" })
+	local reloaded = make({
+		equipSlots = { pet_1 = "slot_a", pet_2 = "slot_a", hand = "slot_b" },
+		capacity = 8,
+		data = inv:serialize(),
+	})
+	t.eq(reloaded:equipped(), { pet_2 = "p1-1", hand = "p1-4" })
+	t.eq(reloaded.notes, {})
+	t.throws(function()
+		make({ equipSlots = { pet_1 = 3 } })
+	end)
+	t.throws(function()
+		make({ equipSlots = "slot_a" })
+	end)
+end)
+
 test("weight and unique limits", function(t)
 	local inv = make({ maxWeight = 5 })
 	t.ok((inv:add("follower_a", 2)))

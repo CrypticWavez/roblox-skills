@@ -3,7 +3,9 @@
 -- Inventory: one player's items over an ItemDefs registry. Stackable items live in stacks of
 -- at most maxStack; non-stackable items are instances with a uid ("<owner>-<n>", unique across
 -- players so trades never collide) and optional plain data. Capacity counts entries (a stack
--- or an instance each), maxWeight is optional, equip slots hold instance uids.
+-- or an instance each), maxWeight is optional, equip slots hold instance uids. equipSlots is a
+-- list of slot names (a slot takes items whose def.slot is that name) or a map slot -> kind for
+-- several slots of one kind, e.g. { follower_1 = "follower", follower_2 = "follower" }.
 -- Changes are ops applied atomically by apply(ops): every op succeeds or the inventory is
 -- untouched. prepare / commit / rollback expose the same transaction in two phases so Trade
 -- and Crafting can join inventories and wallets into one atomic unit. Ops:
@@ -68,7 +70,7 @@ export type Options = {
 	owner: string,
 	capacity: number,
 	maxWeight: number?,
-	equipSlots: { string }?,
+	equipSlots: ({ string } | { [string]: string })?,
 	store: Store?,
 	storeKey: string?,
 	data: any?,
@@ -126,7 +128,7 @@ type InventoryFields = {
 	_owner: string,
 	_capacity: number,
 	_maxWeight: number?,
-	_slots: { [string]: boolean },
+	_slots: { [string]: string }, -- slot -> accepted def.slot
 	_state: State,
 	_version: number,
 	_store: Store?,
@@ -220,7 +222,7 @@ local function decode(self: Inventory, data: any)
 				end
 			end
 			local def = entry and self._items:get(entry.item)
-			if self._slots[slot] and def and def.slot == slot then
+			if self._slots[slot] and def and def.slot == self._slots[slot] then
 				state.equipped[slot] = uid
 			else
 				table.insert(
@@ -252,12 +254,29 @@ function Inventory.new(options: Options, env: any?): Inventory
 	if options.maxWeight ~= nil and not (Check.finite(options.maxWeight) and options.maxWeight >= 0) then
 		table.insert(problems, "maxWeight must be a finite number >= 0")
 	end
-	local slots: { [string]: boolean } = {}
-	for _, slot in options.equipSlots or {} do
-		if not Check.label(slot) or slots[slot] then
-			table.insert(problems, "equip slot " .. Check.describe(slot) .. " is not a unique label")
+	local slots: { [string]: string } = {}
+	local equipSlots: any = options.equipSlots or {}
+	if type(equipSlots) ~= "table" then
+		table.insert(problems, "equipSlots must be a list of slots or a map slot -> kind")
+	elseif #equipSlots > 0 then
+		for _, slot in equipSlots do
+			if not Check.label(slot) or slots[slot] then
+				table.insert(problems, "equip slot " .. Check.describe(slot) .. " is not a unique label")
+			else
+				slots[slot] = slot
+			end
 		end
-		slots[slot] = true
+	else
+		for slot, kind in equipSlots do
+			if not Check.label(slot) or not Check.label(kind) then
+				table.insert(
+					problems,
+					"equip slot " .. Check.describe(slot) .. " needs a label name and a label kind"
+				)
+			else
+				slots[slot] = kind
+			end
+		end
 	end
 	local store = options.store
 	if
@@ -493,7 +512,7 @@ local function applyOp(
 		if def == nil or def.slot == nil then
 			return "not_equippable"
 		end
-		if def.slot ~= op.slot then
+		if def.slot ~= self._slots[op.slot] then
 			return "wrong_slot"
 		end
 		for slot, uid in state.equipped do
