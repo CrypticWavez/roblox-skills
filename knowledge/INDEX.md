@@ -8,8 +8,16 @@ Record scope `repo`: every path the record cites exists in this repository. Scop
 
 | Doc | Title |
 |---|---|
+| [agent-tooling-connectors-2026-10.md](../docs/research/agent-tooling-connectors-2026-10.md) | Agent tooling: connectors, plugins, skills, Studio plugins and creator-PC tools for Claude and Codex (verified 2026-10-06) |
+| [blender-animation-pipeline-2026-10.md](../docs/research/blender-animation-pipeline-2026-10.md) | Blender and animation pipeline to Roblox (verified 2026-10-06) |
+| [gameplay-libraries-2026-10.md](../docs/research/gameplay-libraries-2026-10.md) | Open-source Luau gameplay libraries and package managers (verified 2026-10-06) |
+| [genre-coverage-2026-10.md](../docs/research/genre-coverage-2026-10.md) | Genre coverage research: chart genres, systems, pipelines and factory gaps (verified 2026-10-06) |
+| [pipeline-audit-2026-10.md](../docs/research/pipeline-audit-2026-10.md) | Pipeline audit for production quality (verified 2026-10-06) |
+| [release-monetization-analytics-2026-10.md](../docs/research/release-monetization-analytics-2026-10.md) | Release, monetization and analytics research: from finished build to published candidate (verified 2026-10-06) |
 | [tooling-2026-10-addendum.md](../docs/research/tooling-2026-10-addendum.md) | Tooling research addendum (verified 2026-10-06) |
 | [tooling-2026-10.md](../docs/research/tooling-2026-10.md) | Roblox Game-Production Workbench: Tooling Research (verified 2026-10-05) |
+| [ui-cinematics-feel-2026-10.md](../docs/research/ui-cinematics-feel-2026-10.md) | UI, transitions, cutscenes and game feel: research (verified 2026-10-06) |
+| [visual-audio-assets-2026-10.md](../docs/research/visual-audio-assets-2026-10.md) | Visual quality, lighting, materials, VFX, audio and free asset sources: research (verified 2026-10-06) |
 
 ## Knowledge records
 
