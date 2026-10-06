@@ -43,14 +43,12 @@ local function attach(roblox: any, parentPart: any, name: string, cframe: any): 
 	return a
 end
 
+type BuildOptions = { cframe: any?, name: string?, parent: any? }
+
 -- Builds the constraint car from a rig plan. options.cframe places the chassis (default the
 -- origin); options.name names the model (default "SETUP_ONLY_Vehicle").
-function VehicleRigRoblox.build(
-	plan: any,
-	roblox: any,
-	options: { cframe: any?, name: string?, parent: any? }?
-): Rig
-	local opts = options or {}
+function VehicleRigRoblox.build(plan: any, roblox: any, options: BuildOptions?): Rig
+	local opts: BuildOptions = options or {}
 	local CFrame, Vector3, Enum = roblox.CFrame, roblox.Vector3, roblox.Enum
 	local origin = opts.cframe or CFrame.new()
 	local model = roblox.Instance.new("Model")

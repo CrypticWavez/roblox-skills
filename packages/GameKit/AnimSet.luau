@@ -480,7 +480,8 @@ local function trackFor(self: Player, slot: string, clip: Clip): any
 		end
 		for name in names do
 			local connection = track:GetMarkerReachedSignal(name):Connect(function(param: any)
-				for _, handler in self._markerHandlers[name] or {} do
+				local handlers: { (slot: string, param: any) -> () } = self._markerHandlers[name] or {}
+				for _, handler in handlers do
 					handler(slot, param)
 				end
 			end)
@@ -545,7 +546,7 @@ function Player.play(
 	end
 	local clip = pick(self, slot)
 	local track = trackFor(self, slot, clip)
-	local opts = options or {}
+	local opts: { speed: number?, weight: number?, fade: number? } = options or {}
 	local speed = opts.speed or entry.config.speed or 1
 	track:Play(opts.fade or entry.config.fadeIn or AnimSet.FADE, opts.weight or 1, speed)
 	self._order += 1

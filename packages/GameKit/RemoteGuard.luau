@@ -318,7 +318,7 @@ local function reject(
 	record(self, key, remote, false, reason)
 	local options = self._options
 	if options.onReject then
-		local ok, err = pcall(options.onReject, player, remote, reason, detail)
+		local ok: boolean, err: any = pcall(options.onReject, player, remote, reason, detail)
 		if not ok then
 			report(self, "RemoteGuard onReject error: " .. tostring(err))
 		end
@@ -334,7 +334,7 @@ local function reject(
 			state.abuseFired = true
 			local summary =
 				{ key = key, rejects = state.abuseCount, window = options.abuse.window, remote = remote }
-			local ok, err = pcall(options.abuse.onAbuse, player, summary)
+			local ok: boolean, err: any = pcall(options.abuse.onAbuse, player, summary)
 			if not ok then
 				report(self, "RemoteGuard onAbuse error: " .. tostring(err))
 			end

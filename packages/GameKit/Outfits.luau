@@ -232,7 +232,8 @@ function Outfits.validate(outfit: any, rules: Rules?): { string }
 					string.format("%d accessories pass the limit of %d", #accessories, r.maxAccessories)
 				)
 			end
-			for kind, limit in r.perType or {} do
+			local typeLimits: { [string]: number } = r.perType or {}
+			for kind, limit in typeLimits do
 				if (perType[kind] or 0) > limit then
 					table.insert(
 						problems,

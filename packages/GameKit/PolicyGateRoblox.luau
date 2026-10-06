@@ -81,7 +81,8 @@ function PolicyGateRoblox.gate(env: any, options: { [string]: any }?): any
 		voiceChatService = env.services.VoiceChatService,
 	})
 	local gateOptions: { [string]: any } = { fetch = fetch }
-	for key, value in options or {} do
+	local extra: { [string]: any } = options or {}
+	for key, value in extra do
 		gateOptions[key] = value
 	end
 	return PolicyGate.new(gateOptions :: any, env)

@@ -179,7 +179,7 @@ function HitboxRoblox.caster(
 	roblox: any,
 	options: CasterOptions?
 ): (origin: Vec.V3, delta: Vec.V3, radius: number, state: any) -> any
-	local opts = options or {}
+	local opts: CasterOptions = options or {}
 	local Vector3 = roblox.Vector3
 	local taken: { [any]: { any } } = setmetatable({}, { __mode = "k" }) :: any
 	return function(origin: Vec.V3, delta: Vec.V3, radius: number, state: any): any

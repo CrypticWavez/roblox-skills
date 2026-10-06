@@ -61,11 +61,13 @@ function OutfitsRoblox.snapshot(description: any): any
 	for _, key in Outfits.ANIMATIONS do
 		properties[key .. "Animation"] = description[key .. "Animation"]
 	end
-	for _, property in Outfits.COLORS do
+	local colors: { [string]: string } = Outfits.COLORS
+	for _, property in colors do
 		local color = description[property]
 		properties[property] = { r = channel(color.R), g = channel(color.G), b = channel(color.B) }
 	end
-	for _, property in Outfits.SCALES do
+	local scales: { [string]: string } = Outfits.SCALES
+	for _, property in scales do
 		properties[property] = description[property]
 	end
 	local accessories = {}

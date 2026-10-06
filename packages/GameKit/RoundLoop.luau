@@ -187,7 +187,8 @@ function RoundLoop.define(def: Definition): Spec
 	end
 	local present = {}
 	local order = {}
-	for _, phase in def.phases or RoundLoop.PHASES do
+	local phases: { string } = def.phases or RoundLoop.PHASES
+	for _, phase in phases do
 		present[phase] = true
 		table.insert(order, phase)
 	end

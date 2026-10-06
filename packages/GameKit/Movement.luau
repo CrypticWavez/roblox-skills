@@ -34,11 +34,18 @@ Movement.MAX_SPEED = 1000
 Movement.TAKEOFF_GRACE = 0.2
 
 export type V3 = Vec.V3
+type JumpDefinition = {
+	height: number?,
+	airJumps: number?,
+	airJumpHeight: number?,
+	coyoteTime: number?,
+	buffer: number?,
+}
 export type Definition = {
 	walkSpeed: number?,
 	gravity: number?,
 	sprint: { multiplier: number, pool: string?, drain: number?, minToStart: number? }?,
-	jump: { height: number?, airJumps: number?, airJumpHeight: number?, coyoteTime: number?, buffer: number? }?,
+	jump: JumpDefinition?,
 	dash: {
 		distance: number,
 		duration: number,
@@ -235,7 +242,7 @@ function Movement.define(def: Definition): Spec
 		error("Movement.define: " .. table.concat(problems, "; "), 2)
 	end
 	local gravity = def.gravity or Movement.GRAVITY
-	local jump = def.jump or {}
+	local jump: JumpDefinition = def.jump or {}
 	local height = jump.height or Movement.JUMP_HEIGHT
 	local airHeight = jump.airJumpHeight or height
 	return Check.freeze({
@@ -403,8 +410,9 @@ type Fields = {
 	spec: Spec,
 	changed: Signal.Signal,
 	_env: any,
-	_vitals: any?,
-	_cooldowns: any?,
+	-- May be nil; Movement.new asserts them when the spec uses them, so `any` rather than `any?`
+	_vitals: any,
+	_cooldowns: any,
 	_machine: any,
 	_move: V3,
 	_sprintHeld: boolean,
@@ -432,7 +440,7 @@ function Movement.new(spec: Spec, options: { vitals: any?, cooldowns: any? }?, e
 		"Movement.new needs a spec from Movement.define"
 	)
 	assert(type(env) == "table" and type(env.clock) == "function", "Movement.new needs env.clock")
-	local opts = options or {}
+	local opts: { vitals: any?, cooldowns: any? } = options or {}
 	if spec.dash and (spec.dash.cooldown or 0) > 0 or spec.slide and (spec.slide.cooldown or 0) > 0 then
 		assert(opts.cooldowns, "Movement.new: dash or slide cooldowns need options.cooldowns")
 	end

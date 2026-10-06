@@ -113,7 +113,7 @@ function PlayerDataRoblox.bind(store: any, options: BindOptions?, env: any): any
 	local step = opts.autosaveStep or PlayerDataRoblox.DEFAULT_AUTOSAVE_STEP
 	assert(type(step) == "number" and step > 0, "PlayerDataRoblox.bind: autosaveStep must be > 0")
 	local kickOnFailure = opts.kickOnFailure ~= false
-	local message = opts.kickMessage or PlayerDataRoblox.kickMessage
+	local message: (reason: string) -> string = opts.kickMessage or PlayerDataRoblox.kickMessage
 	local bound = true
 	local connections: { any } = {}
 	local binding = { loaded = Signal.new(env), failed = Signal.new(env) } :: any

@@ -150,7 +150,8 @@ function Trade.new(options: Options, env: any?): Trade
 		table.insert(problems, "maxEntries must be an integer >= 1")
 	end
 	local currencies: { [string]: boolean } = {}
-	for _, currency in options.currencies or {} do
+	local currencyList: { string } = options.currencies or {}
+	for _, currency in currencyList do
 		if not Check.label(currency) then
 			table.insert(problems, "currency " .. Check.describe(currency) .. " is not a label")
 		end
@@ -536,7 +537,7 @@ local function inventoryOps(self: Trade, side: string, other: string): { any }?
 	local giver = self._parties[side].inventory
 	local receiverOffer = self._offers[other]
 	local otherInventory = self._parties[other].inventory
-	local ops = {}
+	local ops: { any } = {}
 	for _, uid in self._offers[side].instances do
 		table.insert(ops, { op = "remove", uid = uid })
 	end
@@ -820,7 +821,8 @@ function Trade.commit(self: Trade): (boolean, string?)
 		table.insert(done, step)
 	end
 	if journal then
-		local ok, err = pcall(journal.set, journal, key, { state = "committed", revision = self._revision })
+		local ok: boolean, err: any =
+			pcall(journal.set, journal, key, { state = "committed", revision = self._revision })
 		if not ok then
 			self._report(
 				string.format("Trade %s: journal write failed (%s); rolling back", self.id, tostring(err))

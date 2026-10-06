@@ -327,13 +327,16 @@ function Telemetry.new(options: Options, env: any): Telemetry
 	-- declared names are part of the cardinality from the start
 	local catalog = options.catalog
 	if catalog then
-		for name in catalog.custom or {} do
+		local custom: { [string]: { fields: { string }? } } = catalog.custom or {}
+		for name in custom do
 			self._customNames[name] = true
 		end
-		for name in catalog.funnels or {} do
+		local funnels: { [string]: { steps: { string } } } = catalog.funnels or {}
+		for name in funnels do
 			self._funnels[name] = true
 		end
-		for _, currency in (catalog.economy and catalog.economy.currencies) or {} do
+		local currencies: { string } = (catalog.economy and catalog.economy.currencies) or {}
+		for _, currency in currencies do
 			self._currencies[currency] = true
 		end
 	end
@@ -452,7 +455,7 @@ local function checkState(self: Telemetry, event: any): (string?, string?, (() -
 			return reason, body.funnel, nil
 		end
 		local stateKey = playerKey .. "|" .. body.funnel
-		local sessions = self._funnelSessions[stateKey] or {}
+		local sessions: { FunnelSession } = self._funnelSessions[stateKey] or {}
 		local found: FunnelSession? = nil
 		for _, entry in sessions do
 			if entry.id == body.funnel_session_id then

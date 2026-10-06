@@ -297,11 +297,13 @@ function Followers.step(self: Followers, dt: number, leader: Leader): { Frame }
 		local state = self._byId[id]
 		local target = targets[id]
 		local teleported, catchingUp = false, false
-		local position = state.position
-		if position == nil or Vec.length(Vec.sub(target, position)) > o.teleportDistance then
+		local current = state.position
+		local position: V3
+		if current == nil or Vec.length(Vec.sub(target, current)) > o.teleportDistance then
 			position = target
 			teleported = true
 		else
+			position = current
 			local delta = Vec.sub(target, position)
 			local gap = Vec.length(delta)
 			if gap > o.settleDistance then

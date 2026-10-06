@@ -115,7 +115,7 @@ function InputMapRoblox.build(map: InputMap.Map, env: any, options: Options?): B
 	end
 	local r = env and env.roblox
 	assert(r, "InputMapRoblox.build: env.roblox is required")
-	local o = options or {}
+	local o: Options = options or {}
 	local folder = r.Instance.new("Folder")
 	folder.Name = o.name or "InputMap"
 	local buttons = buttonsUnder(o.buttons)
@@ -150,7 +150,8 @@ function InputMapRoblox.build(map: InputMap.Map, env: any, options: Options?): B
 		action:SetAttribute("Reserved", spec.reserved)
 		action.Parent = built.contexts[spec.context]
 		for _, device in InputMap.DEVICES do
-			for _, item in spec.bindings[device] or {} do
+			local items: { InputMap.Binding } = spec.bindings[device] or {}
+			for _, item in items do
 				binding(r, action, item, device, buttons, built.pending)
 			end
 		end

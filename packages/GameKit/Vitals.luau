@@ -354,7 +354,8 @@ function Vitals.armor(rating: number, scale: number?, bypass: { string }?, prior
 	assert(Check.finite(s) and s > 0, "Vitals.armor: scale must be > 0")
 	assert(rating >= 0, "Vitals.armor: rating must be >= 0")
 	local skip: { [string]: boolean } = {}
-	for _, kind in bypass or {} do
+	local bypassKinds: { string } = bypass or {}
+	for _, kind in bypassKinds do
 		skip[kind] = true
 	end
 	return {
@@ -602,7 +603,7 @@ function Vitals.damage(self: Vitals, info: DamageInfo): Record
 	}
 	for _, modifier in self._modifiers do
 		local before = ctx.amount
-		local ok, err = pcall(modifier.apply, ctx)
+		local ok: boolean, err: any = pcall(modifier.apply, ctx)
 		if not ok then
 			self._env.report(string.format("Vitals: modifier %s failed: %s", modifier.id, tostring(err)))
 			ctx.amount = before

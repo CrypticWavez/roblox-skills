@@ -210,7 +210,8 @@ function UnlockGraph.define(nodes: { any }): Spec
 			if not placed[node.id] and indegree[node.id] == 0 then
 				placed[node.id] = true
 				table.insert(order, node.id)
-				for _, child in dependents[node.id] or {} do
+				local children: { string } = dependents[node.id] or {}
+				for _, child in children do
 					indegree[child] -= 1
 				end
 				break

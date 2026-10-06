@@ -200,7 +200,8 @@ local function persist(self: Onboarding): boolean
 	if store == nil then
 		return true
 	end
-	local ok, err = pcall(store.set, store, self._options.storeKey or "onboarding", self:serialize())
+	local ok: boolean, err: any =
+		pcall(store.set, store, self._options.storeKey or "onboarding", self:serialize())
 	if not ok then
 		self._report("Onboarding: store:set failed: " .. tostring(err))
 	end

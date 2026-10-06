@@ -659,7 +659,7 @@ function PlayerData.profileStoreBackend(
 			local done = false
 			local waiting = false
 			local result: any = nil
-			local connections = {}
+			local connections: { any } = {} -- the ProfileStore profile's signal connections
 			local function finish(value: any)
 				if done then
 					return
@@ -1339,7 +1339,7 @@ end
 
 -- Ends the user's session with a final save (yields). Returns (ok, reason); true when none.
 function Store.release(self: Store, userId: number): (boolean, string?)
-	local session = self._sessions[userId]
+	local session: Session? = self._sessions[userId]
 	if session == nil then
 		return true, nil
 	end

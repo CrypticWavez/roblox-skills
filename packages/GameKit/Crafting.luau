@@ -362,7 +362,7 @@ local function atomic(inventory: any, ops: { any }, wallet: any?, changes: { any
 			return false, err, nil
 		end
 	end
-	if walletTx then
+	if walletTx and wallet then -- walletTx is only set once wallet was checked
 		local ok, err = wallet:commit(walletTx)
 		if not ok then
 			if invTx then

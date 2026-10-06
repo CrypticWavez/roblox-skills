@@ -45,6 +45,7 @@ export type Action = {
 	spend: { [string]: Range }?,
 	needs: { [string]: number }?,
 }
+type Milestone = { id: string, currency: string, threshold: number, measure: ("balance" | "earned")? }
 export type Options = {
 	seed: number | string,
 	players: number,
@@ -54,7 +55,7 @@ export type Options = {
 	rates: { [string]: number }?,
 	offline: { [string]: { perSecond: number, capSeconds: number } }?,
 	actions: { Action },
-	milestones: { { id: string, currency: string, threshold: number, measure: ("balance" | "earned")? } }?,
+	milestones: { Milestone }?,
 	targets: {
 		[string]: { sinkRatio: { min: number?, max: number? }?, netPerHour: { min: number?, max: number? }? },
 	}?,
@@ -69,7 +70,8 @@ end
 
 local function sortedKeys(map: { [string]: any }?): { string }
 	local keys = {}
-	for key in map or {} do
+	local source: { [string]: any } = map or {}
+	for key in source do
 		table.insert(keys, key)
 	end
 	table.sort(keys)
@@ -401,7 +403,7 @@ function EconomySim.run(options: Options): any
 		end
 	end
 	local actions = options.actions
-	local milestones = options.milestones or {}
+	local milestones: { Milestone } = options.milestones or {}
 	local sessionCount = options.sessions.count
 
 	-- Aggregates.
@@ -508,7 +510,8 @@ function EconomySim.run(options: Options): any
 				earns[id] = draw(rng, (action.earn :: any)[id])
 			end
 			local reason: string? = nil
-			for id, need in action.needs or {} do
+			local needs: { [string]: number } = action.needs or {}
+			for id, need in needs do
 				if balance[id] < need then
 					reason = "needs"
 				end

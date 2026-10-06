@@ -142,7 +142,7 @@ end
 -- ignored. Returns notes (one per ignored or invalid entry). Fires changed per changed key.
 function Store.apply(self: Config, values: { [string]: any }?, source: string): { string }
 	local notes = {}
-	local incoming = if type(values) == "table" then values else {}
+	local incoming: { [string]: any } = if type(values) == "table" then values else {}
 	if type(values) ~= "table" and values ~= nil then
 		table.insert(notes, "values are not a table: defaults used")
 	end

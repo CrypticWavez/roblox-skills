@@ -81,21 +81,19 @@ function PartyRoblox.members(
 	return true, out
 end
 
+type TicketOptions = {
+	skillOf: ((players: { any }) -> number)?,
+	pool: string?,
+	at: number?,
+	maxPartySize: number?,
+}
+
 -- The player's queue ticket: their party members in this server (always including the player)
 -- or the player alone. opts.skillOf(players) -> number sets the ticket skill (default: none);
 -- opts.pool and opts.at pass through; opts.maxPartySize trims the party to the player plus the
 -- lowest UserIds (convention) so a ticket never exceeds what the queue accepts.
-function PartyRoblox.ticket(
-	social: any,
-	player: any,
-	opts: {
-		skillOf: ((players: { any }) -> number)?,
-		pool: string?,
-		at: number?,
-		maxPartySize: number?,
-	}?
-): any
-	local o = opts or {}
+function PartyRoblox.ticket(social: any, player: any, opts: TicketOptions?): any
+	local o: TicketOptions = opts or {}
 	local partyId = PartyRoblox.partyId(player)
 	local members = PartyRoblox.membersHere(social, partyId)
 	local list = { player }

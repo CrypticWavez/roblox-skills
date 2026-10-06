@@ -225,8 +225,8 @@ function Streaks.checkIn(self: Streak, utc: number): Result
 	self._total += 1
 	local sink = self._options.sink
 	if sink then
-		local event =
-			Events.custom(self._options.name or "streak_check_in", result.streak, { status = result.status })
+		local fields: { [string]: string } = { status = result.status }
+		local event = Events.custom(self._options.name or "streak_check_in", result.streak, fields)
 		if self._options.player then
 			event.player = self._options.player
 		end

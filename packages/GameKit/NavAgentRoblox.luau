@@ -40,7 +40,7 @@ end
 
 -- PathWaypoints to NavAgent waypoints ({ x, y, z } positions; Jump -> jump, Custom -> custom).
 function NavAgentRoblox.waypoints(list: { any }): { NavAgent.Waypoint }
-	local out = {}
+	local out: { NavAgent.Waypoint } = {}
 	for _, waypoint in list do
 		local action = waypoint.Action and waypoint.Action.Name
 		local p = waypoint.Position

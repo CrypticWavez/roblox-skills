@@ -322,7 +322,8 @@ end
 
 local function costPools(def: Definition): { string }
 	local pools = {}
-	for pool in def.cost or {} do
+	local cost: { [string]: number } = def.cost or {}
+	for pool in cost do
 		table.insert(pools, pool)
 	end
 	table.sort(pools)

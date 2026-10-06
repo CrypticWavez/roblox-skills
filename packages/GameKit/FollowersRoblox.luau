@@ -42,7 +42,7 @@ end
 -- Adds the constraints to an unanchored follower part and returns the handle.
 function FollowersRoblox.attach(part: any, options: { [string]: number }?, env: any): Handle
 	local r = roblox(env)
-	local o = options or {}
+	local o: { [string]: number } = options or {}
 	local attachment = r.Instance.new("Attachment")
 	attachment.Name = "FollowerAttachment"
 	attachment.Parent = part

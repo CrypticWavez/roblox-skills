@@ -240,18 +240,16 @@ type Fields = {
 }
 export type Vehicle = typeof(setmetatable({} :: Fields, Vehicle))
 
+type NewOptions = { position: V3?, heading: number?, seed: (number | string)? }
+
 -- A vehicle at position facing heading (radians). options.seed seeds drift noise.
-function Vehicles.new(
-	spec: Spec,
-	options: { position: V3?, heading: number?, seed: (number | string)? }?,
-	env: any
-): Vehicle
+function Vehicles.new(spec: Spec, options: NewOptions?, env: any): Vehicle
 	assert(
 		type(spec) == "table" and table.isfrozen(spec) and spec.step,
 		"Vehicles.new needs a spec from Vehicles.define"
 	)
 	assert(type(env) == "table" and type(env.rng) == "function", "Vehicles.new needs env.rng")
-	local opts = options or {}
+	local opts: NewOptions = options or {}
 	local position = opts.position or Vec.new(0, 0, 0)
 	local heading = opts.heading or 0
 	assert(
@@ -385,7 +383,7 @@ end
 -- Never yields; integrates whole fixed steps and carries the remainder.
 function Vehicle.step(self: Vehicle, dt: number, input: Input?): (State, { Event })
 	assert(Check.finite(dt) and dt >= 0, "Vehicle.step: dt must be finite and >= 0")
-	local i = input or {}
+	local i: Input = input or {}
 	local throttle = clampInput(i.throttle, -1, 1)
 	local steer = clampInput(i.steer, -1, 1)
 	local handbrake = i.handbrake == true
@@ -467,10 +465,14 @@ function Vehicles.rigPlan(spec: Spec): { [string]: any }
 	local track = rig.trackWidth or size.x + radius
 	local suspension = rig.suspension or { stiffness = 4000, damping = 200, travel = 1 }
 	local wheels = {}
-	for _, corner in
-		{ { "front_left", -1, -1 }, { "front_right", 1, -1 }, { "rear_left", -1, 1 }, { "rear_right", 1, 1 } }
-	do
-		local name, sx, sz = corner[1], corner[2], corner[3]
+	local corners: { { name: string, sx: number, sz: number } } = {
+		{ name = "front_left", sx = -1, sz = -1 },
+		{ name = "front_right", sx = 1, sz = -1 },
+		{ name = "rear_left", sx = -1, sz = 1 },
+		{ name = "rear_right", sx = 1, sz = 1 },
+	}
+	for _, corner in corners do
+		local name, sx, sz = corner.name, corner.sx, corner.sz
 		table.insert(wheels, {
 			name = name,
 			offset = Vec.new(sx * track / 2, -size.y / 2, sz * base / 2),

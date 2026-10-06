@@ -59,7 +59,13 @@ export type PromptContext = {
 	owned: boolean?, -- passes and subscriptions: true when the player already has it
 	isStudio: boolean?,
 }
-export type PriceInfo = Catalog.PriceInfo & { reason: string? }
+-- Catalog.PriceInfo plus an optional reason, written out flat so literals check against it.
+export type PriceInfo = {
+	state: "ok" | "pending" | "unavailable",
+	text: string?,
+	robux: number?,
+	reason: string?,
+}
 export type PriceRead = { robux: number?, text: string?, forSale: boolean? }
 export type PriceOptions = {
 	ttl: number?,
@@ -513,7 +519,9 @@ function Commerce.grantWriter(writers: Writers): (data: any, product: Catalog.Pr
 		writers.custom == nil or type(writers.custom) == "table",
 		"Commerce.grantWriter: custom must map handler names to functions"
 	)
-	for name, handler in writers.custom or {} do
+	local custom: { [string]: (data: any, grantData: { [string]: any }, product: Catalog.Product) -> () } = writers.custom
+		or {}
+	for name, handler in custom do
 		assert(
 			Check.label(name) and type(handler) == "function",
 			"Commerce.grantWriter: custom must map handler names to functions"
@@ -600,7 +608,7 @@ function Commerce.receiptProcessor(
 
 	local function finish(receipt: any, status: string, reason: string?, product: any): (string, string?)
 		if options.onResult ~= nil then
-			local ok, err = pcall(
+			local ok: boolean, err: any = pcall(
 				options.onResult,
 				{
 					status = status,

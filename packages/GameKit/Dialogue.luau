@@ -368,7 +368,8 @@ function Dialogue.session(spec: Spec, handlers: Handlers?, env: any?): Session
 end
 
 local function check(self: Session, conditions: { Rule }?, ctx: any): boolean
-	for _, rule in conditions or {} do
+	local rules: { Rule } = conditions or {}
+	for _, rule in rules do
 		local fn = self._handlers.conditions and self._handlers.conditions[rule.kind]
 		if fn == nil then
 			self._report("Dialogue: no condition handler for " .. rule.kind .. " (treated as false)")
@@ -387,12 +388,13 @@ local function check(self: Session, conditions: { Rule }?, ctx: any): boolean
 end
 
 local function run(self: Session, effects: { Rule }?, ctx: any)
-	for _, rule in effects or {} do
+	local rules: { Rule } = effects or {}
+	for _, rule in rules do
 		local fn = self._handlers.effects and self._handlers.effects[rule.kind]
 		if fn == nil then
 			self._report("Dialogue: no effect handler for " .. rule.kind)
 		else
-			local ok, err = pcall(fn, rule, ctx)
+			local ok: boolean, err: any = pcall(fn, rule, ctx)
 			if not ok then
 				self._report("Dialogue: effect " .. rule.kind .. " raised: " .. tostring(err))
 			end
@@ -417,7 +419,8 @@ function Session.view(self: Session, ctx: any?): View
 	end
 	local node = self.spec.nodes[id]
 	local choices = {}
-	for _, choice in node.choices or {} do
+	local nodeChoices: { Choice } = node.choices or {}
+	for _, choice in nodeChoices do
 		if check(self, choice.conditions, ctx) then
 			table.insert(choices, { id = choice.id, textKey = choice.textKey })
 		end
@@ -452,7 +455,8 @@ function Session.choose(self: Session, choiceId: string, ctx: any?): (boolean, s
 	end
 	local node = self.spec.nodes[self._node :: string]
 	local picked: Choice? = nil
-	for _, choice in node.choices or {} do
+	local nodeChoices: { Choice } = node.choices or {}
+	for _, choice in nodeChoices do
 		if choice.id == choiceId then
 			picked = choice
 		end

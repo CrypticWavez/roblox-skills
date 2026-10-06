@@ -345,7 +345,7 @@ function Schema.instanceOf(
 		error("Schema.instanceOf: className must be a non-empty string", 2)
 	end
 	local ancestor = options and options.ancestor
-	local typeOf = options and options.typeof or typeof
+	local typeOf: (value: any) -> string = options and options.typeof or typeof
 	return node("instance", function(value: any, ctx: Context, path: string): (boolean, string?, string?)
 		local ok, p, r = count(ctx, path)
 		if not ok then

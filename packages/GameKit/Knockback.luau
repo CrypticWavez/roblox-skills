@@ -160,7 +160,7 @@ export type Tracker = typeof(setmetatable({} :: Fields, Knockback))
 
 function Knockback.new(options: Options?, env: any): Tracker
 	assert(type(env) == "table" and type(env.clock) == "function", "Knockback.new needs an env with clock()")
-	local opts = options or {}
+	local opts: Options = options or {}
 	local problems = {}
 	for _, key in { "ragdollThreshold", "immunity", "comboWindow" } do
 		local value = (opts :: any)[key]
@@ -221,7 +221,7 @@ function Knockback.apply(self: Tracker, target: any, params: Params): (Result?, 
 		end
 	end
 	if opts.comboLimit and opts.comboWindow then
-		local history = self._history[id] or {}
+		local history: { number } = self._history[id] or {}
 		local kept = {}
 		for _, at in history do
 			if now - at < opts.comboWindow then

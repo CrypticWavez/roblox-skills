@@ -266,7 +266,8 @@ function Pass.claim(self: Pass, tier: number, track: string): (boolean, string?,
 	end
 	self._claimed[track][tier] = true
 	if self._sink then
-		local event = Events.custom("season_claim", tier, { track = track, season = self._spec.id })
+		local fields: { [string]: string } = { track = track, season = self._spec.id }
+		local event = Events.custom("season_claim", tier, fields)
 		if self._player then
 			event.player = self._player
 		end

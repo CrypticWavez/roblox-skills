@@ -318,7 +318,8 @@ function Tracker.record(
 ): { string }
 	assert(Check.integer(amount) and amount >= 0, "Objectives: amount must be an integer >= 0")
 	local completed = {}
-	for _, def in self._spec.byCounter[counter] or {} do
+	local defs: { Def } = self._spec.byCounter[counter] or {}
+	for _, def in defs do
 		local entry = self._entries[def.id]
 		if entry.state ~= "tracked" or not matches(def.filter, context) then
 			continue

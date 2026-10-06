@@ -102,7 +102,8 @@ function PlacementGrid.new(definitions: { [string]: Definition }, options: Optio
 		error("PlacementGrid.new: " .. table.concat(problems, "; "), 2)
 	end
 	local blocked = {}
-	for _, cell in options.blocked or {} do
+	local blockedCells: { Cell } = options.blocked or {}
+	for _, cell in blockedCells do
 		blocked[cellKey(cell.x, cell.y)] = true
 	end
 	return setmetatable({

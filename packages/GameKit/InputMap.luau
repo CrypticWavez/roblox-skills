@@ -270,7 +270,9 @@ function InputMap.bindingProblem(binding: any, device: string, kind: string): st
 		if kind == "Bool" then
 			return "a Bool action takes a key, not directional keys"
 		end
-		local sides = if kind == "Direction1D" then { "up", "down" } else { "up", "down", "left", "right" }
+		local sides: { string } = if kind == "Direction1D"
+			then { "up", "down" }
+			else { "up", "down", "left", "right" }
 		for key in binding do
 			if not table.find(sides, key) then
 				return "directional binding key "
@@ -663,8 +665,8 @@ function InputMap.overrides(base: Map, current: Map): Overrides
 	for name, item in current.actions do
 		local baseItem = base.actions[name]
 		for _, device in InputMap.DEVICES do
-			local list = item.bindings[device] or {}
-			local baseList = baseItem and baseItem.bindings[device] or {}
+			local list: { Binding } = item.bindings[device] or {}
+			local baseList: { Binding } = baseItem and baseItem.bindings[device] or {}
 			local same = #list == #baseList
 			if same then
 				for index, binding in list do
@@ -757,7 +759,7 @@ function InputMap.applyOverrides(base: Map, data: any): (Map, { string })
 			end
 		end
 		-- No single revert helps: drop every remaining override.
-		local dropping = if chosen then { applied[chosen] } else applied
+		local dropping: { { name: string, device: string } } = if chosen then { applied[chosen] } else applied
 		for _, o in dropping do
 			local reason = problems[1]
 			for _, problem in problems do

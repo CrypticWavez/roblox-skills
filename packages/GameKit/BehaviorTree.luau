@@ -310,7 +310,7 @@ function BehaviorTree.new(
 				end
 			end
 		else -- timeout
-			local result = evaluate(node.children[1], ctx)
+			local result: Status = evaluate(node.children[1], ctx)
 			if result == "running" then
 				s.startedAt = s.startedAt or now()
 				if now() - s.startedAt >= node.seconds then
@@ -334,7 +334,7 @@ function BehaviorTree.new(
 	function runner.tick(_, ctx: any?): (Status, Info)
 		visits, exhausted = 0, false
 		trace = if options and options.trace then {} else nil
-		local status = evaluate(root, ctx)
+		local status: Status = evaluate(root, ctx)
 		return status, { visits = visits, budgetExhausted = exhausted, trace = trace }
 	end
 	function runner.reset(_, ctx: any?)

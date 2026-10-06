@@ -45,7 +45,7 @@ function ZonesRoblox.defFromPart(part: any): (any?, { string })
 	local cframe = part.CFrame
 	local size = v3(part.Size)
 	local center = v3(cframe.Position)
-	local shape
+	local shape: { [string]: any } -- a Zones.Shape (sphere, aabb or prism); ZonesRoblox does not load Zones
 	local ok, partShape = pcall(function()
 		return part.Shape
 	end)

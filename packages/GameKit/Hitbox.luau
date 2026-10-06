@@ -718,7 +718,8 @@ function Hitbox.activation(options: { maxHits: number?, ignore: { string | numbe
 		"Hitbox.activation: maxHits must be >= 1"
 	)
 	local ignore: { [string]: boolean } = {}
-	for _, id in (options and options.ignore) or {} do
+	local ignoreIds: { string | number } = (options and options.ignore) or {}
+	for _, id in ignoreIds do
 		ignore[tostring(id)] = true
 	end
 	return setmetatable({ _hit = {}, _order = {}, _maxHits = maxHits, _ignore = ignore }, Activation)
@@ -916,10 +917,11 @@ end
 -- Records id's pose at the current server time (call once per simulation step).
 function Validator.record(self: Validator, id: any, shape: Shape): boolean
 	local key = tostring(id)
-	local history = self._histories[key]
+	local history: History? = self._histories[key]
 	if history == nil then
-		history = Hitbox.history({ capacity = self.options.capacity })
-		self._histories[key] = history
+		local created = Hitbox.history({ capacity = self.options.capacity })
+		self._histories[key] = created
+		history = created
 	end
 	return (history :: History):record(self._env.clock(), shape)
 end
@@ -1009,11 +1011,11 @@ function Validator.check(self: Validator, claim: Claim): (boolean, string?, Deta
 	if shooterKey == targetKey then
 		return reject(self, "self_hit")
 	end
-	local shooterHistory = self._histories[shooterKey]
+	local shooterHistory: History? = self._histories[shooterKey]
 	if shooterHistory == nil then
 		return reject(self, "unknown_shooter")
 	end
-	local targetHistory = self._histories[targetKey]
+	local targetHistory: History? = self._histories[targetKey]
 	if targetHistory == nil then
 		return reject(self, "unknown_target")
 	end

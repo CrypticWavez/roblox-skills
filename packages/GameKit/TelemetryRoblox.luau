@@ -241,7 +241,7 @@ function TelemetryRoblox.forPlace(env: any, options: { catalog: any?, print: ((s
 	local place = env.place
 	assert(place ~= nil, "TelemetryRoblox.forPlace: env.place required")
 	if place.isStudio then
-		local print = options and options.print or print
+		local print: (string) -> () = options and options.print or print
 		return TelemetryRoblox.recorder(print), { synthetic = true, environment = "studio" }
 	end
 	if place.isClient and not place.isServer then

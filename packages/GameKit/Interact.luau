@@ -193,7 +193,7 @@ type Fields = {
 	_cooldowns: { [string]: number }, -- "<player>|<target>" -> ready time
 	_shared: { [string]: number },
 	_buckets: { [any]: Bucket },
-	_enabled: { [string]: boolean },
+	_enabled: { [string]: boolean? }, -- false when disabled; nil (absent) when enabled
 	_stats: { [string]: number },
 }
 export type Server = typeof(setmetatable({} :: Fields, Server))
@@ -201,7 +201,7 @@ export type Server = typeof(setmetatable({} :: Fields, Server))
 function Interact.server(set: Set, options: Options?, env: any): Server
 	assert(type(set) == "table" and table.isfrozen(set), "Interact.server needs a set from Interact.define")
 	assert(type(env) == "table" and type(env.clock) == "function", "Interact.server needs env.clock")
-	local opts = options or {}
+	local opts: Options = options or {}
 	if opts.rate ~= nil then
 		assert(Check.integer(opts.rate) and opts.rate >= 1, "Interact.server: rate must be an integer >= 1")
 	end

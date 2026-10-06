@@ -83,7 +83,8 @@ function InteractRoblox.connect(server: any, wiring: Wiring, _env: any): () -> (
 			wiring.onRefused(player, id, reason or "refused")
 		end
 	end
-	for id, prompt in wiring.prompts or {} do
+	local prompts: { [string]: any } = wiring.prompts or {}
+	for id, prompt in prompts do
 		table.insert(
 			connections,
 			prompt.PromptButtonHoldBegan:Connect(function(player: any)
@@ -106,7 +107,8 @@ function InteractRoblox.connect(server: any, wiring: Wiring, _env: any): () -> (
 			end)
 		)
 	end
-	for id, touchPart in wiring.touchParts or {} do
+	local touchParts: { [string]: any } = wiring.touchParts or {}
+	for id, touchPart in touchParts do
 		table.insert(
 			connections,
 			touchPart.Touched:Connect(function(hit: any)
