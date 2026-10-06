@@ -45,9 +45,9 @@
     },
     "fixtures/runtime/Diagnostic.client.luau": {
       "by_type": {
-        "TypeError": 10
+        "TypeError": 7
       },
-      "total": 10
+      "total": 7
     },
     "packages/Creator/AnimationInspector.luau": {
       "by_type": {
@@ -109,12 +109,6 @@
       },
       "total": 9
     },
-    "packages/Pipeline/ImportInspector.luau": {
-      "by_type": {
-        "TypeError": 1
-      },
-      "total": 1
-    },
     "packages/ProcGen/Cave.luau": {
       "by_type": {
         "TypeError": 2
@@ -132,12 +126,6 @@
         "TypeError": 9
       },
       "total": 9
-    },
-    "packages/ProcGen/ForestScene.luau": {
-      "by_type": {
-        "TypeError": 5
-      },
-      "total": 5
     },
     "packages/ProcGen/Graph.luau": {
       "by_type": {
@@ -184,21 +172,15 @@
     },
     "packages/Runtime/NativeUI.luau": {
       "by_type": {
-        "TypeError": 39
-      },
-      "total": 39
-    },
-    "packages/SceneKit/Apply.luau": {
-      "by_type": {
         "TypeError": 2
       },
       "total": 2
     },
     "packages/SceneKit/Building.luau": {
       "by_type": {
-        "TypeError": 27
+        "TypeError": 24
       },
-      "total": 27
+      "total": 24
     },
     "packages/SceneKit/Camera.luau": {
       "by_type": {
@@ -208,27 +190,21 @@
     },
     "packages/SceneKit/Layout.luau": {
       "by_type": {
-        "TypeError": 9
+        "TypeError": 8
       },
-      "total": 9
+      "total": 8
     },
     "packages/SceneKit/Lighting.luau": {
       "by_type": {
-        "TypeError": 2
+        "TypeError": 1
       },
-      "total": 2
+      "total": 1
     },
     "packages/SceneKit/Model.luau": {
       "by_type": {
-        "TypeError": 5
+        "TypeError": 4
       },
-      "total": 5
-    },
-    "packages/SceneKit/Paths.luau": {
-      "by_type": {
-        "TypeError": 3
-      },
-      "total": 3
+      "total": 4
     },
     "packages/SceneKit/Props.luau": {
       "by_type": {
@@ -253,12 +229,6 @@
         "TypeError": 2
       },
       "total": 2
-    },
-    "packages/SceneKit/Vegetation.luau": {
-      "by_type": {
-        "TypeError": 3
-      },
-      "total": 3
     }
   },
   "luau_lsp": "1.70.1",
@@ -269,5 +239,5 @@
     "packages",
     "fixtures"
   ],
-  "total": 338
+  "total": 278
 }

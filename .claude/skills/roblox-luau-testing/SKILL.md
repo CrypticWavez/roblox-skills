@@ -16,7 +16,7 @@ The module under test, its risky paths (money, damage, persistence, receipts, ra
 
 ## Required context
 - `tests/run.luau` (runner and the `t` helpers: `t.eq` deep, `t.near`, `t.ok`, `t.throws`), `docs/runtime-kits.md` (core/adapter split, Env, tiers T0-T4), `docs/gamekit-platform.md` (Testing and Studio probes).
-- Pattern specs: `tests/gamekit_platform_data.spec.luau` (yielding code on FakeEnv threads), `tests/gamekit_platform_commerce.spec.luau` (marketplace fakes, receipts), `tests/gamekit_platform_queue.spec.luau` (determinism and a golden), `tests/scenekit.spec.luau`, `tests/procgen.spec.luau`.
+- Pattern specs: `tests/gamekit_platform_data.spec.luau` (yielding code on FakeEnv threads), `tests/gamekit_platform_commerce.spec.luau` (marketplace fakes, receipts), `tests/gamekit_platform_queue.spec.luau` (determinism and a golden), `tests/scenekit.spec.luau`, `tests/procgen.spec.luau`, `tests/slices_integration.spec.luau` (several kits composed with invariants and one golden, `slices-integration`).
 - Fakes in `tests/fakes/`: `FakeEnv` (clock, `spawn` runs at once, `wait` parks until `advance`, errors and reports collected), `FakeDataStore`, `FakeProfileStore`, `FakeMarketplace`, `FakeMemoryStore`, `FakePolicy`, `FakeConfig`, `FakeTextService`, `FakeAnalytics`, `FakePlatformRoblox`.
 - `tests/lib/Golden.luau` and `tests/golden/`; `references/legacy-testez-author.md` (TestEZ is unmaintained; prefer Jest Lua).
 

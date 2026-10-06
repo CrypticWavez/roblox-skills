@@ -82,6 +82,7 @@ handle:destroy()                                           -- every Instance and
 - Props are validated against a schema; errors read `Component: field must be …` and `Component: unknown prop X (allowed: …)`.
 - Instance names are stable and documented in each module header (specs check them).
 - Text comes from keys through `ctx.text`; `text` props are for dynamic values.
+- Mount children with the parent handle's `handle.ctx`, not the parent's own `ctx`: children mounted on the outer `ctx` survive the parent's `destroy` and keep their connections (the onboarding slice in `tests/slices_integration.spec.luau` counts them).
 
 | Component | Function |
 |---|---|

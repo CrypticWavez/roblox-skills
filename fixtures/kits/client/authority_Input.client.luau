@@ -71,7 +71,8 @@ local function actionMap(): any
 		if default then
 			return table.clone(default.bindings.Touch)
 		end
-		return { "ui:" .. string.match(name, "%.(.+)$") .. "_button" }
+		local label = string.match(name, "%.(.+)$") or name
+		return { "ui:" .. label .. "_button" }
 	end
 	for _, item in Arena.ACTIONS.actions do
 		local kbm, pad = {}, {}

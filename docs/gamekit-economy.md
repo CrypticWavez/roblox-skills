@@ -47,7 +47,7 @@ T3 means the adapter is proven only by a Studio probe that has not run yet (see 
 Duplication bugs come from three places: retries, partial writes and concurrent changes. The kit handles each the same way across modules:
 
 1. **Two-phase commit.** `Wallet:prepare(changes)` and `Inventory:prepare(ops)` validate and return a transaction without changing anything. `commit(tx)` applies it, checking the version so a stale transaction is refused. `rollback(tx)` undoes a committed transaction. Trade, Crafting and UnlockGraph join several participants by preparing all of them first and then committing each. If any commit fails, the ones already committed roll back.
-2. **Durable write before report.** After a commit, the module writes its store before it emits events. If the write raises, the in-memory state is restored and the call returns `store_failed`. An analytics event therefore never describes a change that was not saved.
+2. **Durable write before report.** After a commit, the module writes its store before it emits events. If the write raises or returns `false` (PlayerData's `session:keyStore()` answers `(false, reason)` for a lost, released or busy session), the in-memory state is restored and the call returns `store_failed` with no event. An analytics event therefore never describes a change that was not saved.
 3. **Idempotency keys.** Wallet remembers recent transaction ids (`ledgerSize`, a convention of 128), so a retried `transact(changes, { txId })` returns `(true, "duplicate")` and does nothing. UnlockGraph pays with the transaction id `unlock:<id>`. A request retried after a crash between the wallet write and the tracker save therefore unlocks without charging again. Trade writes a journal record `trade:<id>`, and a second commit, including one on a new trade object, returns `already_committed`.
 4. **Save together.** Wallet and Inventory can share one store, so a game that keeps both in one session-locked document (G1 PlayerData) saves them as a unit. For cross-player trades, use `Trade` with a journal store plus each player's store.
 
@@ -75,7 +75,7 @@ wallet:transact({                                        -- all or nothing
 
 - `reason` is a standard `Enum.AnalyticsEconomyTransactionType` name (`IAP`, `Shop`, `Gameplay`, `ContextualPurchase`, `TimedReward`, `Onboarding`) or a lower_snake label. It becomes the event's `transaction_type`.
 - `overflow = "reject"` (the default) refuses a credit past the cap with `at_cap`. `"clamp"` applies what fits and reports the applied amount. At most five currencies report events, which is the kit-event/1 limit. Set `report = false` on the others.
-- Also available: `balance`, `balances`, `has`, `canAfford(costs)`, `canTransact`, `seen(txId)`, `version`, `serialize()`, plus `prepare`, `commit`, `rollback` and `emit` for two-phase use. A rollback after events were emitted sends compensating events with `transaction_type = "rollback"`.
+- Also available: `balance`, `balances`, `has`, `canAfford(costs)`, `canTransact`, `seen(txId)`, `version`, `serialize()`, `reload()` (re-read the store after another writer such as a receipt grant; prepared transactions go stale, `changed` fires, nothing is emitted; refuses with `no_store`, `empty` or `store_failed` and changes nothing), plus `prepare`, `commit`, `rollback` and `emit` for two-phase use. A rollback after events were emitted sends compensating events with `transaction_type = "rollback"`.
 
 ## EconomySim
 
@@ -118,6 +118,7 @@ The same options give the same report. A work bound (`maxEvents`, a convention o
 - `equipSlots` is a list of slot names, where a slot takes items whose `def.slot` matches its name. It can also be a map `slot -> kind` for several slots of one kind, for example three follower slots: `{ follower_1 = "follower", follower_2 = "follower", follower_3 = "follower" }`.
 - Paid copies (`paid = true` on the def or the op) never merge with earned ones, so trading rules can tell them apart. `count(item, paid?)` counts them separately.
 - Capacity counts entries. Huge add counts are bounded before any loop runs.
+- `reload()` re-reads the store after another writer, such as a receipt grant; `changed` fires with state `reloaded`.
 
 ## Progression, objectives and streaks
 
