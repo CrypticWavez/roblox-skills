@@ -538,7 +538,7 @@ function Schema.custom(name: string, fn: (value: any) -> (boolean, string?)): Sc
 		if not ok then
 			return ok, p, r
 		end
-		local called, accepted = pcall(fn, value)
+		local called, accepted, _ = pcall(fn, value) -- the third local keeps luau-lsp 1.70.1 from mistyping `accepted`
 		if not called or accepted ~= true then
 			return fail(path, "custom")
 		end
