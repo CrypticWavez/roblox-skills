@@ -1,5 +1,12 @@
 --!strict
 -- Server-only atomic account/receipt core. No services or side effects inside transforms.
+-- Retention: each receipt records when it was granted (`at`, unix seconds from options.now,
+-- default os.time). Receipts older than minRetentionDays (default 30, a convention: Roblox
+-- re-delivers an unacknowledged receipt for a limited time, UNVERIFIED how long) are pruned on
+-- the next grant, and "receipt_capacity_requires_migration" is returned only when the receipts
+-- still inside the window fill maxReceipts. Receipts stored without `at` (v1 data, or v2 data
+-- written before retention) are stamped with the current time on first touch, so they are kept
+-- for a full window. Dedupe inside the window is never given up to admit a new receipt.
 local ReceiptLedger = {}
 export type Product = {
 	universeId: number,
@@ -11,15 +18,23 @@ export type Account = {
 	version: number,
 	balances: { [string]: number },
 	entitlements: { [string]: boolean },
-	receipts: { [string]: { productId: number, revision: string } },
+	receipts: { [string]: { productId: number, revision: string, at: number } },
 }
-export type Result = { decision: string, reason: string, attempts: number, account: Account? }
+export type Result = {
+	decision: string,
+	reason: string,
+	attempts: number,
+	account: Account?,
+	pruned: number?,
+}
 export type Options = {
 	store: any,
 	namespace: string,
 	universeId: number,
 	products: { [number]: Product },
 	maxReceipts: number?,
+	minRetentionDays: number?,
+	now: (() -> number)?,
 	maxBalances: number?,
 	maxEntitlements: number?,
 	maxBalance: number?,
@@ -27,6 +42,8 @@ export type Options = {
 	wait: ((number) -> ())?,
 }
 local MAX_INTEGER = 9007199254740991
+local DAY = 86400
+ReceiptLedger.DEFAULT_RETENTION_DAYS = 30 -- convention, not a Roblox number
 
 local function integer(value: any, minimum: number, maximum: number): boolean
 	return type(value) == "number"
@@ -77,6 +94,14 @@ function ReceiptLedger.new(options: Options)
 	)
 	local attempts = options.attempts or 3
 	assert(integer(attempts, 1, 5), "attempts must be 1..5")
+	local retentionDays = options.minRetentionDays or ReceiptLedger.DEFAULT_RETENTION_DAYS
+	assert(
+		type(retentionDays) == "number" and retentionDays >= 1 and retentionDays <= 3650,
+		"minRetentionDays must be 1..3650"
+	)
+	local window = retentionDays * DAY
+	local now = options.now or os.time
+	assert(type(now) == "function", "now must be a function returning unix seconds")
 	local waitFor = options.wait or function(_seconds: number) end
 	local products: { [number]: Product } = {}
 	for productId, product in options.products do
@@ -102,7 +127,8 @@ function ReceiptLedger.new(options: Options)
 		products[productId] = copy(product)
 	end
 
-	local function normalize(stored: any): (Account?, string?)
+	-- stamp: the time given to receipts stored without one.
+	local function normalize(stored: any, stamp: number): (Account?, string?)
 		if stored == nil then
 			return { version = 2, balances = {}, entitlements = {}, receipts = {} }, nil
 		end
@@ -149,15 +175,17 @@ function ReceiptLedger.new(options: Options)
 				if not integer(receipt, 1, MAX_INTEGER) then
 					return nil, "corrupt_v1_receipt"
 				end
-				account.receipts[purchaseId] = { productId = receipt, revision = "migrated_v1" }
+				account.receipts[purchaseId] = { productId = receipt, revision = "migrated_v1", at = stamp }
 			elseif
 				type(receipt) ~= "table"
 				or not integer(receipt.productId, 1, MAX_INTEGER)
 				or not identifier(receipt.revision, 32)
+				or (receipt.at ~= nil and not integer(receipt.at, 0, MAX_INTEGER))
 			then
 				return nil, "corrupt_receipt"
 			else
-				account.receipts[purchaseId] = { productId = receipt.productId, revision = receipt.revision }
+				account.receipts[purchaseId] =
+					{ productId = receipt.productId, revision = receipt.revision, at = receipt.at or stamp }
 			end
 		end
 		return account, nil
@@ -182,14 +210,20 @@ function ReceiptLedger.new(options: Options)
 		if product == nil then
 			return { decision = "NotProcessedYet", reason = "unknown_product", attempts = 0 }
 		end
+		local stamp = now()
+		if not integer(stamp, 0, MAX_INTEGER) then
+			return { decision = "NotProcessedYet", reason = "invalid_clock", attempts = 0 }
+		end
 		local rejection: string? = nil
+		local pruned = 0
 		for attempt = 1, attempts do
 			rejection = nil
 			local ok, committed = pcall(function()
 				return storage:UpdateAsync(api:key(receipt.PlayerId), function(stored: any): Account?
 					-- May run repeatedly. Recreate candidate each time; do not grant Instances,
 					-- emit events, yield, or perform additional datastore writes here.
-					local account, failure = normalize(stored)
+					pruned = 0
+					local account, failure = normalize(stored, stamp)
 					if account == nil then
 						rejection = failure
 						return nil
@@ -202,9 +236,16 @@ function ReceiptLedger.new(options: Options)
 						end
 						return account
 					end
+					-- Retention: drop receipts older than the window, then count what is left.
+					for purchaseId, kept in account.receipts do
+						if kept.at < stamp - window then
+							account.receipts[purchaseId] = nil
+							pruned += 1
+						end
+					end
 					if mapCount(account.receipts) >= limits.receipts then
 						rejection = "receipt_capacity_requires_migration"
-						return nil -- Never evict dedupe facts just to admit a new receipt.
+						return nil -- Never evict in-window dedupe facts to admit a new receipt.
 					end
 					for name, amount in product.balances do
 						local total = (account.balances[name] or 0) + amount
@@ -225,12 +266,12 @@ function ReceiptLedger.new(options: Options)
 						return nil
 					end
 					account.receipts[receipt.PurchaseId] =
-						{ productId = receipt.ProductId, revision = product.revision }
+						{ productId = receipt.ProductId, revision = product.revision, at = stamp }
 					return account
 				end)
 			end)
 			if ok then
-				local account = normalize(committed)
+				local account = normalize(committed, stamp)
 				local proof = account and account.receipts[receipt.PurchaseId]
 				if proof and proof.productId == receipt.ProductId then
 					return {
@@ -238,6 +279,7 @@ function ReceiptLedger.new(options: Options)
 						reason = "durable_record_confirmed",
 						attempts = attempt,
 						account = account,
+						pruned = pruned,
 					}
 				end
 				return {

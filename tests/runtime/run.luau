@@ -223,13 +223,91 @@ test("corrupt and future schemas are preserved for recovery", function()
 		equal(serde.encode("json", s.values), before)
 	end
 end)
-test("receipt capacity fails closed and never evicts dedupe", function()
+-- Second pass (G1): the capacity rule now counts receipts inside the retention window. This
+-- case pins a clock and keeps both receipts inside the window, so it still fails closed.
+test("receipt capacity fails closed for in-window receipts and never evicts dedupe", function()
 	local s = store()
-	local ledger = create(s, { maxReceipts = 1 })
+	local clock = 1700000000
+	local ledger = create(s, {
+		maxReceipts = 1,
+		now = function()
+			return clock
+		end,
+	})
 	ledger:process(receipt("first"))
+	clock += 29 * 86400 -- day 29: "first" is still inside the 30-day window
 	equal(ledger:process(receipt("second")).reason, "receipt_capacity_requires_migration")
 	equal(ledger:process(receipt("first")).decision, "PurchaseGranted")
 	equal(s.values["isolated_fixture:42"].balances.units, 10)
+	equal(s.values["isolated_fixture:42"].receipts.first.at, 1700000000)
+end)
+test("receipts older than the retention window are pruned before the capacity check", function()
+	local s = store()
+	local clock = 1700000000
+	local ledger = create(s, {
+		maxReceipts = 1,
+		minRetentionDays = 30,
+		now = function()
+			return clock
+		end,
+	})
+	ledger:process(receipt("first"))
+	clock += 30 * 86400 + 1
+	local result = ledger:process(receipt("second"))
+	equal(result.decision, "PurchaseGranted")
+	equal(result.pruned, 1)
+	equal(s.values["isolated_fixture:42"].receipts.first, nil)
+	equal(s.values["isolated_fixture:42"].receipts.second.at, clock)
+	equal(s.values["isolated_fixture:42"].balances.units, 20)
+	-- the in-window receipt still dedupes
+	equal(ledger:process(receipt("second")).decision, "PurchaseGranted")
+	equal(s.values["isolated_fixture:42"].balances.units, 20)
+end)
+test("receipts stored without a timestamp are stamped and kept a full window", function()
+	local s = store()
+	s.values["isolated_fixture:42"] = {
+		version = 2,
+		balances = { units = 10 },
+		entitlements = {},
+		receipts = { legacy = { productId = 1001, revision = "test_v1" } },
+	}
+	local clock = 1700000000
+	local ledger = create(s, {
+		maxReceipts = 2,
+		now = function()
+			return clock
+		end,
+	})
+	equal(ledger:process(receipt("next")).decision, "PurchaseGranted")
+	equal(s.values["isolated_fixture:42"].receipts.legacy.at, clock)
+	clock += 10 * 86400
+	equal(ledger:process(receipt("third")).reason, "receipt_capacity_requires_migration")
+	equal(s.values["isolated_fixture:42"].balances.units, 20)
+end)
+test("retention options and clocks are validated", function()
+	local s = store()
+	for _, days in { 0, -1, 4000, 0 / 0 } do
+		equal(
+			pcall(function()
+				create(s, { minRetentionDays = days })
+			end),
+			false
+		)
+	end
+	local bad = create(s, {
+		now = function()
+			return 0 / 0
+		end,
+	})
+	equal(bad:process(receipt()).reason, "invalid_clock")
+	equal(s.calls, 0)
+	s.values["isolated_fixture:42"] = {
+		version = 2,
+		balances = {},
+		entitlements = {},
+		receipts = { odd = { productId = 1001, revision = "test_v1", at = "yesterday" } },
+	}
+	equal(create(s):process(receipt()).reason, "corrupt_receipt")
 end)
 test("balance overflow rolls back grant and receipt together", function()
 	local s = store()
