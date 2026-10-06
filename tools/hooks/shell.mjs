@@ -1,13 +1,19 @@
 // Minimal shell parser for the PreToolUse guards. It evaluates nothing. It splits a command line
-// into simple commands ({ argv, redirs }) so rules can look at a command's own arguments
-// instead of the raw text, which made the old regexes depend on argument order.
+// into simple commands so rules can look at a command's own arguments instead of the raw text,
+// which made the old regexes depend on argument order. Each command is
+//   { argv, redirs, assigns, chdir, viaXargs, piped, carrier, mode }
+// assigns: leading VAR=value words (and env VAR=value); chdir: env -C / sudo -D directory;
+// viaXargs: arguments may be appended from input (xargs, find -exec); piped: stdin is a pipe;
+// carrier: a shell whose script text was parsed into further commands; mode: "sh" or "ps".
 //
-// Handled: ' " $'' quoting, backslashes, ; && || | & newlines ( ), $(...) and `...`
-// substitutions, redirections (2>, >>, &>, <<EOF heredocs), leading VAR=value assignments,
-// wrappers (sudo, env, xargs, timeout, nohup, ...), find -exec, and nested command strings in
-// bash/sh -c, eval, powershell -Command / -EncodedCommand, cmd /c and wsl.
-// Not handled (residual risk): variables and aliases that hide the command name, scripts
-// executed from files, and deliberately obfuscated text.
+// Handled: ' " $'' quoting, backslashes, ; && || | & newlines ( ), PowerShell { } blocks,
+// $(...) and `...` substitutions, redirections (2>, >>, &>, <<EOF heredocs, <<<), leading
+// VAR=value assignments, wrappers (sudo, env, xargs, timeout, nohup, ...), find -exec, and nested
+// scripts in bash/sh -c, eval, powershell -Command / -EncodedCommand, cmd /c, wsl, and a shell
+// reading its script from a heredoc or from echo/printf/cat piped into it.
+// Not handled (residual risk): aliases, scripts executed from files, script text produced by
+// other programs, and deliberately obfuscated text. The guards expand variables assigned in the
+// same command line themselves.
 
 const OPERATORS = ["&&", "||", "|&", ";;", ";", "|", "&", "\n", "(", ")"];
 const REDIRECTS = ["&>>", "&>", ">>", ">|", ">&", "<<<", "<<-", "<<", "<>", "<&", ">", "<"];
@@ -140,7 +146,8 @@ function lex(src, start, nested, mode = "sh") {
 			i += redirect.length;
 			continue;
 		}
-		const op = OPERATORS.find((o) => src.startsWith(o, i));
+		// PowerShell script blocks ({ Remove-Item $_ }) and hashtables hold separate statements.
+		const op = mode === "ps" && (c === "{" || c === "}") ? c : OPERATORS.find((o) => src.startsWith(o, i));
 		if (op) {
 			flush();
 			if (op === "(") depth++;
@@ -192,7 +199,7 @@ export function commandName(token) {
 
 // Wrappers run the rest of their argv as a command. argOpts take a separate value.
 const WRAPPERS = {
-	sudo: ["-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T"],
+	sudo: ["-u", "-g", "-C", "-D", "-h", "-p", "-r", "-t", "-U", "-T", "--chdir", "--user", "--group"],
 	doas: ["-u", "-C"],
 	env: ["-u", "-C", "-S", "--unset", "--chdir", "--split-string"],
 	command: [],
@@ -205,40 +212,81 @@ const WRAPPERS = {
 	timeout: ["-s", "-k", "--signal", "--kill-after"],
 	stdbuf: ["-i", "-o", "-e"],
 	xargs: ["-I", "-n", "-P", "-L", "-s", "-d", "-E", "-a", "--max-args", "--max-procs", "--delimiter", "--arg-file"],
+	parallel: ["-j", "-S", "--jobs"],
 	watch: ["-n", "-d", "--interval"],
 	unbuffer: [],
 	chronic: [],
 };
+// Wrapper options that change the directory the wrapped command runs in.
+const CHDIR_OPTS = { env: ["-C", "--chdir"], sudo: ["-D", "--chdir"] };
 const RESERVED = new Set(["!", "{", "}", "then", "do", "else", "elif", "if", "while", "until", "fi", "done", "esac", "&"]);
+const ASSIGNMENT = /^([A-Za-z_][A-Za-z0-9_]*)=([\s\S]*)$/;
 
 function stripWrappers(argv) {
 	let i = 0;
 	let viaXargs = false;
+	let chdir = null;
+	const assigns = [];
 	for (;;) {
-		while (i < argv.length && (RESERVED.has(argv[i]) || /^[A-Za-z_][A-Za-z0-9_]*=/.test(argv[i]))) i++;
+		while (i < argv.length && (RESERVED.has(argv[i]) || ASSIGNMENT.test(argv[i]))) {
+			const m = ASSIGNMENT.exec(argv[i]);
+			if (m) assigns.push([m[1], m[2]]);
+			i++;
+		}
 		const name = commandName(argv[i]);
 		const argOpts = WRAPPERS[name];
 		if (!argOpts || i >= argv.length - 1) break;
-		if (name === "xargs") viaXargs = true;
+		if (name === "xargs" || name === "parallel") viaXargs = true;
 		i++;
 		while (i < argv.length) {
 			const a = argv[i];
+			const [opt, attached] = a.startsWith("--") && a.includes("=") ? [a.slice(0, a.indexOf("=")), a.slice(a.indexOf("=") + 1)] : [a, undefined];
+			if (CHDIR_OPTS[name]?.includes(opt)) chdir = attached ?? argv[i + 1] ?? "";
 			if (argOpts.includes(a)) i += 2;
 			else if (a.startsWith("-") && a !== "-") i++;
-			else if (name === "env" && /^[A-Za-z_][A-Za-z0-9_]*=/.test(a)) i++;
-			else if ((name === "timeout" || name === "nice") && /^[\d.]+[smhd]?$/.test(a)) i++;
+			else if (name === "env" && ASSIGNMENT.test(a)) {
+				const m = ASSIGNMENT.exec(a);
+				assigns.push([m[1], m[2]]);
+				i++;
+			} else if ((name === "timeout" || name === "nice") && /^[\d.]+[smhd]?$/.test(a)) i++;
 			else break;
 		}
 	}
-	return { argv: argv.slice(i), viaXargs };
+	return { argv: argv.slice(i), viaXargs, assigns, chdir };
 }
 
-function nestedScripts(argv) {
+const SHELLS = ["bash", "sh", "zsh", "dash", "ksh", "fish", "busybox", "ash", "mksh"];
+// Commands whose output, piped into a shell, is the script text itself.
+const SCRIPT_PRODUCERS = ["echo", "printf", "print", "write-output", "write-host"];
+
+// Script text a shell reads from stdin: heredocs/here-strings on the shell itself, or the words of
+// echo/printf (and heredocs of cat) piped into it.
+function stdinScripts(redirs, pipedFrom) {
+	const out = [];
+	for (const r of redirs) {
+		if (r.op === "<<<") out.push(r.target);
+		else if (r.op.startsWith("<<") && r.body !== undefined) out.push(r.body);
+	}
+	if (pipedFrom) {
+		const name = commandName(pipedFrom.argv[0]);
+		if (SCRIPT_PRODUCERS.includes(name)) out.push(pipedFrom.argv.slice(1).filter((a) => !/^-[neE]+$/.test(a)).join(" "));
+		for (const r of pipedFrom.redirs) {
+			if (r.op === "<<<") out.push(r.target);
+			else if (r.op.startsWith("<<") && r.body !== undefined) out.push(r.body);
+		}
+	}
+	return out;
+}
+
+function nestedScripts(argv, redirs, pipedFrom) {
 	const name = commandName(argv[0]);
 	const rest = argv.slice(1);
-	if (["bash", "sh", "zsh", "dash", "ksh", "fish", "busybox"].includes(name)) {
+	if (SHELLS.includes(name)) {
 		const k = rest.findIndex((a) => /^-[a-zA-Z]*c[a-zA-Z]*$/.test(a));
 		if (k >= 0 && rest[k + 1] !== undefined) return [[rest[k + 1], "sh"]];
+		// No -c: the script is a file argument, or stdin when there is none (or -s / -).
+		const file = rest.find((a) => !a.startsWith("-") || a === "-");
+		if (file === undefined || file === "-" || rest.includes("-s")) return stdinScripts(redirs, pipedFrom).map((t) => [t, "sh"]);
 		return [];
 	}
 	if (name === "eval") return [[rest.join(" "), "sh"]];
@@ -252,9 +300,10 @@ function nestedScripts(argv) {
 			}
 		}
 		const k = rest.findIndex((a) => /^-(c|command)$/i.test(a));
-		if (k >= 0) return [[rest.slice(k + 1).join(" "), "ps"]];
+		if (k >= 0 && rest[k + 1] !== "-") return [[rest.slice(k + 1).join(" "), "ps"]];
 		const first = rest.findIndex((a) => !a.startsWith("-"));
-		return first >= 0 ? [[rest.slice(first).join(" "), "ps"]] : [];
+		if (k < 0 && first >= 0) return [[rest.slice(first).join(" "), "ps"]];
+		return stdinScripts(redirs, pipedFrom).map((t) => [t, "ps"]);
 	}
 	if (name === "cmd") {
 		const k = rest.findIndex((a) => /^\/[ck]$/i.test(a));
@@ -279,48 +328,55 @@ function findExecs(argv) {
 	return out;
 }
 
-function collect(items, out, depth) {
+function collect(items, out, depth, mode) {
 	let cur = { argv: [], redirs: [] };
-	const finish = () => {
-		if (cur.argv.length || cur.redirs.length) expand(cur, out, depth);
+	let pipedFrom = null;
+	const finish = (op) => {
+		const done = cur.argv.length || cur.redirs.length ? expand(cur, out, depth, mode, pipedFrom) : null;
+		pipedFrom = op === "|" || op === "|&" ? done : null;
 		cur = { argv: [], redirs: [] };
 	};
 	for (let k = 0; k < items.length; k++) {
 		const it = items[k];
 		if (it.type === "op") {
-			finish();
+			finish(it.value);
 			continue;
 		}
 		if (it.type === "sub") {
-			collect(it.items, out, depth + 1);
+			collect(it.items, out, depth + 1, mode);
 			continue;
 		}
 		if (it.type === "redir") {
 			const target = items[k + 1]?.type === "word" ? items[k + 1] : null;
 			if (target) {
 				k++;
-				for (const sub of target.subs) collect(sub, out, depth + 1);
+				for (const sub of target.subs) collect(sub, out, depth + 1, mode);
 			}
 			cur.redirs.push({ op: it.op, fd: it.fd, target: target ? target.value : "", body: it.body });
 			continue;
 		}
-		for (const sub of it.subs) collect(sub, out, depth + 1);
+		for (const sub of it.subs) collect(sub, out, depth + 1, mode);
 		cur.argv.push(it.value);
 	}
-	finish();
+	finish(null);
 }
 
-function expand(cmd, out, depth) {
-	const { argv, viaXargs } = stripWrappers(cmd.argv);
-	out.push({ argv, redirs: cmd.redirs, viaXargs });
-	if (depth > 6 || !argv.length) return;
-	for (const [script, mode] of nestedScripts(argv)) collect(lex(script, 0, false, mode).items, out, depth + 1);
-	for (const sub of findExecs(argv)) out.push({ argv: stripWrappers(sub).argv, redirs: [], viaXargs: true });
+function expand(cmd, out, depth, mode, pipedFrom, fromExec = false) {
+	const stripped = stripWrappers(cmd.argv);
+	const rec = { ...stripped, redirs: cmd.redirs, mode, piped: Boolean(pipedFrom), carrier: false };
+	if (fromExec) rec.viaXargs = true;
+	out.push(rec);
+	if (depth > 6 || !rec.argv.length) return rec;
+	const nested = nestedScripts(rec.argv, rec.redirs, pipedFrom);
+	if (nested.length) rec.carrier = true;
+	for (const [script, m] of nested) collect(lex(script, 0, false, m).items, out, depth + 1, m);
+	for (const sub of findExecs(rec.argv)) expand({ argv: sub, redirs: [] }, out, depth + 1, mode, null, true);
+	return rec;
 }
 
 // Every simple command in `text`, in source order, nested ones included.
 export function parseCommands(text) {
 	const out = [];
-	collect(lex(String(text ?? ""), 0, false).items, out, 0);
+	collect(lex(String(text ?? ""), 0, false).items, out, 0, "sh");
 	return out;
 }

@@ -58,14 +58,26 @@ def files(suffixes=TEXT_SUFFIXES):
                 yield p
 
 
+FAILURE_LINE = re.compile(r"^\s*(FAIL|FAILED|ERROR|Error|error)\b|Traceback|AssertionError")
+
+
 def run(cmd, timeout=600, env=None):
     start = time.time()
     try:
         proc = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=timeout, env=env)
     except subprocess.TimeoutExpired:
         return 124, f"timed out after {timeout}s", round(time.time() - start, 1)
-    tail = (proc.stdout + proc.stderr).strip().splitlines()[-15:]
-    return proc.returncode, "\n".join(tail), round(time.time() - start, 1)
+    lines = (proc.stdout + proc.stderr).strip().splitlines()
+    tail = lines[-15:]
+    # Keep failure lines that scrolled out of the tail, so the report names the failing case.
+    failures = [line for line in lines[:-15] if FAILURE_LINE.search(line)][:20]
+    return proc.returncode, "\n".join(failures + tail), round(time.time() - start, 1)
+
+
+def headline(detail):
+    """The line that explains a failure: the first FAIL/ERROR line, else the last line."""
+    lines = [line for line in detail.splitlines() if line.strip()]
+    return next((line for line in lines if FAILURE_LINE.search(line)), lines[-1] if lines else "")
 
 
 class Gate:
@@ -75,8 +87,8 @@ class Gate:
     def add(self, name, status, detail="", seconds=0.0):
         self.results.append({"name": name, "status": status, "detail": detail, "seconds": seconds})
         mark = {"PASS": "ok  ", "FAIL": "FAIL", "SKIPPED": "skip"}[status]
-        last = detail.splitlines()[-1] if detail and status != "PASS" else ""
-        print(f"[{mark}] {name} ({seconds}s){': ' + last if last else ''}")
+        why = headline(detail) if status != "PASS" else ""
+        print(f"[{mark}] {name} ({seconds}s){': ' + why if why else ''}")
 
     def cmd(self, name, cmd, needs=None, timeout=600, env=None):
         if needs and shutil.which(needs) is None:

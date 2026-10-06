@@ -19,11 +19,17 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install rokit toolchain (rokit.toml)
+        env:
+          GITHUB_PAT: ${{ github.token }} # the installer's GitHub API calls; avoids anonymous rate limits
         run: |
           curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
           echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
       - name: Install pinned tools
-        run: rokit install --no-trust-check
+        env:
+          ROKIT_TOKEN: ${{ github.token }}
+        run: |
+          rokit authenticate github --token "$ROKIT_TOKEN" --skip-verify
+          rokit install --no-trust-check
       - name: Generate the Selene Roblox std
         # roblox.yml is gitignored. Generating it before the gate makes Selene run instead of SKIPPED.
         run: selene generate-roblox-std
@@ -61,11 +67,17 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install rokit toolchain (rokit.toml)
+        env:
+          GITHUB_PAT: ${{ github.token }} # the installer's GitHub API calls; avoids anonymous rate limits
         run: |
           curl -sSf https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.sh | bash
           echo "$HOME/.rokit/bin" >> "$GITHUB_PATH"
       - name: Install pinned tools
-        run: rokit install --no-trust-check
+        env:
+          ROKIT_TOKEN: ${{ github.token }}
+        run: |
+          rokit authenticate github --token "$ROKIT_TOKEN" --skip-verify
+          rokit install --no-trust-check
       - name: Generate the Selene Roblox std
         run: selene generate-roblox-std
       - name: Install bpy
