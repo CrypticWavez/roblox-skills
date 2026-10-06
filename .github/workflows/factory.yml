@@ -34,11 +34,10 @@ jobs:
         # roblox.yml is gitignored. Generating it before the gate makes Selene run instead of SKIPPED.
         run: selene generate-roblox-std
       - name: Rojo builds the diagnostic projects
-        # network.project.json needs artifacts/network/SourceManifest.luau, which only the local
-        # workbench generates (see docs/gap-matrix.md), so it is not built from a clean clone.
+        # network.project.json reads build/network/SourceManifest.luau, generated from its sources.
         run: |
-          mkdir -p build
-          for p in creator diagnostic factory; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
+          python3 tools/network_manifest.py
+          for p in creator diagnostic factory network; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
       - name: Pre-commit gate (strict)
         run: python3 tools/check.py --tier pre-commit --strict
       - uses: actions/upload-artifact@v4

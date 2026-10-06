@@ -7,7 +7,7 @@
         "$className": "Folder",
         "FaultQueue": { "$path": "../packages/Diagnostics/FaultQueue.luau" },
         "Settings": { "$path": "network/Settings.luau" },
-        "SourceManifest": { "$path": "../artifacts/network/SourceManifest.luau" }
+        "SourceManifest": { "$path": "../build/network/SourceManifest.luau" }
       }
     },
     "ServerScriptService": {
