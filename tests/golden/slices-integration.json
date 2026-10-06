@@ -1,0 +1,180 @@
+{
+  "authority_input_client": {
+    "actions": [
+      "gameplay.dash",
+      "gameplay.jump",
+      "gameplay.move",
+      "gameplay.primary",
+      "gameplay.slide",
+      "gameplay.sprint"
+    ],
+    "claims": 1,
+    "inputs": [
+      {
+        "dash": false,
+        "move": [
+          0,
+          0
+        ],
+        "seq": 1,
+        "sprint": false
+      },
+      {
+        "dash": false,
+        "move": [
+          0.406,
+          -0.914
+        ],
+        "seq": 2,
+        "sprint": true
+      },
+      {
+        "dash": true,
+        "move": [
+          0.406,
+          -0.914
+        ],
+        "seq": 3,
+        "sprint": true
+      },
+      {
+        "dash": false,
+        "move": [
+          0.406,
+          -0.914
+        ],
+        "seq": 4,
+        "sprint": true
+      }
+    ],
+    "moved": [
+      7.801,
+      -17.544
+    ]
+  },
+  "projectile_arena": {
+    "balances": {
+      "101": 0,
+      "102": 0,
+      "103": 0,
+      "104": 20,
+      "105": 0,
+      "106": 20,
+      "107": 20,
+      "108": 0
+    },
+    "course": "645ff4a7",
+    "digest": "eb7780ec",
+    "hits": 27,
+    "kills": 6,
+    "teams": [
+      [
+        105,
+        107,
+        106,
+        103
+      ],
+      [
+        102,
+        104,
+        108,
+        101
+      ]
+    ],
+    "telemetry": "d635c90e",
+    "ticks": 298,
+    "winner": 1
+  },
+  "race_loop_vehicle": {
+    "best_laps": [
+      {
+        "key": "bot_2",
+        "ms": 15017,
+        "rank": 1
+      },
+      {
+        "key": "bot_3",
+        "ms": 15100,
+        "rank": 2
+      },
+      {
+        "key": "bot_4",
+        "ms": 15100,
+        "rank": 2
+      },
+      {
+        "key": "bot_1",
+        "ms": 17167,
+        "rank": 4
+      }
+    ],
+    "course": "a53934d6",
+    "digest": "df0c18fe",
+    "events": 70,
+    "gates": 6,
+    "standings": [
+      "bot_2",
+      "bot_3",
+      "bot_4",
+      "bot_1",
+      "bot_cheat"
+    ],
+    "steps": 2120,
+    "telemetry": "e966dd0c",
+    "totals": {
+      "bot_1": 35.333,
+      "bot_2": 31.283,
+      "bot_3": 31.583,
+      "bot_4": 31.8
+    }
+  },
+  "schema": "slices-integration/1",
+  "session_persistence": {
+    "balances": {
+      "currency_a": 116,
+      "currency_b": 5
+    },
+    "digest": "5e47095a",
+    "items": 6,
+    "level": 4,
+    "refusals": [
+      "insufficient_funds",
+      "insufficient_funds"
+    ],
+    "saved": "5c9b3bb1",
+    "telemetry": "4d4b81b4",
+    "xp": 309
+  },
+  "stalker_ai": {
+    "acquired": 3,
+    "digest": "d6a7b96c",
+    "lost": [
+      "occluded",
+      "occluded"
+    ],
+    "modes": {
+      "chase": 98,
+      "investigate": 18,
+      "patrol": 415
+    },
+    "routes": 31,
+    "strikes": 3,
+    "ticks": 553
+  },
+  "ui_onboarding_flow": {
+    "digest": {
+      "full": "6b4c2219",
+      "reduced": "6b4c2219"
+    },
+    "glyphs": [
+      "Enter",
+      "A"
+    ],
+    "settle": {
+      "full": 0.3,
+      "reduced": 0.15
+    },
+    "skippedAt": 1.517,
+    "telemetry": "e6c7632a"
+  }
+}
