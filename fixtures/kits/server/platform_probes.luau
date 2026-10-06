@@ -281,4 +281,69 @@ function probes.platform_telemetry_recorder(ctx: any)
 	ctx.check("for_place_studio_recorder", placeSink.kind == "recorder" and envelope.synthetic == true)
 end
 
+-- PolicyGate against the real PolicyService for the play session's player. Run it once per
+-- Player Emulator region (Test > Player Emulator > Enable Test Profile) and compare the logged
+-- matrices: the gate must agree with the emulated info field by field, never allow external or
+-- social links, and fail closed when the fetch fails.
+function probes.platform_policy_emulator(ctx: any)
+	if not diagnostic(ctx) then
+		return
+	end
+	local player = firstPlayer(ctx)
+	if player == nil then
+		return
+	end
+	local PolicyGate = ctx.kit("GameKit/PolicyGate")
+	local PolicyGateRoblox = ctx.kit("GameKit/PolicyGateRoblox")
+	local env = ctx.env
+	local fetch = PolicyGateRoblox.fetcher(env.services.PolicyService, {
+		voiceChatService = env.services.VoiceChatService,
+	})
+	local read, info = pcall(fetch, player)
+	ctx.check("policy_info_read", read and type(info) == "table", if read then nil else tostring(info))
+	if not read then
+		return
+	end
+	local typed = true
+	for _, field in PolicyGateRoblox.FIELDS do
+		typed = typed and type(info[field]) == "boolean"
+	end
+	ctx.check("policy_fields_boolean", typed, info)
+	local gate = PolicyGate.new({ fetch = fetch, retry = { attempts = 2, base = 0.1 } }, env)
+	ctx.check("gate_loaded", gate:load(player))
+	local agrees = true
+	local matrix = {}
+	for _, feature in PolicyGate.FEATURES do
+		local allowed = gate:allows(player, feature)
+		matrix[feature] = allowed
+		agrees = agrees and allowed == (PolicyGate.evaluate(info, feature))
+	end
+	ctx.check("gate_matches_info", agrees, matrix)
+	ctx.check(
+		"links_never_allowed",
+		not gate:allows(player, "externalLinks") and not gate:allows(player, "socialLinks")
+	)
+	ctx.check("unknown_feature_denied", not gate:allows(player, "probe_unknown_feature"))
+	local failing = PolicyGate.new({
+		fetch = function(): any
+			error("probe: forced failure")
+		end,
+		retry = { attempts = 1 },
+	}, env)
+	local loaded = failing:load(player)
+	local anyAllowed = false
+	for _, feature in PolicyGate.FEATURES do
+		anyAllowed = anyAllowed or failing:allows(player, feature)
+	end
+	ctx.check("fails_closed", not loaded and not anyAllowed)
+	local bound = PolicyGate.new({ fetch = fetch, retry = { attempts = 2, base = 0.1 } }, env)
+	local disconnect = PolicyGateRoblox.bind(bound, env.services.Players, env)
+	local deadline = env.clock() + 10
+	while bound:info(player) == nil and env.clock() < deadline do
+		env.wait(0.1)
+	end
+	disconnect()
+	ctx.check("bind_loads_present_player", bound:info(player) ~= nil)
+end
+
 return probes

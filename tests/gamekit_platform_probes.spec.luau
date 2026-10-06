@@ -9,6 +9,7 @@ local fs = require("@lune/fs")
 local Probe = require("../packages/GameKit/Probe")
 local FakeEnv = require("./fakes/FakeEnv")
 local FakePlatformRoblox = require("./fakes/FakePlatformRoblox")
+local FakePolicy = require("./fakes/FakePolicy")
 
 local ROOT = string.match(debug.info(1, "s"), "^(.*)[/\\]tests[/\\][^/\\]*$") or "."
 local registry = require("../fixtures/kits/server/platform_probes")
@@ -126,6 +127,20 @@ end)
 
 test("platform_telemetry_recorder passes against fakes", function(t)
 	expectPass(t, "platform_telemetry_recorder", probeEnv())
+end)
+
+test("platform_policy_emulator passes against every FakePolicy preset", function(t)
+	for _, preset in { "permissive", "restricted", "mixed" } do
+		local env = probeEnv({
+			PolicyService = FakePolicy.new({ preset = preset }),
+			VoiceChatService = FakePolicy.voice({ enabled = { [101] = true } }),
+		})
+		expectPass(t, "platform_policy_emulator", env)
+	end
+	-- a malformed response fails the field-type check (the probe reports, it does not pass)
+	local env = probeEnv({ PolicyService = FakePolicy.new({ preset = "malformed" }) })
+	local summary = runProbe("platform_policy_emulator", env)
+	t.ok(summary ~= nil and not summary.ok, "malformed policy info must not pass the probe")
 end)
 
 return cases
