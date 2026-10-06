@@ -20,7 +20,7 @@ local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 -- before creating/focusing UI or collecting any layout evidence.
 local deadline, stableFrames, previousViewport = os.clock() + 20, 0, Vector2.zero
 while stableFrames < 4 and os.clock() < deadline do
-	RunService.RenderStepped:Wait()
+	RunService.PreRender:Wait()
 	local camera = workspace.CurrentCamera
 	local viewport = if camera then camera.ViewportSize else Vector2.zero
 	if game:IsLoaded() and viewport.X >= 320 and viewport.Y >= 240 and viewport == previousViewport then
@@ -89,7 +89,7 @@ check("activation invokes callback", panel.activations == 1 and currentTheme == 
 panel:setTheme("slate")
 currentTheme = "slate"
 for _ = 1, 4 do
-	RunService.RenderStepped:Wait()
+	RunService.PreRender:Wait()
 end
 check("focus after stable layout", panel:focus())
 
