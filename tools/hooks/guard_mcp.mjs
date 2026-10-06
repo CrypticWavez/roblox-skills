@@ -8,7 +8,8 @@
 //    bulk purchase (not safely mocked in Studio), or sends an HttpService write to a Roblox web API is
 //    denied; Luau that prompts another purchase or writes DataStores or MemoryStores asks, also when it
 //    does so through a GameKit/Runtime adapter that hides the API name (CommerceRoblox.prompt,
-//    LeaderboardRoblox, LiveBoardRoblox, MemoryQueueRoblox, PlayerData backends, RobloxReceiptAdapter).
+//    LeaderboardRoblox, LiveBoardRoblox, MemoryQueueRoblox, PlayerData backends, ReceiptLedger and
+//    RobloxReceiptAdapter).
 //    Names are matched as classes (CreateAsset*Async, Prompt*Purchase, ...) so new variants of an API
 //    are caught.
 //  - blender* servers: paid 3D generation and third-party asset libraries are denied (credits; Poly
@@ -86,14 +87,20 @@ const KIT_PURCHASE = kits([["CommerceRoblox", ENTRY("prompt")]]);
 // LeaderboardRoblox submit/remove (OrderedDataStore; writes = true turns them on), LiveBoardRoblox
 // maps written by LiveBoard submit/remove (MemoryStore sorted map), MemoryQueueRoblox push/ack/cycle
 // (MemoryStore queue AddAsync/RemoveAsync), the PlayerData DataStore and ProfileStore backends
-// (PlayerDataRoblox.chooseBackend picks one in Studio with allowStudioDataStores), and the Runtime
-// receipt ledger's DataStore seam RobloxReceiptAdapter.store.
+// (PlayerDataRoblox.chooseBackend builds one with allowStudioDataStores, or with kind "datastore" or
+// "profilestore" when env.place says the place is live), and the Runtime receipt ledger:
+// ReceiptLedger process (UpdateAsync on its injected store) and RobloxReceiptAdapter store (the
+// DataStore seam) and handler/callback/bind (each runs ledger:process).
+// chooseBackend with a literal kind "datastore" or "profilestore", the options table written before
+// or after the call.
+const STORE_KIND = String.raw`^(?=[\s\S]*?(?:${ENTRY("chooseBackend")}))(?=[\s\S]*?(?:\bkind|\[\s*["']kind["']\s*\])\s*=\s*["'](?:datastore|profilestore)["'])`;
 const KIT_STORE_WRITE = kits([
 	["LeaderboardRoblox", `${ENTRY("submit|remove")}|${ON("writes")}`],
 	["LiveBoardRoblox", ENTRY("submit|remove")],
 	["MemoryQueueRoblox", ENTRY("push|ack|cycle")],
-	["PlayerData(?:Roblox)?", `${ENTRY("dataStoreBackend|profileStoreBackend")}|${ON("allowStudioDataStores")}`],
-	["RobloxReceiptAdapter", ENTRY("store")],
+	["PlayerData(?:Roblox)?", `${ENTRY("dataStoreBackend|profileStoreBackend")}|${ON("allowStudioDataStores")}|${STORE_KIND}`],
+	["ReceiptLedger", ENTRY("process")],
+	["RobloxReceiptAdapter", ENTRY("store|handler|callback|bind")],
 ]);
 const usesKit = (pairs, text) => pairs.some(([kit, use]) => kit.test(text) && use.test(text));
 
@@ -106,7 +113,7 @@ function checkLuau() {
 	if (PURCHASE.test(code)) decide("ask", "This Luau prompts a purchase. Only allowed in a Studio test session on the diagnostic place, where product and pass purchases are simulated.");
 	if (usesKit(KIT_PURCHASE, code)) decide("ask", "This Luau opens a purchase prompt through GameKit/CommerceRoblox.prompt. The guard cannot see the product kind, and a subscription prompt is not safely mocked in Studio. Only allowed in a Studio test session on the diagnostic place, for a product or pass.");
 	if (DATASTORE_WRITE.test(code)) decide("ask", "This Luau writes DataStores or MemoryStores. Confirm the place is the unpublished diagnostic place, never production data.");
-	if (usesKit(KIT_STORE_WRITE, code)) decide("ask", "This Luau writes DataStores or MemoryStores through a kit adapter (LeaderboardRoblox submit/remove or writes = true, LiveBoardRoblox, MemoryQueueRoblox push/ack/cycle, a PlayerData DataStore/ProfileStore backend or allowStudioDataStores, RobloxReceiptAdapter.store). Confirm the place is the unpublished diagnostic place, never production data.");
+	if (usesKit(KIT_STORE_WRITE, code)) decide("ask", "This Luau writes DataStores or MemoryStores through a kit adapter (LeaderboardRoblox submit/remove or writes = true, LiveBoardRoblox, MemoryQueueRoblox push/ack/cycle, a PlayerData DataStore/ProfileStore backend, allowStudioDataStores or chooseBackend with kind datastore/profilestore, ReceiptLedger process, RobloxReceiptAdapter store/handler/callback/bind). Confirm the place is the unpublished diagnostic place, never production data.");
 }
 
 if (STUDIO_SERVER.test(server)) {

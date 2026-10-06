@@ -15,7 +15,7 @@ A neutral systems reference: it maps the genre to kit modules, data, risks and c
 
 ## Kit modules
 - `GameKit/Outfits`, `GameKit/OutfitsRoblox`: outfit composition, try-on and applying a look to the avatar.
-- `GameKit/CommerceRoblox`: purchase prompts and runtime price reads for catalog/1 entries; Marketplace item prompts follow the same flow (check its API covers them before relying on it); in agent Studio sessions the factory hooks ask before Luau that prompts a purchase, by API name or through `CommerceRoblox.prompt`, and deny subscription and bulk prompts; they match code as text, so a renamed require or a module already in the place is not seen (`docs/mcp.md`).
+- `GameKit/CommerceRoblox`: purchase prompts and runtime price reads for catalog/1 entries; Marketplace item prompts follow the same flow (check its API covers them before relying on it); in agent Studio sessions the factory hooks ask before Luau that prompts a purchase, by API name or through `CommerceRoblox.prompt` (a subscription product included: the hook cannot see the product kind, and `Commerce.canPrompt` refuses a subscription unless the place is known to be live), and deny Luau that calls the raw subscription, Premium, Robux transfer or bulk prompt APIs (`PromptSubscriptionPurchase`, `PromptBulkPurchase`, ...); they match code as text, so a renamed require or a module already in the place is not seen (`docs/mcp.md`).
 - `GameKit/PolicyGate`, `GameKit/PolicyGateRoblox`: per-player policy flags, fail closed.
 - `GameKit/RateLimit`, `GameKit/Retry`: catalogue search and prompt request limits; retries for web-backed calls.
 - `GameKit/PlayerData`: saved looks inside the experience.
