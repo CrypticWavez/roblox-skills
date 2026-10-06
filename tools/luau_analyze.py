@@ -15,7 +15,9 @@ Exit codes: 0 no regression, 1 regression or broken setup, 2 usage, 3 luau-lsp n
 (SKIPPED: CI installs it with rokit; this container has no release binary unless one is built).
 luau-lsp's own exit code is kept: 0, or 1 with diagnostics, is a finished analysis; a signal, any other
 code, or 1 with nothing parsed is a crash or a rejected argument and fails with the output's tail.
---from-output has no exit code, so non-empty output with neither a diagnostic nor a log line fails.
+--from-output has no exit code, so it fails on empty output (luau-lsp always prints its [INFO] preamble)
+and, when nothing parses as a diagnostic, on any non-blank line that is not a luau-lsp log line (a crash
+message after the preamble, an unprefixed error, the wrong file).
 Writes build/luau-lsp/report.json (every diagnostic) and never touches the network.
 """
 import argparse
@@ -113,11 +115,21 @@ def exit_problem(code, diagnostics):
     return None
 
 
-def unrecognised(text, diagnostics):
-    """True when non-empty output holds neither a diagnostic nor a luau-lsp log line (a crash message,
-    an unprefixed error, the wrong file)."""
-    lines = [line for line in text.splitlines() if line.strip()]
-    return bool(lines) and not diagnostics and not any(LOG_LINE.match(line) for line in lines)
+def output_problem(text, diagnostics):
+    """Why canned output (--from-output: no exit code) is not a finished analysis, or None. luau-lsp
+    always prints its [INFO] preamble, so empty output is no run at all. Without a diagnostic, every
+    non-blank line must be a luau-lsp log line: "terminate called ..." after the preamble is a crash."""
+    lines = [line.rstrip("\r") for line in text.splitlines() if line.strip()]
+    if not lines:
+        return "the output is empty (luau-lsp always prints its [INFO] preamble)"
+    if diagnostics:
+        return None
+    stray = [line for line in lines if not LOG_LINE.match(line)]
+    if len(stray) == len(lines):
+        return "the output has no diagnostic and no luau-lsp log line"
+    if stray:
+        return f"the output has no diagnostic and {len(stray)} line(s) that are not luau-lsp log lines, first: {stray[0].strip()[:200]}"
+    return None
 
 
 def tail(text, count=TAIL_LINES):
@@ -219,8 +231,7 @@ def main(argv=None):
         code, text = run_analyzer(binary, CACHE / definitions_entry["name"], sourcemap)
 
     diagnostics, errors = parse(text)
-    broken = exit_problem(code, diagnostics) if code is not None else (
-        "the output has no diagnostic and no luau-lsp log line" if unrecognised(text, diagnostics) else None)
+    broken = exit_problem(code, diagnostics) if code is not None else output_problem(text, diagnostics)
     if broken:
         print(f"FAIL {broken}; nothing was compared with the baseline. Last lines of the output:")
         for line in tail(text):

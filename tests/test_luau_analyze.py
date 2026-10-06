@@ -31,6 +31,12 @@ caused by:
 """
 
 
+# What luau-lsp 1.70.1 `analyze` printed for a file with no diagnostics (the clean capture's own lines).
+PREAMBLE = """[INFO] Loading definitions file: @roblox - build/luau-lsp/globalTypes.PluginSecurity.d.luau
+[WARN] client does not allow didChangeWatchedFiles registration - automatic updating on sourcemap changes disabled
+"""
+
+
 class ParseTest(unittest.TestCase):
     def test_parse_relativises_dedupes_and_joins_continuations(self):
         diagnostics, errors = luau_analyze.parse(CANNED)
@@ -140,6 +146,36 @@ class BaselineFlowTest(unittest.TestCase):
         code, text = self.run_tool("[INFO] Loaded definitions file\n")
         self.assertEqual(code, 0, text)
         self.assertIn("0 diagnostics in 0 files", text)
+        code, text = self.run_tool(PREAMBLE)
+        self.assertEqual(code, 0, text)
+        self.assertIn("0 diagnostics in 0 files", text)
+
+    def test_crash_after_the_log_preamble_fails(self):
+        # Before: one log line anywhere made the capture "recognised", so a crash after luau-lsp's
+        # preamble parsed as zero diagnostics and passed with every baseline file "under".
+        self.run_tool(CANNED, "--update-baseline")
+        self.report.unlink()
+        crash = PREAMBLE + "terminate called after throwing an instance of 'std::bad_alloc'\n  what():  std::bad_alloc\n"
+        code, text = self.run_tool(crash)
+        self.assertEqual(code, 1, text)
+        self.assertIn("FAIL the output has no diagnostic and 2 line(s) that are not luau-lsp log lines, first: terminate called", text)
+        self.assertIn("what():  std::bad_alloc", text, "the output's tail is shown")
+        self.assertNotIn("under", text, "nothing was compared with the baseline")
+        self.assertFalse(self.report.exists())
+        # with diagnostics, other lines are continuations of their messages and still parse
+        self.assertEqual(self.run_tool(PREAMBLE + CANNED)[0], 0)
+
+    def test_empty_output_fails(self):
+        # Before: an empty capture (a run that never started, the wrong file) passed as a clean run.
+        self.run_tool(CANNED, "--update-baseline")
+        self.report.unlink()
+        for empty in ("", "\n \n\t\n"):
+            with self.subTest(text=repr(empty)):
+                code, text = self.run_tool(empty)
+                self.assertEqual(code, 1, text)
+                self.assertIn("FAIL the output is empty (luau-lsp always prints its [INFO] preamble)", text)
+                self.assertNotIn("under", text)
+                self.assertFalse(self.report.exists())
 
     def test_exit_problem_keeps_the_analyzer_exit_code(self):
         diagnostics, _ = luau_analyze.parse(CANNED)
