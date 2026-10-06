@@ -1,10 +1,12 @@
-"""Tests for tools/starter_smoke.py's skip contract and the factory gate step that runs it.
+"""Tests for tools/starter_smoke.py's skip contract, its folder checks and the factory gate step that runs it.
 
   python3 -m unittest tests/test_starter_smoke.py
 
 A missing rojo, lune or stylua is a skip, never a pass: exit 3 (exit 1 with --strict), which
 tools/check.py maps to SKIPPED for starter-smoke-full, and a SKIPPED starter-smoke-full blocks a
-non-strict run unless --allow-skip names it. No scaffold is made here (no tool runs).
+non-strict run unless --allow-skip names it. The all-packages repo's folder checks (packages in
+factory/, no Wally Packages/) compare exact names, also on a simulated case-insensitive filesystem.
+No scaffold is made here (no tool runs; scaffold and Smoke.run are faked).
 """
 import contextlib
 import fnmatch
@@ -68,6 +70,48 @@ class MissingTools(unittest.TestCase):
         finally:
             shutil.rmtree(empty, ignore_errors=True)
         self.assertEqual([r["status"] for r in gate.results], ["SKIPPED", "FAIL"], gate.results)
+
+
+class AllPackagesFolderChecks(unittest.TestCase):
+    FACTORY = "SmokeAll: packages in factory/, no packages/"
+    WALLY = "SmokeAll: wally never ran (no wally.lock, no Packages/)"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="smoke-all-"))
+        self.dest = self.tmp / "SmokeAll"
+        (self.dest / "factory" / "ProcGen").mkdir(parents=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def results(self):
+        """{check: ok} from all_packages_repo on self.dest, with the scaffold and every tool run faked."""
+        fake = smoke.Smoke()
+        with mock.patch.object(smoke, "scaffold", lambda *args: self.dest), \
+                mock.patch.object(smoke.Smoke, "run", lambda *args, **kwargs: "specs\n 0 failed"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            smoke.all_packages_repo(fake, self.tmp)
+        return {name: ok for name, ok, _ in fake.results}
+
+    def test_a_scaffold_with_factory_passes_both_checks(self):
+        got = self.results()
+        self.assertTrue(got[self.FACTORY])
+        self.assertTrue(got[self.WALLY])
+
+    def test_a_packages_folder_fails_the_factory_check_but_is_never_wally_packages(self):
+        (self.dest / "packages" / "ProcGen").mkdir(parents=True)  # the layout before the move to factory/
+        with case_insensitive_paths():
+            self.assertTrue((self.dest / "Packages").exists())  # what Windows and macOS answer
+            got = self.results()
+        self.assertFalse(got[self.FACTORY])
+        self.assertTrue(got[self.WALLY])  # (dest / "Packages").exists() would call this a wally run
+
+    def test_wally_output_fails_the_wally_check(self):
+        (self.dest / "Packages").mkdir()
+        self.assertFalse(self.results()[self.WALLY])
+        (self.dest / "Packages").rmdir()
+        (self.dest / "wally.lock").write_text("", encoding="utf-8")
+        self.assertFalse(self.results()[self.WALLY])
 
 
 class ExactNames(unittest.TestCase):

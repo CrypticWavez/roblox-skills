@@ -11,4 +11,4 @@ python3 tools/release_check.py                  # release readiness: automated A
 rojo serve default.project.json                 # live sync into an unpublished test place
 ```
 
-Layout: `src/server` boots the server phases, `src/client` the client phases, `src/shared` holds the boot runner, the config and shared code, `src/first` the loading screen, `src/gui` StarterGui, `src/assets` server-side assets, `src/localization` the localisation tables. Factory packages sit in `packages/` (see `AGENTS.md`). Publishing is done by the owner from Studio, never by an agent or CI.
+Layout: `src/server` boots the server phases, `src/client` the client phases, `src/shared` holds the boot runner, the config and shared code, `src/first` the loading screen, `src/gui` StarterGui, `src/assets` server-side assets, `src/localization` the localisation tables. Factory packages sit in `factory/` (see `AGENTS.md`; never `packages/`, which `wally install` deletes on Windows and macOS). Publishing is done by the owner from Studio, never by an agent or CI.

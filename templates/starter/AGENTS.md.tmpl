@@ -55,7 +55,7 @@ Decided with the brief (stage greybox), then set in `default.project.json` `$pro
 |---|---|
 | Game code | `src/server` (ServerScriptService.Server), `src/client` (StarterPlayerScripts.Client), `src/shared` (ReplicatedStorage.Shared), `src/first` (ReplicatedFirst.Loading), `src/gui` (StarterGui), `src/assets` (ServerStorage.Assets), `src/localization` (LocalizationService) |
 | Boot | `src/shared/Boot.luau` runs the phases config, kits, data, remotes, telemetry, ui, input with a timeout each; wire them in `src/server/Phases.luau` and `src/client/Phases.luau`; settings in `src/shared/Config.luau` (all TBD) |
-| Factory packages | `packages/`: authoring in `ServerStorage.Authoring` (never replicated), kits in `ReplicatedStorage.Kits` (opt-in legacy packages sit beside them); tiers and pending Studio probes in `starter.json` |
+| Factory packages | `factory/` (never `packages/`: `wally install` deletes `Packages/`, which is `packages/` on Windows and macOS): authoring in `ServerStorage.Authoring` (never replicated), kits in `ReplicatedStorage.Kits` (opt-in legacy packages sit beside them); tiers and pending Studio probes in `starter.json` |
 | Production | `production/brief.json`, `production/pipeline.json`, `docs/production-plan.md`, `docs/design/`; `python3 tools/production.py status`; `python3 tools/plan_issues.py` |
 | Release | `python3 tools/release_check.py` (writes `release/report.json`), `release/release.json`, `docs/release-runbook.md` |
 | Specs | `tests/*.spec.luau`, run by `lune run tests/run.luau` |
@@ -66,8 +66,8 @@ Decided with the brief (stage greybox), then set in `default.project.json` `$pro
 | Decisions | `docs/decisions.md` |
 
 ## Factory-managed files
-- `packages/`, the copied skills, `tools/hooks/`, `tools/check.py`, `tools/release_check.py`, `tools/production.py`, `tools/plan_issues.py`, `src/shared/Boot.luau`, `src/shared/KitLoader.luau`, `tests/boot.spec.luau`, `tests/layout.spec.luau`, `tests/packages.spec.luau`, `deps.json` and the CI workflow come from the factory (hashes in `starter.json`). Fix them in the factory, then run the factory's `python3 tools/new_project.py --update <this repo>` on a clean branch and review `git diff`; it refuses when one was edited here. A game-specific skill gets a new name.
-- The copied skills also name factory-only paths (`tools/blender/`, `tools/lune/`, `fixtures/`, `knowledge/`). Those live in the factory repository at the commit in `starter.json`; do Blender asset and research work there. Where a skill says `fixtures/factory.project.json`, use `default.project.json` here.
+- `factory/` (the factory packages), the copied skills, `tools/hooks/`, `tools/check.py`, `tools/release_check.py`, `tools/production.py`, `tools/plan_issues.py`, `src/shared/Boot.luau`, `src/shared/KitLoader.luau`, `tests/boot.spec.luau`, `tests/layout.spec.luau`, `tests/packages.spec.luau`, `deps.json` and the CI workflow come from the factory (hashes in `starter.json`). Fix them in the factory, then run the factory's `python3 tools/new_project.py --update <this repo>` on a clean branch and review `git diff`; it refuses when one was edited here. A game-specific skill gets a new name.
+- The copied skills also name factory-only paths (`tools/blender/`, `tools/lune/`, `fixtures/`, `knowledge/`). Those live in the factory repository at the commit in `starter.json`; do Blender asset and research work there. Where a skill says `fixtures/factory.project.json`, use `default.project.json` here, and where it says `packages/<Package>`, the copy here is `factory/<Package>`.
 
 ## Working rules
 - Read the skill for the task, not the whole repo. Retrieve with `rg`. Stage work: skill roblox-production-pipeline.

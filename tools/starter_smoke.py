@@ -6,9 +6,10 @@
    game gate's fast tier, `tools/release_check.py` (only A08, A09 and A17 may fail, on release data a
    fresh repo has not decided; every S/O/P item OWNER_REQUIRED), `tools/production.py status` and
    `tools/plan_issues.py` (drafts written, no API call);
-2. every package and every dependency bundle: `rojo build` and the Lune specs; wally.toml holds the
-   exact pins (ProfileStore 1.0.3 server, Jest Lua 3.10.0 dev) and neither wally.lock nor Packages/
-   exists (the starter never runs wally).
+2. every package and every dependency bundle: `rojo build` and the Lune specs; the packages sit in
+   factory/ and there is no packages/ (which `wally install` deletes on Windows and macOS); wally.toml
+   holds the exact pins (ProfileStore 1.0.3 server, Jest Lua 3.10.0 dev) and neither wally.lock nor
+   Packages/ exists (the starter never runs wally). Folder checks compare exact names (has_entry).
 The factory gate's starter-smoke step runs the default repo's full pre-commit gate; this script adds
 the release, production and all-packages paths. Missing rojo, lune or stylua: SKIPPED (exit 3, which
 the factory gate reports as SKIPPED, never as a pass; exit 1 with --strict). --keep DIR scaffolds into
@@ -104,6 +105,7 @@ def all_packages_repo(smoke, base):
     wally = (dest / "wally.toml").read_text(encoding="utf-8") if (dest / "wally.toml").is_file() else ""
     smoke.add("SmokeAll: ProfileStore pinned =1.0.3 (server)", 'ProfileStore = "lm-loleris/profilestore@=1.0.3"' in wally)
     smoke.add("SmokeAll: Jest Lua pinned =3.10.0 (dev)", 'Jest = "jsdotlua/jest@=3.10.0"' in wally)
+    smoke.add("SmokeAll: packages in factory/, no packages/", has_entry(dest, "factory") and not has_entry(dest, "packages"))
     smoke.add("SmokeAll: wally never ran (no wally.lock, no Packages/)", not has_entry(dest, "wally.lock") and not has_entry(dest, "Packages"))
     smoke.add("SmokeAll: THIRD_PARTY_NOTICES.md written", (dest / "THIRD_PARTY_NOTICES.md").is_file())
 

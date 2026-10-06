@@ -18,8 +18,8 @@ The destination directory (new or empty, outside this repo and outside any other
 `docs/starter.md` (layout, managed files, dependency policy, update flow); `tools/new_project.py` docstring; `docs/runtime-kits.md` (package classes, tiers, module names); AGENTS.md Boundary (the factory never decides game content).
 
 ## Tools
-- `python3 tools/new_project.py <dest> [--name NAME] [--packages ...] [--deps ...]` (or `--out <dest>`); `--list` prints classes, bundles and skills. Writes `starter.json` (starter/2: packages and classes, every module's tier and probe, pending Studio probes, skills, managed-file hashes, bundles).
-- `python3 tools/new_project.py --update <game repo> [--packages ...] [--deps ...] [--force]`: refresh packages, skills, hooks and managed files; merge Rojo package folders and rokit pins.
+- `python3 tools/new_project.py <dest> [--name NAME] [--packages ...] [--deps ...]` (or `--out <dest>`); `--list` prints classes, bundles and skills. Copies the packages to `factory/<Pkg>` in the game repo (never `packages/`: `wally install` deletes `Packages/`, which is `packages/` on Windows and macOS). Writes `starter.json` (starter/2: packages and classes, every module's tier and probes, pending Studio probes, skills, managed-file hashes, bundles).
+- `python3 tools/new_project.py --update <game repo> [--packages ...] [--deps ...] [--force]`: refresh packages, skills, hooks and managed files; merge Rojo package folders and rokit pins; move an older repo's `packages/` to `factory/` (with its Rojo paths).
 - In the new repo: `git init`, `rokit install`, `python3 tools/check.py`, `python3 tools/production.py status`, `python3 tools/release_check.py`.
 - `python3 tools/starter_smoke.py` and the factory gate step `starter-smoke` prove the starter still produces a green repo.
 
@@ -40,6 +40,8 @@ A game repository with `starter.json`, a green gate run in it, the decisions log
 ## Failure
 - `refused: ... overlaps the factory` / `inside the git repository` / `not empty`: pick a new directory outside every repo; never force it into an existing game.
 - `--update` refused for edited packages, skills or managed files: move game logic to `src/` and game skills to new names, or fix the factory first; `--force` only when the owner accepts losing the local edit.
+- `--update` refused because `factory/` already exists with other content while the packages are still in `packages/`: the owner moves that `factory/` aside (no `--force` merges the two); then update again.
+- Gate step `deps` flags a `packages/` folder (any case variant of a Wally folder): `wally install` would delete it on Windows and macOS; rename it, never put game code there.
 - Game gate fails right after scaffolding: fix the template or package in the factory (`python3 tools/starter_smoke.py` reproduces it), not in the game repo.
 - `skills-packages` names a module missing from an installed kit: the skill cites a module its group has not delivered; fix the skill or the kit in the factory.
 

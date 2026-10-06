@@ -3,11 +3,12 @@
   python3 -m unittest tests/test_new_project.py
 
 Scaffolds into temporary directories outside this repository. Covers package classes and the Rojo
-layout (leaf copies for kits, no FilteringEnabled), the tier parse into starter.json, dependency
-bundles (exact pins, licence notices, wally never run), --update (user files preserved; edited
-packages, skills, hooks and managed files refused; stale ones refreshed; starter/1 layout migrated)
-and the refusals. Case-insensitive filesystems (Windows, macOS), where Wally's Packages/ is the factory
-packages/ folder, are simulated with tests/fakes/case_insensitive_fs.py and git's core.ignorecase.
+layout (packages in factory/, leaf copies for kits, no FilteringEnabled), the tier parse into
+starter.json, dependency bundles (exact pins, licence notices, wally never run), --update (user files
+preserved; edited packages, skills, hooks and managed files refused; stale ones refreshed; starter/1
+layout migrated; packages/ moved to factory/) and the refusals. Case-insensitive filesystems (Windows,
+macOS), where `wally install` deletes a packages/ folder along with Packages/, are simulated with
+tests/fakes/case_insensitive_fs.py (lookups and Wally's clean step) and git's core.ignorecase.
 """
 import contextlib
 import importlib.util
@@ -27,7 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "tests" / "fakes"))
 import new_project as np  # noqa: E402
-from case_insensitive_fs import case_insensitive_paths  # noqa: E402
+from case_insensitive_fs import case_insensitive_paths, wally_clean  # noqa: E402
 
 
 def quiet(fn, *args):
@@ -88,6 +89,8 @@ class PackageClasses(Scaffold):
         self.assertEqual(np.ROJO_HOME["authoring"], ("ServerStorage", "Authoring"))
         self.assertEqual(np.ROJO_HOME["kits"], ("ReplicatedStorage", "Kits"))
         self.assertEqual(np.DEFAULT_PACKAGES, np.PACKAGE_CLASSES["authoring"] + np.PACKAGE_CLASSES["kits"])
+        _, out = quiet(np.list_options)
+        self.assertIn("files in the game repo's factory/<Pkg>", out)
 
     def test_default_tree_layout(self):
         dest, out = self.scaffold()
@@ -112,6 +115,14 @@ class PackageClasses(Scaffold):
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Packages"))
         whole = [(trail, target) for trail, target in mapped_paths(project["tree"]) if target.lower().strip("/") == "packages"]
         self.assertEqual(whole, [])
+        # The packages live in factory/: `wally install` deletes Packages/, which is packages/ on Windows and macOS.
+        self.assertIn("factory", entry_names(dest))
+        self.assertNotIn("packages", entry_names(dest))
+        self.assertEqual(sorted(entry_names(dest / "factory")), sorted(np.DEFAULT_PACKAGES))
+        package_paths = [target for trail, target in mapped_paths(project["tree"]) if ".Authoring." in f".{trail}." or ".Kits." in f".{trail}."]
+        self.assertTrue(package_paths)
+        self.assertEqual([t for t in package_paths if not t.startswith("factory/")], [])
+        self.assertIn("packages (in factory/)", out)
         for rel in ["src/shared/Boot.luau", "src/shared/Config.luau", "src/shared/KitLoader.luau", "src/server/init.server.luau",
                     "src/server/Phases.luau", "src/client/init.client.luau", "src/client/Phases.luau",
                     "src/first/Loading.client.luau", "src/localization/strings.csv", "tests/boot.spec.luau",
@@ -132,7 +143,7 @@ class PackageClasses(Scaffold):
         self.assertIn("DevPackages/", ignore)
         self.assertEqual([line for line in ignore if line.strip().strip("/").lower() == "packages"], [])
 
-    def test_gitignore_keeps_packages_tracked_under_ignorecase(self):
+    def test_gitignore_keeps_the_factory_packages_tracked_under_ignorecase(self):
         # git init sets core.ignorecase=true on NTFS and APFS; ignore rules then match case-insensitively.
         if shutil.which("git") is None:
             self.skipTest("git not installed")
@@ -144,20 +155,30 @@ class PackageClasses(Scaffold):
             self.assertIn(proc.returncode, (0, 1), proc.stderr)
             return proc.returncode == 0
 
-        self.assertFalse(ignored("packages/ProcGen/Rng.luau"))
+        self.assertFalse(ignored("factory/ProcGen/Rng.luau"))
         self.assertTrue(ignored("ServerPackages/_Index/x.lua"))
         self.assertTrue(ignored("DevPackages/_Index/x.lua"))
         with (dest / ".gitignore").open("a", encoding="utf-8") as handle:
-            handle.write("Packages/\n")  # the old Wally line hides the factory packages under ignorecase
-        self.assertTrue(ignored("packages/ProcGen/Rng.luau"))
+            handle.write("Packages/\n")  # a Wally line no longer touches the factory packages ...
+        self.assertFalse(ignored("factory/ProcGen/Rng.luau"))
+        self.assertTrue(ignored("packages/ProcGen/Rng.luau"))  # ... it hid them in the old packages/ layout
+
+    def test_wally_install_keeps_the_factory_packages(self):
+        dest, _ = self.scaffold(packages=["ProcGen"])
+        self.assertEqual(wally_clean(dest), [])  # Wally's clean step on Windows or macOS (simulated)
+        self.assertIn("ProcGen", entry_names(dest / "factory"))
+        # The old layout: on those filesystems Wally's clean step removed packages/ as Packages/.
+        (dest / "factory").rename(dest / "packages")
+        self.assertEqual(wally_clean(dest), ["packages"])
+        self.assertNotIn("packages", entry_names(dest))
 
     def test_kits_get_leaf_copies_and_dependencies(self):
         dest, out = self.scaffold(packages=["GameKit"])
         project = self.read_json(dest / "default.project.json")
         kits = tree_node(project, "ReplicatedStorage", "Kits")
-        self.assertEqual(kits["GameKit"], {"$path": "packages/GameKit"})
+        self.assertEqual(kits["GameKit"], {"$path": "factory/GameKit"})
         for leaf in ("Rng", "Grid", "Graph"):
-            self.assertEqual(kits["ProcGen"][leaf], {"$path": f"packages/ProcGen/{leaf}.luau"})
+            self.assertEqual(kits["ProcGen"][leaf], {"$path": f"factory/ProcGen/{leaf}.luau"})
         self.assertIn("ProcGen", tree_node(project, "ServerStorage", "Authoring"))  # added as a dependency
         self.assertIn("added as dependencies: ProcGen", out)
         starter = self.read_json(dest / "starter.json")
@@ -185,7 +206,7 @@ class Tiers(Scaffold):
         # Before: module_header kept only the first probe line, so a starter dropped the module's other probes.
         two = "--!strict\n-- @tier T3\n-- probe: av_one\n-- probe: av_two\n-- probe: av_one\n-- Adapter.\n"
         self.assertEqual(np.module_header(two), ("T3", ["av_one", "av_two"]))
-        modules = np.module_records(ROOT, ["AVKit"])
+        modules = np.module_records(np.PACKAGES, ["AVKit"])
         audio = modules["AVKit/AudioGraphRoblox"]
         self.assertEqual(audio["probes"], ["av_audiograph_wires", "av_audio_master_level"])
         self.assertEqual(audio["probe"], "av_audiograph_wires", "starter/2 readers (tests/packages.spec.luau) read a string")
@@ -229,6 +250,8 @@ class DependencyBundles(Scaffold):
         self.assertFalse(marker.exists(), "the starter ran wally or rokit")
         self.assertNotIn("wally.lock", entry_names(dest))
         self.assertNotIn("Packages", entry_names(dest))
+        self.assertIn("factory", entry_names(dest))
+        self.assertNotIn("packages", entry_names(dest))
         wally = (dest / "wally.toml").read_text(encoding="utf-8")
         self.assertIn('ProfileStore = "lm-loleris/profilestore@=1.0.3"', wally)
         self.assertIn('Jest = "jsdotlua/jest@=3.10.0"', wally)
@@ -241,6 +264,7 @@ class DependencyBundles(Scaffold):
         self.assertIn('wally = "UpliftGames/wally@0.3.2"', (dest / "rokit.toml").read_text(encoding="utf-8"))
         studio = json.loads((dest / "studio-tests.project.json").read_text(encoding="utf-8"))
         self.assertEqual(studio["tree"]["ServerStorage"]["DevPackages"], {"$path": {"optional": "DevPackages"}})
+        self.assertEqual([t for _, t in mapped_paths(studio["tree"]) if t.startswith("packages")], [])
         self.assertIn("wally install", proc.stdout)
         starter = json.loads((dest / "starter.json").read_text(encoding="utf-8"))
         self.assertEqual(starter["deps"]["bundles"], ["persistence", "studio-tests"])
@@ -261,6 +285,7 @@ class DependencyBundles(Scaffold):
             np.check_bundles(["persistence", "shared-lib"], deps)
         self.assertIn("someone/shared-lib", str(ctx.exception))
         self.assertIn("shared-realm", str(ctx.exception))
+        self.assertNotIn("packages/", str(ctx.exception))  # refused for replication, not for a folder collision
         dest = self.tmp / "Shared"
         original = np.load_deps
         np.load_deps = lambda: deps
@@ -306,7 +331,7 @@ class Update(Scaffold):
         self.assertEqual((dest / "starter.json").read_text(encoding="utf-8"), before)
 
     def test_update_refuses_local_edits_of_factory_files(self):
-        for rel, why in [("packages/ProcGen/Rng.luau", "edited here"),
+        for rel, why in [("factory/ProcGen/Rng.luau", "edited here"),
                          (".agents/skills/roblox-release-pass/SKILL.md", "skills edited here"),
                          ("tools/hooks/lib.mjs", "managed files edited here"),
                          ("tools/release_check.py", "managed files edited here")]:
@@ -392,8 +417,10 @@ class Update(Scaffold):
         dest, _ = self.scaffold()
         project = self.read_json(dest / "default.project.json")
         del project["tree"]["ServerStorage"]["Authoring"]
+        del project["tree"]["ReplicatedStorage"]["Kits"]
         project["tree"]["ReplicatedStorage"]["Workbench"] = {"$path": "packages"}
         (dest / "default.project.json").write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        (dest / "factory").rename(dest / "packages")  # starter/1 kept every package in packages/
         starter = self.read_json(dest / "starter.json")
         old = {"schema": "starter/1", "name": starter["name"], "created": starter["created"], "factory": starter["factory"],
                "packages": {k: {"sha256": v["sha256"], "files": v["files"]} for k, v in starter["packages"].items()},
@@ -402,10 +429,118 @@ class Update(Scaffold):
         code, out = self.update(dest)
         self.assertEqual(code, 0, out)
         self.assertIn("removed ReplicatedStorage.Workbench", out)
+        self.assertIn("packages/: moved to factory/", out)
+        self.assertEqual({"factory", "packages"} & entry_names(dest), {"factory"})
         project = self.read_json(dest / "default.project.json")
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Workbench"))
-        self.assertIn("SceneKit", tree_node(project, "ServerStorage", "Authoring"))
+        self.assertEqual(tree_node(project, "ServerStorage", "Authoring", "SceneKit"), {"$path": "factory/SceneKit"})
         self.assertEqual(self.read_json(dest / "starter.json")["schema"], "starter/2")
+
+    def old_layout(self, dest):
+        """A repo made before the move: the packages in packages/, every Rojo path into them under packages/."""
+        (dest / "factory").rename(dest / "packages")
+        for name in ("default.project.json", "studio-tests.project.json"):
+            if (dest / name).is_file():
+                text = (dest / name).read_text(encoding="utf-8")
+                (dest / name).write_text(text.replace('"factory/', '"packages/'), encoding="utf-8")
+        agents = dest / "AGENTS.md"
+        agents.write_text(agents.read_text(encoding="utf-8").replace("`factory/`", "`packages/`"), encoding="utf-8")
+
+    def test_update_moves_packages_to_factory(self):
+        dest, _ = self.scaffold(bundles=["studio-tests"])
+        self.old_layout(dest)
+        path = dest / "default.project.json"
+        project = self.read_json(path)
+        self.assertEqual(tree_node(project, "ReplicatedStorage", "Kits", "GameKit"), {"$path": "packages/GameKit"})
+        project["tree"]["ReplicatedStorage"]["Extra"] = {"$path": {"optional": "packages/GameKit/Signal.luau"}}
+        project["tree"]["ServerStorage"]["Own"] = {"$path": "packages/MyLib"}  # not a factory package: left alone
+        path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        digests = {pkg: np.tree_hash(dest / "packages" / pkg)[0] for pkg in np.DEFAULT_PACKAGES}
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertIn("packages/: moved to factory/", out)
+        self.assertIn("default.project.json: 1 other path(s) moved from packages/ to factory/", out)
+        self.assertIn("note: AGENTS.md still names packages/", out)
+        self.assertEqual({"factory", "packages"} & entry_names(dest), {"factory"})
+        self.assertEqual({pkg: np.tree_hash(dest / "factory" / pkg)[0] for pkg in np.DEFAULT_PACKAGES}, digests)
+        project = self.read_json(path)
+        self.assertEqual(tree_node(project, "ReplicatedStorage", "Kits", "GameKit"), {"$path": "factory/GameKit"})
+        self.assertEqual(tree_node(project, "ReplicatedStorage", "Kits", "ProcGen", "Rng"), {"$path": "factory/ProcGen/Rng.luau"})
+        self.assertEqual(tree_node(project, "ReplicatedStorage", "Extra", "$path"), {"optional": "factory/GameKit/Signal.luau"})
+        self.assertEqual(tree_node(project, "ServerStorage", "Own", "$path"), "packages/MyLib")
+        studio = self.read_json(dest / "studio-tests.project.json")
+        self.assertEqual(tree_node(studio, "ServerStorage", "Authoring", "SceneKit"), {"$path": "factory/SceneKit"})
+        starter = self.read_json(dest / "starter.json")
+        self.assertEqual(starter["modules"], np.module_records(dest / "factory", sorted(starter["packages"])))
+        check = load_starter_tool("check")
+        self.assertEqual(check.skills_packages_problems(dest, starter)[0], [])
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertIn("already up to date", out)
+
+    def test_update_refuses_a_move_it_cannot_make_safely(self):
+        # A package edited in packages/: refused like any edit (nothing moved); --force moves and refreshes it.
+        dest, _ = self.scaffold(name="Edited")
+        self.old_layout(dest)
+        rng = dest / "packages" / "ProcGen" / "Rng.luau"
+        original = rng.read_text(encoding="utf-8")
+        rng.write_text(original + "-- local edit\n", encoding="utf-8")
+        with self.assertRaises(np.Refused) as ctx:
+            self.update(dest)
+        self.assertIn("packages edited here", str(ctx.exception))
+        self.assertEqual({"factory", "packages"} & entry_names(dest), {"packages"})
+        code, out = self.update(dest, force=True)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((dest / "factory" / "ProcGen" / "Rng.luau").read_text(encoding="utf-8"), original)
+        # Entries starter.json does not record would be carried into factory/: refused without --force.
+        dest, _ = self.scaffold(name="Stray")
+        self.old_layout(dest)
+        (dest / "packages" / "MyLib").mkdir()
+        (dest / "packages" / "MyLib" / "init.luau").write_text("return {}\n", encoding="utf-8")
+        with self.assertRaises(np.Refused) as ctx:
+            self.update(dest)
+        self.assertIn("packages/ holds entries starter.json does not record", str(ctx.exception))
+        self.assertIn("MyLib", str(ctx.exception))
+        self.assertEqual({"factory", "packages"} & entry_names(dest), {"packages"})
+        # factory/ already holds something else: refused even with --force, nothing moved or written.
+        dest, _ = self.scaffold(name="Taken")
+        self.old_layout(dest)
+        (dest / "factory").mkdir()
+        (dest / "factory" / "notes.txt").write_text("the game's own\n", encoding="utf-8")
+        before = (dest / "starter.json").read_text(encoding="utf-8")
+        for force in (False, True):
+            with self.assertRaises(np.Refused) as ctx:
+                self.update(dest, force=force)
+            self.assertIn("factory/ already exists with other content", str(ctx.exception))
+        self.assertEqual(entry_names(dest / "factory"), {"notes.txt"})
+        self.assertIn("ProcGen", entry_names(dest / "packages"))
+        self.assertEqual((dest / "starter.json").read_text(encoding="utf-8"), before)
+        # An empty factory/ is no conflict.
+        (dest / "factory" / "notes.txt").unlink()
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertEqual({"factory", "packages"} & entry_names(dest), {"factory"})
+
+    def test_update_leaves_a_games_own_packages_folder_beside_factory(self):
+        dest, _ = self.scaffold(name="Own")
+        (dest / "packages" / "MyLib").mkdir(parents=True)
+        (dest / "packages" / "MyLib" / "init.luau").write_text("return {}\n", encoding="utf-8")
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("moved to factory/", out)
+        self.assertEqual(entry_names(dest / "packages"), {"MyLib"})
+        self.assertEqual(sorted(entry_names(dest / "factory")), sorted(np.DEFAULT_PACKAGES))
+
+    def test_update_restores_packages_wally_already_deleted(self):
+        # On Windows or macOS an older repo's `wally install` removed packages/; --update writes factory/.
+        dest, _ = self.scaffold(name="Wiped")
+        self.old_layout(dest)
+        self.assertEqual(wally_clean(dest), ["packages"])
+        code, out = self.update(dest)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(sorted(entry_names(dest / "factory")), sorted(np.DEFAULT_PACKAGES))
+        project = self.read_json(dest / "default.project.json")
+        self.assertEqual([t for _, t in mapped_paths(project["tree"]) if t.startswith("packages/")], [])
 
 
 def load_starter_tool(name):
@@ -497,18 +632,24 @@ class GameRepoGateSteps(Scaffold):
     def test_deps_step_compares_exact_folder_names(self):
         dest, _ = self.scaffold()
         with case_insensitive_paths():
-            # On Windows and macOS root / "Packages" opens the factory packages/ folder ...
-            self.assertTrue((dest / "Packages").is_dir() and any((dest / "Packages").iterdir()))
-            self.assertNotIn("Packages", entry_names(dest))
-            # ... so a fresh scaffold (no wally.toml) must still pass the deps step there.
+            self.assertFalse((dest / "Packages").exists())  # factory/ answers to no Wally folder name
             self.assertEqual(self.check.deps_problems(dest)[0], [])
+        # A packages/ folder (a game's own, or the old layout) is what `wally install` deletes on Windows and macOS.
+        (dest / "packages").mkdir()
+        (dest / "packages" / "x.luau").write_text("return nil\n", encoding="utf-8")
+        deleted = "packages/: `wally install` deletes Packages/, which is packages/ on Windows and macOS; rename it (factory packages live in factory/)"
+        self.assertEqual(self.check.deps_problems(dest)[0], [deleted])
+        with case_insensitive_paths():
+            self.assertTrue((dest / "Packages").is_dir() and any((dest / "Packages").iterdir()))
+            self.assertEqual(self.check.deps_problems(dest)[0], [deleted])  # never "Packages/ has content"
+        shutil.rmtree(dest / "packages")
         (dest / "ServerPackages").mkdir()
         (dest / "ServerPackages" / "x.lua").write_text("return nil\n", encoding="utf-8")
         (dest / "Packages").mkdir()  # possible only on a case-sensitive filesystem
         (dest / "Packages" / "x.lua").write_text("return nil\n", encoding="utf-8")
         problems = self.check.deps_problems(dest)[0]
-        self.assertIn("ServerPackages/ has content but there is no wally.toml", problems)
-        self.assertIn("Packages/ has content but there is no wally.toml", problems)
+        self.assertEqual(sorted(problems), ["Packages/ has content but there is no wally.toml",
+                                            "ServerPackages/ has content but there is no wally.toml"])
 
     def test_deps_step_refuses_shared_realm_dependencies(self):
         dest, _ = self.scaffold(bundles=["persistence"])
@@ -525,11 +666,13 @@ class GameRepoGateSteps(Scaffold):
     def test_skills_packages_step(self):
         dest, _ = self.scaffold()
         self.assertEqual(self.check.skills_packages_problems(dest, self.starter(dest))[0], [])
-        rng = dest / "packages" / "ProcGen" / "Rng.luau"
+        rng = dest / "factory" / "ProcGen" / "Rng.luau"
         rng.write_text(rng.read_text(encoding="utf-8") + "-- local patch\n", encoding="utf-8")
-        self.assertTrue(any("packages/ProcGen differs" in p for p in self.check.skills_packages_problems(dest, self.starter(dest))[0]))
+        self.assertTrue(any("factory/ProcGen differs" in p for p in self.check.skills_packages_problems(dest, self.starter(dest))[0]))
         starter = self.starter(dest)
-        starter["patched"] = {"packages/ProcGen": "synthetic reason"}
+        starter["patched"] = {"packages/ProcGen": "the old key"}
+        self.assertTrue(any("factory/ProcGen differs" in p for p in self.check.skills_packages_problems(dest, starter)[0]))
+        starter["patched"] = {"factory/ProcGen": "synthetic reason"}
         problems, notes = self.check.skills_packages_problems(dest, starter)
         self.assertEqual(problems, [])
         self.assertTrue(any("patched here" in n for n in notes))
@@ -538,6 +681,10 @@ class GameRepoGateSteps(Scaffold):
         starter["patched"]["skills/visual-qa"] = "synthetic"
         problems, _ = self.check.skills_packages_problems(dest, starter)
         self.assertTrue(any("ProcGen/NoSuchModule" in p for p in problems), problems)
+        (dest / "factory").rename(dest / "packages")  # the old layout: the gate points at --update
+        problems, _ = self.check.skills_packages_problems(dest, starter)
+        self.assertTrue(any(p.startswith("factory/GameKit is recorded in starter.json but missing") and "--update" in p
+                            for p in problems), problems)
 
 
 class Refusals(Scaffold):

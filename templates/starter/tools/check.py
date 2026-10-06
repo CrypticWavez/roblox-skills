@@ -11,16 +11,18 @@ Missing optional tools (stylua, selene, lune, rojo, node, blink) are reported as
 passes; --strict counts every SKIPPED step as a failure (CI runs with it). Writes build/check-report.json.
 Runs no publish, upload, install or purchase: `wally install` and publishing are the owner's.
 Steps:
-- skills-packages: the skills and packages on disk are the ones starter.json records, with the recorded
-  sha256 (or listed under starter.json "patched" with a reason), and every Package/Module a skill names
-  exists when that package is installed;
+- skills-packages: the skills and the factory packages in factory/ are the ones starter.json records,
+  with the recorded sha256 (or listed under starter.json "patched" as factory/<Pkg> with a reason), and
+  every Package/Module a skill names exists when that package is installed;
 - brief: production/brief.json (game-brief/1) and production/pipeline.json are valid for the current
   stage (TBD allowed before alpha except fields of passed stages' brief gates; passed stages need their
   owner and playtest gates recorded by the owner), and the AGENTS.md decision tables match the brief;
 - deps: wally.toml is private with exact `=x.y.z` pins from the deps.json allowlist in the right realm
-  (server or dev: shared-realm [dependencies] install into Packages/, which is packages/ on Windows and
-  macOS, and are refused), wally.lock is committed and lists only allowlisted packages,
-  THIRD_PARTY_NOTICES.md names each dependency and its licence, rokit.toml pins are exact;
+  (server or dev; shared-realm [dependencies] are refused, see the deps.json policy), wally.lock is
+  committed and lists only allowlisted packages, THIRD_PARTY_NOTICES.md names each dependency and its
+  licence, rokit.toml pins are exact, and no folder is named like a Wally folder in another case
+  (`wally install` deletes Packages/, ServerPackages/ and DevPackages/; on Windows and macOS that is
+  also packages/, which is why the factory packages live in factory/);
 - blink: compiles every .blink schema (only when one exists);
 - asset-provenance: asset ids are registered in assets/provenance.json; place content uses approved ids.
 """
@@ -39,13 +41,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import production  # noqa: E402
 import release_check  # noqa: E402
 
-LUAU_DIRS = ["src", "packages", "tests"]
+FACTORY_DIR = "factory"  # the factory packages (never packages/: `wally install` deletes Packages/)
+LUAU_DIRS = ["src", FACTORY_DIR, "tests"]
 SKIP_DIRS = {".git", "build", ".venv", "node_modules", "__pycache__", "Packages", "ServerPackages", "DevPackages"}
 SECRET_PATTERNS_FILE = ROOT / "tools" / "hooks" / "secret-patterns.json"
 SECRET_SCAN_MAX_BYTES = 5_000_000
 FAILURE_LINE = re.compile(r"^\s*(FAIL|FAILED|ERROR|Error|error)\b|Traceback|AssertionError")
 FACTORY_PACKAGES = ["SceneKit", "ProcGen", "Pipeline", "GameKit", "UIKit", "Feel", "Cinematics", "AVKit", "Runtime", "Creator", "Diagnostics"]
 MODULE_REF = re.compile(r"(?<![\w-])(" + "|".join(FACTORY_PACKAGES) + r")/((?:[A-Z][A-Za-z0-9_]*/)*[A-Z][A-Za-z0-9_]*)(\.[A-Za-z]+)?")
+WALLY_DIRS = ("Packages", "ServerPackages", "DevPackages")  # Wally 0.3.2 removes all three on every install
 EXACT_PIN = re.compile(r"^([a-z0-9_-]+/[a-z0-9_-]+)@=(\d+\.\d+\.\d+)$")
 ROKIT_PIN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+@\d+\.\d+\.\d+$")
 
@@ -182,19 +186,21 @@ def skills_packages_problems(root, starter):
     patched = starter.get("patched") or {}
     packages = starter.get("packages") or {}
     modules = starter.get("modules") or {}
-    on_disk = sorted(p.name for p in (root / "packages").iterdir() if p.is_dir()) if (root / "packages").is_dir() else []
+    home = root / FACTORY_DIR
+    on_disk = sorted(p.name for p in home.iterdir() if p.is_dir()) if home.is_dir() else []
     for name in sorted(set(on_disk) - set(packages)):
-        problems.append(f"packages/{name} is not recorded in starter.json (add packages with the factory's new_project.py --update --packages)")
+        problems.append(f"{FACTORY_DIR}/{name} is not recorded in starter.json (add packages with the factory's new_project.py --update --packages)")
     for name, record in sorted(packages.items()):
-        path = root / "packages" / name
+        path, key = home / name, f"{FACTORY_DIR}/{name}"
         if not path.is_dir():
-            problems.append(f"packages/{name} is recorded in starter.json but missing")
+            problems.append(f"{key} is recorded in starter.json but missing (a repo that keeps them in packages/: run the factory's "
+                            "new_project.py --update, which moves them)")
         elif tree_hash(path) != record.get("sha256"):
-            if f"packages/{name}" in patched:
-                notes.append(f"packages/{name} patched here: {patched[f'packages/{name}']}")
+            if key in patched:
+                notes.append(f"{key} patched here: {patched[key]}")
             else:
-                problems.append(f"packages/{name} differs from starter.json: factory packages are fixed in the factory and refreshed with "
-                                f"new_project.py --update (or list \"packages/{name}\" under starter.json \"patched\" with a reason)")
+                problems.append(f"{key} differs from starter.json: factory packages are fixed in the factory and refreshed with "
+                                f"new_project.py --update (or list \"{key}\" under starter.json \"patched\" with a reason)")
     skills = starter.get("skills") or {}
     for name, record in sorted(skills.items()):
         src, mirror = root / ".agents" / "skills" / name, root / ".claude" / "skills" / name
@@ -378,10 +384,15 @@ def deps_problems(root):
     for tool, pin in pins.items():
         if not ROKIT_PIN.match(str(pin)):
             problems.append(f"rokit.toml: {tool} = {pin!r} is not an exact owner/repo@x.y.z pin")
+    # Exact names: on Windows and macOS (case-insensitive) root / "Packages" also opens a packages/ folder.
+    names = {p.name for p in root.iterdir() if p.is_dir()}
+    for name in sorted(names):
+        folder = next((w for w in WALLY_DIRS if w.lower() == name.lower() and w != name), None)
+        if folder:
+            problems.append(f"{name}/: `wally install` deletes {folder}/, which is {name}/ on Windows and macOS; rename it "
+                            f"(factory packages live in {FACTORY_DIR}/)")
     if not wally.is_file():
-        # Exact names: on Windows and macOS (case-insensitive) root / "Packages" would open the factory packages/.
-        names = {p.name for p in root.iterdir() if p.is_dir()}
-        for folder in ("Packages", "ServerPackages", "DevPackages"):
+        for folder in WALLY_DIRS:
             if folder in names and any((root / folder).iterdir()):
                 problems.append(f"{folder}/ has content but there is no wally.toml")
         return problems, "no Wally dependencies"
@@ -392,8 +403,8 @@ def deps_problems(root):
     for table in ("dependencies", "server-dependencies", "dev-dependencies"):
         for alias, spec in (manifest.get(table) or {}).items():
             if table == "dependencies":  # Wally's shared realm
-                problems.append(f"wally.toml [{table}] {alias}: shared-realm dependencies are refused while the factory kits live in "
-                                "packages/ (Wally installs them into Packages/, the same folder on Windows and macOS)")
+                problems.append(f"wally.toml [{table}] {alias}: shared-realm dependencies are refused: they replicate to clients, "
+                                "and no Wally folder maps into a replicated service (release check A01; deps.json policy)")
                 continue
             match = EXACT_PIN.match(str(spec))
             if not match:
@@ -495,7 +506,7 @@ def check_selene(gate):
     if not (ROOT / "roblox.yml").exists() and run(["selene", "generate-roblox-std"], 120)[0] != 0:
         gate.add("selene", "SKIPPED", "roblox std could not be generated (needs network to the Roblox API dump)")
         return
-    gate.cmd("selene", ["selene", "src", "packages"])
+    gate.cmd("selene", ["selene", "src", FACTORY_DIR])
 
 
 def main():

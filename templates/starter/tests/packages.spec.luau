@@ -1,7 +1,8 @@
 --!strict
--- Packages spec (factory-managed): the factory packages copied into this repo match starter.json and
--- behave as they did in the factory.
---   * every .luau file under packages/ is recorded in starter.json "modules", with the tier its
+-- Packages spec (factory-managed): the factory packages copied into this repo (factory/, never
+-- packages/: `wally install` deletes Packages/, which is packages/ on Windows and macOS) match
+-- starter.json and behave as they did in the factory.
+--   * every .luau file under factory/ is recorded in starter.json "modules", with the tier its
 --     `-- @tier` header declares (the record is what tools/new_project.py --update compares against);
 --   * every module recorded as lune = true loads in Lune (cores of any tier, authoring and legacy
 --     modules); engine adapters (*Roblox) and the legacy Roblox-only modules are never loaded here,
@@ -28,7 +29,7 @@ for name in starter.packages do
 end
 table.sort(packageNames)
 
--- "Pkg/Sub/Module" for every .luau file under packages/<Pkg>, recursively.
+-- "Pkg/Sub/Module" for every .luau file under factory/<Pkg>, recursively.
 local function onDisk(): { string }
 	local out = {}
 	local function walk(dir: string, prefix: string)
@@ -45,8 +46,8 @@ local function onDisk(): { string }
 		end
 	end
 	for _, name in packageNames do
-		if fs.isDir("packages/" .. name) then
-			walk("packages/" .. name, name .. "/")
+		if fs.isDir("factory/" .. name) then
+			walk("factory/" .. name, name .. "/")
 		end
 	end
 	table.sort(out)
@@ -79,9 +80,9 @@ end
 table.sort(loadOrder)
 for _, name in loadOrder do
 	local pkg, module = string.match(name, "^([^/]+)/(.+)$")
-	if pkg and module and fs.isFile("packages/" .. name .. ".luau") then
+	if pkg and module and fs.isFile("factory/" .. name .. ".luau") then
 		modules[pkg] = modules[pkg] or {}
-		modules[pkg][module] = load("../packages/" .. name)
+		modules[pkg][module] = load("../factory/" .. name)
 	end
 end
 
@@ -98,7 +99,7 @@ test("every module on disk is recorded in starter.json with its header tier", fu
 		if record == nil then
 			table.insert(problems, name .. ": not in starter.json")
 		else
-			local tier = headerTier(fs.readFile("packages/" .. name .. ".luau"))
+			local tier = headerTier(fs.readFile("factory/" .. name .. ".luau"))
 			if tier ~= record.tier then
 				table.insert(
 					problems,
@@ -204,7 +205,7 @@ for _, name in packageNames do
 			any = any or (record.lune and string.sub(recordName, 1, #name + 1) == name .. "/")
 		end
 		-- A kit without modules yet (only its README) passes; one with loadable modules must load some.
-		t.ok(count > 0 or not any, "packages/" .. name .. " has loadable modules but none loaded")
+		t.ok(count > 0 or not any, "factory/" .. name .. " has loadable modules but none loaded")
 	end)
 	local check = behaviour[name]
 	if check and modules[name] then

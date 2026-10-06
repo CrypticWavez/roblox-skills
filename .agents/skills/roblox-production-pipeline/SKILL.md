@@ -12,7 +12,7 @@ Move a game repository from an explicit game-build request to a release candidat
 "What's next for the game", "plan the next stage", "write the issues for greybox", "are we ready for alpha", starting work in a fresh game repository, a stage review, or a brief field being decided.
 
 ## Inputs
-`production/pipeline.json` (production-pipeline/1: `current` stage, stages with `goal`, `skills`, `exit` gates), `production/brief.json` (game-brief/1), `docs/design/*.md`, `release/report.json` when the release checker has run, `release/owner-*.json` (owner records), `starter.json` (installed packages and module tiers).
+`production/pipeline.json` (production-pipeline/1: `current` stage, stages with `goal`, `skills`, `exit` gates), `production/brief.json` (game-brief/1), `docs/design/*.md`, `release/report.json` when the release checker has run, `release/owner-*.json` (owner records), `starter.json` (installed packages, which sit in `factory/`, and module tiers).
 
 ## Required context
 The game repo's `AGENTS.md` (decision tables, boundary), `docs/production-plan.md` (stages, roles, working loop), `docs/release-runbook.md` (release item ids used by `release` gates), `docs/decisions.md`. Gate kinds: `brief` (fields decided), `file` (design doc `Status:` no longer TBD), `gate` (a `tools/check.py` tier passes), `release` (release checklist items), `playtest` and `owner` (only the owner records them).

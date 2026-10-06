@@ -227,20 +227,32 @@ class PaidRandomTag(ReleaseFixtureCase):
 
 
 class ProjectMappings(ReleaseFixtureCase):
-    def test_wally_packages_never_map_into_a_replicated_service_in_any_case(self):
-        # On Windows and macOS Packages/ opens the factory packages/ folder, authoring packages included.
-        for target in ("Packages", "packages", "PACKAGES", "devpackages", "Packages/SceneKit"):
+    def mapped(self, target, service="ReplicatedStorage"):
+        """run_checks on the good tree plus one Rojo node mapping target into service."""
+        dest = self.tmp / f"map-{service}-{target.replace('/', '-')}"
+        dest.mkdir()
+        materialise(dest)
+        path = dest / "default.project.json"
+        project = json.loads(path.read_text(encoding="utf-8"))
+        project["tree"].setdefault(service, {})["Extra"] = {"$path": {"optional": target}}
+        path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        return release_check.run_checks(dest)
+
+    def test_wally_folders_and_authoring_packages_never_map_into_a_replicated_service_in_any_case(self):
+        # Windows and macOS resolve names case-insensitively; the authoring packages live in factory/ (new_project.py).
+        for target in ("Packages", "packages", "PACKAGES", "devpackages", "factory/SceneKit", "Factory/ProcGen", "factory/pipeline",
+                       "src/server", "src/server/Phases.luau"):
             with self.subTest(target=target):
-                dest = self.tmp / f"map-{target.replace('/', '-')}"
-                dest.mkdir()
-                materialise(dest)
-                path = dest / "default.project.json"
-                project = json.loads(path.read_text(encoding="utf-8"))
-                project["tree"]["ReplicatedStorage"]["Extra"] = {"$path": {"optional": target}}
-                path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
-                report = release_check.run_checks(dest)
+                report = self.mapped(target)
                 self.assertEqual(failing(report), ["A01"])
                 self.assertTrue(any(f"maps {target} into a replicated service" in p for p in problems_of(report, "A01")))
+
+    def test_the_starter_layout_passes(self):
+        # Kits and the leaf copies replicate; authoring packages stay in ServerStorage (tools/new_project.py package_nodes).
+        for target, service in (("factory/GameKit", "ReplicatedStorage"), ("factory/ProcGen/Rng.luau", "ReplicatedStorage"),
+                                ("factory/SceneKit", "ServerStorage"), ("factory/Pipeline", "ServerStorage")):
+            with self.subTest(target=target):
+                self.assertEqual(statuses(self.mapped(target, service))["A01"], "PASS")
 
     def test_server_storage_may_hold_server_packages(self):
         dest, _ = self.tree()

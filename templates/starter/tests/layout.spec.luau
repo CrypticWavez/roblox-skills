@@ -1,9 +1,10 @@
 --!strict
 -- Layout spec: builds the place with `rojo build default.project.json` (into build/layout-spec.rbxl),
 -- deserialises it with @lune/roblox and checks that
---   * every package sits in its class's home (starter.json): authoring in ServerStorage.Authoring
---     (never replicated), kits in ReplicatedStorage.Kits with the leaf copies Kits/ProcGen/{Rng,Grid,Graph}
---     and Kits/SceneKit/{Vec,Lighting}, legacy beside the kits in ReplicatedStorage.Kits;
+--   * every package (its files in factory/) sits in its class's home (starter.json): authoring in
+--     ServerStorage.Authoring (never replicated), kits in ReplicatedStorage.Kits with the leaf copies
+--     Kits/ProcGen/{Rng,Grid,Graph} and Kits/SceneKit/{Vec,Lighting}, legacy beside the kits in
+--     ReplicatedStorage.Kits;
 --   * the boot skeleton is where the entry scripts look for it;
 --   * every require in every script resolves statically to a ModuleScript in the built place: string
 --     requires ("./X", "../X", "@self/X", "@game/Service/X") and script chains (script.Parent.X,
@@ -224,7 +225,7 @@ test("kits get the leaf copies they require", function(t)
 	for pkg, modules in LEAVES do
 		if starter.packages[pkg] then
 			for _, module in modules do
-				if fs.isFile(`packages/{pkg}/{module}.luau`) then
+				if fs.isFile(`factory/{pkg}/{module}.luau`) then
 					local leaf = child(kits, { pkg, module })
 					t.ok(leaf ~= nil and leaf:IsA("ModuleScript"), `Kits/{pkg}/{module} missing`)
 				end

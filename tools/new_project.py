@@ -7,11 +7,14 @@
 
 Use it only for an explicit game-build request (AGENTS.md: a game starts in a separate repository).
 It copies infrastructure, never game content:
-- factory packages by class: authoring (SceneKit, ProcGen, Pipeline; Rojo ServerStorage.Authoring,
-  never replicated), kits (GameKit, UIKit, Feel, Cinematics, AVKit; ReplicatedStorage.Kits, plus the
-  leaf copies Kits/ProcGen/{Rng,Grid,Graph} and Kits/SceneKit/{Vec,Lighting}, the same files mapped
-  a second time so the kits' "../ProcGen/Rng" requires resolve) and legacy opt-in (Runtime, Creator,
-  Diagnostics; ReplicatedStorage.Kits beside the kits, whose modules they require). Default: DEFAULT_PACKAGES; packages they require are added;
+- factory packages in factory/<Pkg> (the factory itself keeps packages/; a game repo never uses that
+  name: `wally install` first deletes Packages/, ServerPackages/ and DevPackages/, and on Windows NTFS
+  and macOS APFS Packages/ is packages/), by class: authoring (SceneKit, ProcGen, Pipeline; Rojo
+  ServerStorage.Authoring, never replicated), kits (GameKit, UIKit, Feel, Cinematics, AVKit;
+  ReplicatedStorage.Kits, plus the leaf copies Kits/ProcGen/{Rng,Grid,Graph} and
+  Kits/SceneKit/{Vec,Lighting}, the same files mapped a second time so the kits' "../ProcGen/Rng"
+  requires resolve) and legacy opt-in (Runtime, Creator, Diagnostics; ReplicatedStorage.Kits beside the
+  kits, whose modules they require). Default: DEFAULT_PACKAGES; packages they require are added;
 - a phased boot skeleton (src/shared/Boot.luau runs config, kits, data, remotes, telemetry, ui, input
   with a timeout per phase), a loading screen, every Config field TBD, and specs for boot, layout and
   packages;
@@ -25,17 +28,23 @@ It copies infrastructure, never game content:
 wally.toml (private = true, `=` requirements), THIRD_PARTY_NOTICES.md and rokit.toml tool pins. It
 never runs `wally install` (that downloads code); it prints the owner's command instead.
 starter.json (starter/2) records the factory commit, each package's class and sha256, every module's
-tier and probe parsed from its `-- @tier` header, the pending Studio probes, each skill's sha256, the
-sha256 of every factory-managed file, the dependency bundles and the smoke hashes.
+tier and probes (`probe` keeps the first for starter/2 readers) parsed from its `-- @tier` header, the
+pending Studio probes, each skill's sha256, the sha256 of every factory-managed file, the dependency
+bundles and the smoke hashes. Package and module names in it are relative to factory/ (to packages/ in
+repos made before the move), and the game gate reads "patched" keys as factory/<Pkg>.
 
 Refuses a dest inside this repo, inside another git repository, or non-empty (a lone .git, as in a
 freshly created empty repository, is allowed). --update refreshes the factory-managed parts of an
-existing starter repo and preserves user files: packages/, the copied skills, tools/hooks and the
+existing starter repo and preserves user files: factory/, the copied skills, tools/hooks and the
 other managed files (MANAGED_TEMPLATES, FACTORY_FILES, generated settings) are replaced; the package
 nodes of default.project.json and the tool pins of rokit.toml are merged; template files the repo
-lacks are added; everything else is left alone. It refuses when the repo has uncommitted changes or
-when a package, skill or managed file was edited there (its sha256 differs from starter.json) unless
---force. Runs no git command that writes, and publishes, uploads, installs or buys nothing.
+lacks are added; everything else is left alone. A repo that still keeps the packages in packages/
+(starter/1, earlier starter/2) has that folder moved to factory/, and default.project.json paths into
+a factory package (packages/<Pkg>/...) move with it. It refuses when the repo has uncommitted changes,
+when a package, skill or managed file was edited there (its sha256 differs from starter.json) or when
+packages/ holds entries starter.json does not record, unless --force; it always refuses to move
+packages/ onto a factory/ that has content. Runs no git command that writes (the move is a plain
+rename), and publishes, uploads, installs or buys nothing.
 Templates live in templates/starter: a top-level name in DOT_NAMES gains a leading dot, ".tmpl" is
 stripped (so the game's AGENTS.md/CLAUDE.md are not loaded as instructions inside the factory),
 {{NAME}} and {{CREATED}} are filled in.
@@ -53,6 +62,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE = ROOT / "templates" / "starter"
 PACKAGES = ROOT / "packages"
+# Where a game repo keeps the factory packages. Not packages/: Wally 0.3.2's `wally install` first
+# deletes Packages/ (src/installation.rs clean), which is packages/ on Windows NTFS and macOS APFS.
+FACTORY_DIR = "factory"
+OLD_FACTORY_DIR = "packages"  # starter/1 and earlier starter/2 repos; --update moves it to FACTORY_DIR
 SKILLS_SRC = ROOT / ".agents" / "skills"
 SMOKE_GOLDEN = ROOT / "tests" / "golden" / "studio-smoke.json"
 DEPS_FILE = TEMPLATE / "deps.json"
@@ -262,12 +275,13 @@ def module_header(text):
     return tier, probes
 
 
-def module_records(root, packages):
+def module_records(folder, packages):
     """{Pkg/Module: {class, tier, lune, probe?, probes?}} for every .luau module of the given packages under
-    root/packages. probes lists every probe the header names; probe (the first) stays for starter/2 readers."""
+    folder (a game repo's factory/, or the factory's packages/). probes lists every probe the header names;
+    probe (the first) stays for starter/2 readers."""
     records = {}
     for pkg in packages:
-        base = root / "packages" / pkg
+        base = folder / pkg
         for path in sorted(base.rglob("*.luau")):
             name = f"{pkg}/{path.relative_to(base).with_suffix('').as_posix()}"
             tier, probes = module_header(path.read_text(encoding="utf-8"))
@@ -307,14 +321,14 @@ def package_nodes(packages, root):
     """Rojo children per class for the installed packages (paths relative to the game repo)."""
     nodes = {cls: {} for cls in PACKAGE_CLASSES}
     for pkg in sorted(packages):
-        nodes[CLASS_OF[pkg]][pkg] = {"$path": f"packages/{pkg}"}
+        nodes[CLASS_OF[pkg]][pkg] = {"$path": f"{FACTORY_DIR}/{pkg}"}
     if nodes["kits"] or nodes["legacy"]:
         for leaf_pkg, modules in LEAVES.items():
-            present = [m for m in modules if (root / "packages" / leaf_pkg / f"{m}.luau").is_file()]
+            present = [m for m in modules if (root / FACTORY_DIR / leaf_pkg / f"{m}.luau").is_file()]
             if leaf_pkg in packages and present:
                 folder = {"$className": "Folder"}
                 for module in present:
-                    folder[module] = {"$path": f"packages/{leaf_pkg}/{module}.luau"}
+                    folder[module] = {"$path": f"{FACTORY_DIR}/{leaf_pkg}/{module}.luau"}
                 nodes["kits"][leaf_pkg] = folder
     return nodes
 
@@ -329,11 +343,11 @@ def apply_package_nodes(project, packages, root):
         del replicated["Workbench"]  # starter/1 layout: every package replicated to clients
         notes.append("removed ReplicatedStorage.Workbench (starter/1); packages now map by class")
     if isinstance(replicated, dict) and replicated.get("Packages") == {"$path": {"optional": "Packages"}}:
-        del replicated["Packages"]  # Wally's shared folder; on Windows and macOS it is packages/ (every package again)
-        notes.append("removed ReplicatedStorage.Packages (Packages/ is the factory packages/ folder on Windows and macOS)")
+        del replicated["Packages"]  # an earlier template's Wally shared folder; shared-realm dependencies are refused
+        notes.append("removed ReplicatedStorage.Packages (shared-realm Wally dependencies are refused)")
     old_service, old_folder = OLD_LEGACY_HOME
     old = tree.get(old_service, {}).get(old_folder) if isinstance(tree.get(old_service), dict) else None
-    if isinstance(old, dict) and all(isinstance(v, dict) and str(v.get("$path", "")).startswith("packages/")
+    if isinstance(old, dict) and all(isinstance(v, dict) and str(v.get("$path", "")).startswith((f"{OLD_FACTORY_DIR}/", f"{FACTORY_DIR}/"))
                                      for k, v in old.items() if not k.startswith("$")):
         del tree[old_service][old_folder]
         notes.append("removed ReplicatedStorage.Legacy; legacy packages now sit beside the kits in ReplicatedStorage.Kits")
@@ -349,6 +363,30 @@ def apply_package_nodes(project, packages, root):
     return notes
 
 
+def move_rojo_paths(node, packages):
+    """Rewrite every $path (string or optional) into a factory package, packages/<Pkg>/..., to factory/ in
+    place; returns how many moved."""
+    if not isinstance(node, dict):
+        return 0
+    count = 0
+    raw = node.get("$path")
+    inner = raw.get("optional") if isinstance(raw, dict) else raw
+    parts = inner.replace("\\", "/").split("/") if isinstance(inner, str) else []
+    if len(parts) > 1 and parts[0] == OLD_FACTORY_DIR and parts[1] in packages:
+        moved = "/".join([FACTORY_DIR] + parts[1:])
+        node["$path"] = {**raw, "optional": moved} if isinstance(raw, dict) else moved
+        count += 1
+    for key, child in node.items():
+        if not key.startswith("$"):
+            count += move_rojo_paths(child, packages)
+    return count
+
+
+def has_entry(directory, name):
+    """True when directory holds an entry named exactly name (Path.exists folds case on Windows and macOS)."""
+    return directory.is_dir() and name in {p.name for p in directory.iterdir()}
+
+
 # ---- dependency bundles (templates/starter/deps.json)
 
 def load_deps():
@@ -361,8 +399,8 @@ def check_bundles(bundles, deps):
         raise Refused(f"unknown dependency bundle(s) {unknown}; available: {sorted(deps['bundles'])}")
     shared = [n for n in bundle_packages(sorted(set(bundles)), deps) if deps["packages"][n]["realm"] == "shared"]
     if shared:
-        raise Refused(f"{shared}: shared-realm Wally dependencies are refused while the factory kits live in packages/ "
-                      "(Wally installs them into Packages/, the same folder on case-insensitive filesystems: Windows, macOS)")
+        raise Refused(f"{shared}: shared-realm Wally dependencies (Packages/) are refused: they replicate to clients, and the "
+                      "starter maps no Wally folder into a replicated service (release check A01); see the deps.json policy")
     return sorted(set(bundles))
 
 
@@ -647,7 +685,7 @@ def sync_skills(dest):
 
 
 def starter_record(dest, name, created, packages, bundles, managed):
-    modules = module_records(dest, packages)
+    modules = module_records(dest / FACTORY_DIR, packages)
     tiers, pending = tier_summary(modules)
     starter = {
         "schema": SCHEMA,
@@ -707,7 +745,7 @@ def write_starter_repo(dest, name, requested, bundles):
     for rel, data in managed.items():
         write_bytes(dest / rel, data)
     for pkg in packages:
-        copy_tree(PACKAGES / pkg, dest / "packages" / pkg)
+        copy_tree(PACKAGES / pkg, dest / FACTORY_DIR / pkg)
     for skill in SKILLS:
         copy_tree(SKILLS_SRC / skill, dest / ".agents" / "skills" / skill)
     sync_skills(dest)
@@ -723,7 +761,7 @@ def write_starter_repo(dest, name, requested, bundles):
 
     by_class = {cls: [p for p in packages if CLASS_OF[p] == cls] for cls in PACKAGE_CLASSES}
     print(f"scaffolded {name} at {dest}")
-    print("  packages: " + "; ".join(f"{cls} {', '.join(p) or '-'}" for cls, p in by_class.items())
+    print(f"  packages (in {FACTORY_DIR}/): " + "; ".join(f"{cls} {', '.join(p) or '-'}" for cls, p in by_class.items())
           + (f" (added as dependencies: {', '.join(added)})" if added else ""))
     print(f"  modules: {len(starter['modules'])} ({', '.join(f'{k} {v}' for k, v in starter['tiers'].items())}); "
           f"pending Studio probes: {len(starter['pending_probes'])}")
@@ -810,11 +848,28 @@ def update(dest, requested, bundles, force):
     managed = managed_files(values, bundles, deps, set(templates) | set(starter.get("managed", {})))
     old_managed = starter.get("managed", {})
     old_skills = starter.get("skills", {}) if isinstance(starter.get("skills"), dict) else {}
+    # A repo made before the packages moved to factory/ keeps them in packages/ (exact name: on Windows
+    # and macOS Wally's Packages/ would also answer to it). It is moved below, after every refusal.
+    factory = dest / FACTORY_DIR
+    old_home = dest / OLD_FACTORY_DIR if has_entry(dest, OLD_FACTORY_DIR) and (dest / OLD_FACTORY_DIR).is_dir() else None
+    if old_home is not None and factory.exists() and (not factory.is_dir() or any(factory.iterdir())):
+        if any((old_home / pkg).is_dir() for pkg in recorded):
+            raise Refused(f"{dest} keeps the factory packages in {OLD_FACTORY_DIR}/, and {FACTORY_DIR}/ already exists with other "
+                          f"content; move {FACTORY_DIR}/ aside, then update (--force does not merge the two)")
+        old_home = None  # the game's own folder beside factory/: left alone (the gate step deps flags its name)
+    home = old_home or factory
+    project_path = dest / "default.project.json"
+    try:
+        project = json.loads(project_path.read_text(encoding="utf-8")) if project_path.exists() else None
+    except ValueError as err:  # checked before anything is written or moved
+        raise Refused(f"{project_path} is not valid JSON ({err}); fix it before updating")
 
     # 1. Refuse local edits (anything whose sha256 differs from what the starter last wrote).
-    edited = [p for p in packages if p in recorded and (dest / "packages" / p).exists()
-              and tree_hash(dest / "packages" / p)[0] != recorded[p]["sha256"]]
-    unrecorded = [p for p in packages if p not in recorded and (dest / "packages" / p).exists()]
+    edited = [p for p in packages if p in recorded and (home / p).exists()
+              and tree_hash(home / p)[0] != recorded[p]["sha256"]]
+    unrecorded = [p for p in packages if p not in recorded and (home / p).exists()]
+    stray = sorted(p.name for p in old_home.iterdir() if p.name not in recorded and p.name not in unrecorded
+                   and not p.name.startswith(".")) if old_home else []
     skill_edits, skill_unknown = [], []
     fresh_skills = skill_record(SKILLS)
     for skill in SKILLS:
@@ -842,6 +897,8 @@ def update(dest, requested, bundles, force):
         why.append(f"packages edited here since the last scaffold/update: {edited}")
     if unrecorded:
         why.append(f"packages present but not in starter.json: {unrecorded}")
+    if stray:
+        why.append(f"{OLD_FACTORY_DIR}/ holds entries starter.json does not record, which the move to {FACTORY_DIR}/ would carry: {stray}")
     if skill_edits:
         why.append(f"skills edited here: {skill_edits}")
     if skill_unknown:
@@ -855,10 +912,17 @@ def update(dest, requested, bundles, force):
                       "game skills under a new name) or pass --force to overwrite.")
 
     changes = []
+    if old_home is not None:
+        if factory.is_dir():
+            factory.rmdir()  # empty (checked above)
+        old_home.rename(factory)
+        changes.append(FACTORY_DIR)
+        print(f"  {OLD_FACTORY_DIR}/: moved to {FACTORY_DIR}/ (`wally install` deletes Packages/, which is {OLD_FACTORY_DIR}/ "
+              "on Windows and macOS)")
     # 2. Packages.
     fresh = package_record(packages)
     for pkg in packages:
-        target = dest / "packages" / pkg
+        target = factory / pkg
         old = recorded.get(pkg, {}).get("sha256")
         current = tree_hash(target)[0] if target.exists() else None
         if old == fresh[pkg]["sha256"] and current == old:
@@ -909,16 +973,14 @@ def update(dest, requested, bundles, force):
         changes.append(rel)
         print(f"  {rel}: added")
     # 6. Merged files: the Rojo package folders and the toolchain pins.
-    project_path = dest / "default.project.json"
-    project = None
-    if project_path.exists():
+    moved = 0
+    if project is not None:
         before = project_path.read_text(encoding="utf-8")
-        try:
-            project = json.loads(before)
-        except ValueError as err:
-            raise Refused(f"{project_path} is not valid JSON ({err}); fix it before updating")
         for note in apply_package_nodes(project, all_packages, dest):
             print(f"  default.project.json: {note}")
+        moved = move_rojo_paths(project.get("tree"), all_packages)
+        if moved:
+            print(f"  default.project.json: {moved} other path(s) moved from {OLD_FACTORY_DIR}/ to {FACTORY_DIR}/")
         after = json.dumps(project, indent=2) + "\n"
         if after != before:
             project_path.write_text(after, encoding="utf-8")
@@ -938,6 +1000,12 @@ def update(dest, requested, bundles, force):
     elif "studio-tests" in bundles and project is not None:
         write_json(dest / "studio-tests.project.json", studio_tests_project(project))
 
+    if old_home is not None or moved:
+        regenerated = {"default.project.json"} | ({"studio-tests.project.json"} if "studio-tests" in bundles else set())
+        for other in sorted(dest.glob("*.project.json")) + [dest / "AGENTS.md", dest / "README.md"]:
+            if other.name not in regenerated and other.is_file() and f"{OLD_FACTORY_DIR}/" in other.read_text(encoding="utf-8"):
+                print(f"  note: {other.name} still names {OLD_FACTORY_DIR}/ (a user file, left as it is); the factory packages "
+                      f"are in {FACTORY_DIR}/ now")
     agents = dest / "AGENTS.md"
     if agents.is_file() and "| Brief key |" not in agents.read_text(encoding="utf-8"):
         print("  note: AGENTS.md predates game-brief/1; copy the Game decisions and Engine settings tables (with the Brief key "
@@ -956,7 +1024,7 @@ def update(dest, requested, bundles, force):
 
 def list_options():
     deps = load_deps()
-    print("package classes (Rojo home):")
+    print(f"package classes (Rojo home; files in the game repo's {FACTORY_DIR}/<Pkg>):")
     for cls, pkgs in PACKAGE_CLASSES.items():
         service, folder = ROJO_HOME[cls]
         print(f"  {cls:<10} {service}.{folder}: {', '.join(pkgs)}")

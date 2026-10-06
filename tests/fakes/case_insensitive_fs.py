@@ -5,12 +5,16 @@ patches pathlib.Path so exists, is_dir, is_file and iterdir resolve each path co
 the exact name first, else the stored entry whose name matches ignoring case. Directory listings keep
 the stored names, as those filesystems do, so code that compares names from iterdir() sees `packages`.
 Only these four methods are patched; open() and read_text() still need the exact name.
+wally_clean(project) does what `wally install` does first on such a filesystem.
 """
 import contextlib
+import shutil
 from pathlib import Path
 from unittest import mock
 
 PATCHED = ("exists", "is_dir", "is_file", "iterdir")
+REAL = {name: getattr(Path, name) for name in PATCHED}  # captured before any patch
+WALLY_DIRS = ("Packages", "ServerPackages", "DevPackages")
 
 
 def fold(path, real):
@@ -30,9 +34,22 @@ def fold(path, real):
     return current
 
 
+def wally_clean(project):
+    """Wally 0.3.2 `wally install` starts with Installation::clean (src/installation.rs): remove_dir_all on
+    project/Packages, ServerPackages and DevPackages, ignoring NotFound. Here each name is looked up the way
+    NTFS and APFS do (fold); returns the stored names it removed."""
+    removed = []
+    for name in WALLY_DIRS:
+        stored = fold(Path(project) / name, REAL)
+        if REAL["is_dir"](stored):
+            shutil.rmtree(stored)
+            removed.append(stored.name)
+    return removed
+
+
 @contextlib.contextmanager
 def case_insensitive_paths():
-    real = {name: getattr(Path, name) for name in PATCHED}
+    real = REAL
 
     def lookup(name):
         return lambda self, *args, **kwargs: real[name](fold(self, real), *args, **kwargs)

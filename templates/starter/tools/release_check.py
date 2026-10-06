@@ -33,6 +33,7 @@ SCHEMA = "release-check/1"
 META_SCHEMA = "release-meta/1"
 OWNER_SCHEMA = production.OWNER_SCHEMA
 WALLY_DIRS = {"Packages", "ServerPackages", "DevPackages"}
+FACTORY_DIR = "factory"  # the factory packages in a game repo (tools/new_project.py)
 # GameKit Commerce.RANDOM_TAG: Commerce.canPrompt needs PolicyGate paidRandomItems for a product with this tag.
 RANDOM_TAG = "paid_random_item"
 LABEL = production.LABEL
@@ -63,7 +64,7 @@ DOCS = "https://create.roblox.com/docs/en-us/"
 ITEMS = [
     # Automated (A): run by this tool.
     {"id": "A01", "tier": "A", "title": "Project hygiene and engine settings",
-     "spec": "No Rojo project overrides FilteringEnabled or turns LoadStringEnabled on. default.project.json maps the boot entry points (ReplicatedFirst.Loading, ReplicatedStorage.Shared, ServerScriptService.Server, StarterPlayerScripts.Client). Authoring packages, the Wally folders (Packages, ServerPackages, DevPackages; names compared case-insensitively, since Packages/ is the factory packages/ folder on Windows and macOS) and src/server never map into a replicated service. Engine properties set in a project match the decided production/brief.json engine values.",
+     "spec": "No Rojo project overrides FilteringEnabled or turns LoadStringEnabled on. default.project.json maps the boot entry points (ReplicatedFirst.Loading, ReplicatedStorage.Shared, ServerScriptService.Server, StarterPlayerScripts.Client). Authoring packages (factory/SceneKit, factory/ProcGen, factory/Pipeline), the Wally folders (Packages, ServerPackages, DevPackages) and src/server never map into a replicated service; paths are compared case-insensitively, as Windows and macOS resolve them. Engine properties set in a project match the decided production/brief.json engine values.",
      "source": "starter layout; engine settings from the brief"},
     {"id": "A02", "tier": "A", "title": "Remotes go through RemoteGuard",
      "spec": "No code in src/ connects OnServerEvent or assigns OnServerInvoke directly: server handlers are registered through GameKit/RemoteGuard (rate limits, schema checks) or generated from a Blink schema (paths listed in release.json generated).",
@@ -413,11 +414,11 @@ def check_a01(ctx):
                     problems.append(f"{path.name}: {'.'.join(trail)} turns LoadStringEnabled on")
             target = node_path(node)
             if replicated and target:
-                # Folded: on Windows and macOS (case-insensitive) Wally's Packages/ is the factory packages/ folder.
+                # Folded: Windows and macOS (case-insensitive) open Packages/ for packages/, Factory/ for factory/.
                 head = target.lower().split("/")
                 if (len(head) == 1 and head[0] in {d.lower() for d in WALLY_DIRS}) \
-                        or (head[0] == "packages" and len(head) == 2 and head[1] in {a.lower() for a in AUTHORING}) \
-                        or target.startswith("src/server"):
+                        or (head[0] == FACTORY_DIR and len(head) == 2 and head[1] in {a.lower() for a in AUTHORING}) \
+                        or "/".join(head).startswith("src/server"):
                     problems.append(f"{path.name}: {'.'.join(trail)} maps {target} into a replicated service (server or authoring code reaches clients)")
             for key, child in node.items():
                 if not key.startswith("$"):
