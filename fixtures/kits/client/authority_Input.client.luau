@@ -1,8 +1,13 @@
 --!strict
 -- G2 authority fixture, client side (LocalScript StarterPlayerScripts.KitFixtures.authority_Input).
 -- Opt in: runs only when Workspace attribute SETUP_ONLY_KitFixture is "authority".
---   * Builds the raw IAS InputContext from authority_Arena.ACTIONS (AuthorityRoblox.buildActions;
---     G4's InputMap replaces this raw build after merge) and reads it in the simulation step.
+--   * Builds its Input Action System instances with GameKit/InputMapRoblox from one
+--     GameKit/InputMap map: InputMap's gameplay context holding the arena's actions
+--     (authority_Arena.ACTIONS: move, sprint, dash, primary; their keyboard and gamepad keys) and
+--     the jump and slide requests MovementRoblox.ACTIONS names (registered for a movement adapter
+--     on the same map; the arena takes no jump or slide). Touch bindings are ui:<key> buttons
+--     (InputMap's default, or ui:<label>_button); this fixture mounts none, so they stay pending.
+--     The actions are read in the simulation step.
 --   * Sends input (camera-relative move turned into a world XZ direction, sprint, dash) through
 --     the Input remote when it changes, at most 20 times a second plus a 4 Hz keep-alive.
 --   * On a primary press, raycasts from its own body marker along the camera look against the
@@ -28,6 +33,9 @@ local function kit(path: string): any
 end
 
 local AuthorityRoblox = kit("GameKit/AuthorityRoblox")
+local InputMap = kit("GameKit/InputMap")
+local InputMapRoblox = kit("GameKit/InputMapRoblox")
+local MovementRoblox = kit("GameKit/MovementRoblox")
 local Arena = (require :: any)(ReplicatedStorage:WaitForChild("KitFixtures"):WaitForChild("authority_Arena"))
 
 local holder = ReplicatedStorage:WaitForChild("SETUP_ONLY_Authority", 30)
@@ -41,7 +49,72 @@ local claimRemote = holder:WaitForChild("Claim")
 local bodies = arenaFolder:WaitForChild("Bodies")
 local player = Players.LocalPlayer
 
-local _, actions = AuthorityRoblox.buildActions(Arena.ACTIONS, { Instance = Instance, Enum = Enum }, script)
+-- One InputMap map: the gameplay context of InputMap.defaults() with the arena's actions and the
+-- movement requests. Keyboard and gamepad keys come from Arena.ACTIONS (a gamepad key is a
+-- Button, DPad or Thumbstick name); jump keeps InputMap's default bindings; slide's keys are a
+-- fixture choice, not a recommendation.
+local function actionMap(): any
+	local base = InputMap.defaults()
+	local actions = {}
+	local function add(name: string, kind: string, kbm: { any }, pad: { any }, touch: { any })
+		actions[name] = {
+			name = name,
+			context = "gameplay",
+			type = kind,
+			reserved = false,
+			bindings = { KeyboardAndMouse = kbm, Gamepad = pad, Touch = touch },
+			labelKey = "input." .. name,
+		}
+	end
+	local function touchFor(name: string): { any }
+		local default = base.actions[name]
+		if default then
+			return table.clone(default.bindings.Touch)
+		end
+		return { "ui:" .. string.match(name, "%.(.+)$") .. "_button" }
+	end
+	for _, item in Arena.ACTIONS.actions do
+		local kbm, pad = {}, {}
+		for _, binding in item.bindings do
+			if binding.keyCode == nil then
+				table.insert(
+					kbm,
+					{ up = binding.up, down = binding.down, left = binding.left, right = binding.right }
+				)
+			elseif
+				string.match(binding.keyCode, "^Button")
+				or string.match(binding.keyCode, "^DPad")
+				or string.match(binding.keyCode, "^Thumbstick")
+			then
+				table.insert(pad, binding.keyCode)
+			else
+				table.insert(kbm, binding.keyCode)
+			end
+		end
+		add(item.name, item.type, kbm, pad, touchFor(item.name))
+	end
+	local jump = base.actions[MovementRoblox.ACTIONS.jump]
+	add(
+		MovementRoblox.ACTIONS.jump,
+		jump.type,
+		table.clone(jump.bindings.KeyboardAndMouse),
+		table.clone(jump.bindings.Gamepad),
+		table.clone(jump.bindings.Touch)
+	)
+	add(MovementRoblox.ACTIONS.slide, "Bool", { "C" }, { "ButtonX" }, touchFor(MovementRoblox.ACTIONS.slide))
+	return InputMap.define({
+		schema = InputMap.SCHEMA,
+		contexts = { gameplay = base.contexts.gameplay },
+		actions = actions,
+	})
+end
+
+local input = InputMapRoblox.build(
+	actionMap(),
+	{ roblox = { Instance = Instance, Enum = Enum } },
+	{ parent = script, name = "SETUP_ONLY_AuthorityInput" }
+)
+local actions = input.actions
 
 local SEND_INTERVAL = 1 / 20
 local KEEP_ALIVE = 0.25
