@@ -455,12 +455,16 @@ class Update(Scaffold):
         project["tree"]["ReplicatedStorage"]["Extra"] = {"$path": {"optional": "packages/GameKit/Signal.luau"}}
         project["tree"]["ServerStorage"]["Own"] = {"$path": "packages/MyLib"}  # not a factory package: left alone
         path.write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        (dest / "tests" / "mine.spec.luau").write_text('local Signal = require("../packages/GameKit/Signal")\nreturn {}\n',
+                                                       encoding="utf-8")  # a game's own spec into the old folder
         digests = {pkg: np.tree_hash(dest / "packages" / pkg)[0] for pkg in np.DEFAULT_PACKAGES}
         code, out = self.update(dest)
         self.assertEqual(code, 0, out)
         self.assertIn("packages/: moved to factory/", out)
         self.assertIn("default.project.json: 1 other path(s) moved from packages/ to factory/", out)
         self.assertIn("note: AGENTS.md still names packages/", out)
+        self.assertIn("note: tests/mine.spec.luau still names packages/", out)
+        self.assertNotIn("note: default.project.json still names", out)
         self.assertEqual({"factory", "packages"} & entry_names(dest), {"factory"})
         self.assertEqual({pkg: np.tree_hash(dest / "factory" / pkg)[0] for pkg in np.DEFAULT_PACKAGES}, digests)
         project = self.read_json(path)

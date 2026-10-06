@@ -545,6 +545,14 @@ test("TeleportRoblox builds options, retries TeleportAsync and refuses Studio", 
 	local studio = FakeEnv.new({ roblox = FakePlatformRoblox.roblox() })
 	t.eq({ TeleportRoblox.teleport(service, 1234, { one }, nil, studio) }, { false, "studio" })
 	t.eq({ TeleportRoblox.reserve(service, 1234, studio) }, { false, "studio" })
+	-- An unknown place fails closed: no env, or an env without a place, never teleports.
+	local placeless = FakeEnv.new({ roblox = FakePlatformRoblox.roblox() })
+	placeless.place = nil
+	local before = #service.teleports
+	t.eq({ TeleportRoblox.teleport(service, 1234, { one }, nil, nil) }, { false, "studio" })
+	t.eq({ TeleportRoblox.teleport(service, 1234, { one }, nil, placeless) }, { false, "studio" })
+	t.eq({ TeleportRoblox.reserve(service, 1234, placeless) }, { false, "studio" })
+	t.eq(#service.teleports, before)
 	service.failures = 0
 	t.eq(
 		{ run(env, function()

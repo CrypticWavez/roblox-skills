@@ -43,6 +43,8 @@ STANDARD_TRANSACTION_TYPES = {"IAP", "Shop", "Gameplay", "ContextualPurchase", "
 CLIENT_REALMS = {"client", "gui"}
 REPLICATED_SERVICES = {"ReplicatedStorage", "ReplicatedFirst", "StarterPlayer", "StarterGui", "StarterPack", "Workspace", "Lighting"}
 AUTHORING = {"SceneKit", "ProcGen", "Pipeline"}
+# Leaf modules of authoring packages that kits require; new_project.py maps these files next to the kits.
+AUTHORING_LEAVES = {"ProcGen/Rng.luau", "ProcGen/Grid.luau", "ProcGen/Graph.luau", "SceneKit/Vec.luau", "SceneKit/Lighting.luau"}
 ENTRY_NODES = [
     ("ReplicatedFirst", "Loading"),
     ("ReplicatedStorage", "Shared"),
@@ -417,9 +419,10 @@ def check_a01(ctx):
             target = node_path(node)
             if replicated and target:
                 # Folded: Windows and macOS (case-insensitive) open Packages/ for packages/, Factory/ for factory/.
-                head = target.lower().split("/")
+                head = [part for part in target.lower().replace("\\", "/").split("/") if part not in ("", ".")]
                 if (len(head) == 1 and head[0] in {d.lower() for d in WALLY_DIRS}) \
-                        or (head[0] == FACTORY_DIR and len(head) == 2 and head[1] in {a.lower() for a in AUTHORING}) \
+                        or (head[:1] == [FACTORY_DIR] and (len(head) == 1 or (head[1] in {a.lower() for a in AUTHORING}
+                                                                       and "/".join(head[1:]) not in {f.lower() for f in AUTHORING_LEAVES}))) \
                         or "/".join(head).startswith("src/server"):
                     problems.append(f"{path.name}: {'.'.join(trail)} maps {target} into a replicated service (server or authoring code reaches clients)")
             for key, child in node.items():
@@ -509,6 +512,10 @@ def check_a03(ctx):
         problems.append(f"{ctx.catalog_rel}: unexpected top-level key {key!r} (GameKit Catalog.define accepts only {', '.join(CATALOG_KEYS)})")
     if not isinstance(catalog.get("products"), list):
         problems.append(f"{ctx.catalog_rel}: products must be a list")
+    else:
+        for index, product in enumerate(catalog["products"], 1):
+            if not isinstance(product, dict):
+                problems.append(f"{ctx.catalog_rel}: products[{index}] must be an object (GameKit Catalog.define rejects it)")
     keys, ids = set(), set()
     for index, product in enumerate(ctx.products()):
         key = product.get("key")
@@ -541,9 +548,11 @@ def check_a03(ctx):
         if not (isinstance(display, dict) and isinstance(display.get("nameKey"), str) and display["nameKey"]):
             problems.append(f"{where}: display.nameKey missing (localisation key, never text)")
         reward = product.get("adReward")
-        if reward is not None:
-            fixed = isinstance(reward, dict) and isinstance(reward.get("grants"), list) and all(
-                isinstance(g, dict) and g.get("type") in {"currency", "item", "entitlement"} for g in reward["grants"])
+        if reward is not None and not isinstance(reward, bool):
+            problems.append(f"{where}: adReward must be true or false (GameKit Catalog.define)")
+        elif reward is True:
+            fixed = isinstance(grants, list) and all(
+                isinstance(g, dict) and g.get("type") in {"currency", "item", "entitlement"} for g in grants)
             if kind != "devproduct" or not fixed:
                 problems.append(f"{where}: adReward only on developer products, with fixed currency, item or entitlement grants")
     for trail in price_keys(catalog):

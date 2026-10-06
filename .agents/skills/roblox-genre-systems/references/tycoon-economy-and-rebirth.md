@@ -47,7 +47,7 @@ A neutral systems reference: it maps the genre to kit modules, data, risks and c
 - Per-second remote updates of every counter: replicate rates and let the client extrapolate.
 
 ## Policy notes
-- Paid multipliers and boosts are developer products or passes; prompts go through `GameKit/CommerceRoblox` and the factory hooks ask before any prompt.
+- Paid multipliers and boosts are developer products or passes; prompts go through `GameKit/CommerceRoblox`, and in agent Studio sessions the factory hooks ask before those prompts (`docs/mcp.md`).
 - Random rewards bought with Robux follow the paid random items rules (`GameKit/OddsTable`, `GameKit/PolicyGate`).
 - Stealing mechanics that touch paid items interact with `IsPaidItemTradingAllowed` when items move between players (check with `GameKit/PolicyGate`).
 

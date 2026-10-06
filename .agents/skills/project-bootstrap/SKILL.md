@@ -29,7 +29,7 @@ The destination directory (new or empty, outside this repo and outside any other
 3. In `<dest>`: `git init` (the Codex hooks find the repo root with git), `rokit install`, `python3 tools/check.py`; every step must pass except a SKIPPED Selene (needs `selene generate-roblox-std`) and, with `--deps`, `deps` until the owner installs and commits `wally.lock`.
 4. Record decisions the request states: `production/brief.json`, the `AGENTS.md` tables (same values; step `brief` compares them) and a dated row in `docs/decisions.md`. Leave every other field TBD; the stage stays concept.
 5. Commit, and give the owner the commands to create and push the remote. Next work follows skill roblox-production-pipeline. Never publish the place or upload assets.
-6. Updates later: commit and branch in the game repo, run `--update` from the factory, review `git diff`, run its gate.
+6. Updates later: commit and branch in the game repo, run `--update` from the factory, review `git diff`, run its gate. In an older repo whose `packages/` a `wally install` deleted (Windows, macOS), run `git restore packages` first.
 
 ## Outputs
 A game repository with `starter.json`, a green gate run in it, the decisions log, and a short report: dest, packages by class, modules and pending probes, bundles and owner steps, factory commit, gate result, TBD fields.

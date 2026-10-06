@@ -26,7 +26,7 @@ Lune specs with the G1 fakes (`tests/fakes/FakeDataStore`, `FakeProfileStore`, `
 
 ## Procedure
 1. Schema inventory: keys, `version`, a migration per step (`migrations[n]` from n-1 to n), the template, size and writers. Load refusals are closed reasons (`locked`, `corrupt`, `newer_schema`, `migration_failed`, `too_large`); a newer schema is never downgraded.
-2. Storage: `PlayerDataRoblox.chooseBackend` (memory in Studio unless DataStores are allowed; DataStores or the game's ProfileStore live) and `PlayerDataRoblox.bind(store, { game })`. Every change goes through `session:update(fn)`, which commits only valid, storable, in-budget results.
+2. Storage: `PlayerDataRoblox.chooseBackend` (memory in Studio or with no `env.place` unless DataStores are allowed; DataStores or the game's ProfileStore live) and `PlayerDataRoblox.bind(store, { game })`. Every change goes through `session:update(fn)`, which commits only valid, storable, in-budget results.
 3. Settings: `SettingsStore.new({ store = session:keyStore() })`, guarded remote with `SettingsStore.patchSchema()`.
 4. Products: one catalog/1 table. Setup mode keeps everything disabled with placeholder ids (0, EXP-0); game mode needs real, owner-verified ids. No prices in data: show `priceProvider` results.
 5. Prompts: `CommerceRoblox.prompt(MarketplaceService, catalog, key, player, { policy = gate:predicate(player) }, env)`, which runs `Commerce.canPrompt` first. Subscriptions and `paid_random_item` products fail closed without policy. Subscriptions also fail closed (`studio_subscription`) unless the place is known to be live: `isStudio = false`, from `ctx.place` or `env.place`.

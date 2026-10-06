@@ -46,7 +46,7 @@ A neutral systems reference: it maps the genre to kit modules, data, risks and c
 - Part counts per stage: keep each stage inside the `SceneKit/Budgets` class budget.
 
 ## Policy notes
-- Stage skips and checkpoints-for-sale are developer products: prompts go through `GameKit/CommerceRoblox`, and the factory's hooks ask before any purchase prompt.
+- Stage skips and checkpoints-for-sale are developer products: prompts go through `GameKit/CommerceRoblox`, and in agent Studio sessions the factory's hooks ask before those prompts (`docs/mcp.md`).
 - Death effects with blood or gore must be declared in the Maturity & Compliance questionnaire (see the release research).
 - Boards show Roblox names only; any player-written text (course names, messages) goes through `GameKit/TextFilter`.
 

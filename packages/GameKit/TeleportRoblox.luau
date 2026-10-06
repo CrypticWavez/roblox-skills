@@ -4,7 +4,7 @@
 -- Roblox's teleport guide (retry a failed call after a short delay; on TeleportInitFailed retry
 -- Flooded after 15 s and Failure after 1 s; report anything else). T4 and BLOCKED_EXTERNAL here:
 -- "TeleportService doesn't support playtesting in Roblox Studio", so teleport() refuses in
--- Studio and real teleports need a published universe. Lune specs use the fake TeleportService
+-- Studio (and when env.place is unknown) and real teleports need a published universe. Lune specs use the fake TeleportService
 -- in tests/fakes/FakePlatformRoblox.
 --   options(roblox, spec)                 a TeleportOptions: reserve (ShouldReserveServer),
 --                                         accessCode (ReservedServerAccessCode), serverInstanceId,
@@ -64,8 +64,9 @@ function TeleportRoblox.options(roblox: any, spec: OptionsSpec?): any
 	return options
 end
 
+-- An unknown place counts as Studio (fail closed): only env.place.isStudio == false teleports.
 local function studio(env: any): boolean
-	return env ~= nil and env.place ~= nil and env.place.isStudio == true
+	return not (env ~= nil and type(env.place) == "table" and env.place.isStudio == false)
 end
 
 -- Teleports players to placeId. Retries a raising TeleportAsync (opts.retry, default 5 tries 1 s

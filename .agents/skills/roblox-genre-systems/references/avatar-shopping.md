@@ -41,7 +41,7 @@ A neutral systems reference: it maps the genre to kit modules, data, risks and c
 - Catalogue API calls are web requests with limits: cache results and back off with `GameKit/Retry`.
 
 ## Policy notes
-- Purchases of Marketplace items go through Roblox prompts (`MarketplaceService`, including `PromptBulkPurchase`); the factory guards ask before any prompt and deny completed purchases ([genre coverage](../../../../docs/research/genre-coverage-2026-10.md), section 5).
+- Purchases of Marketplace items go through Roblox prompts (`MarketplaceService`, including `PromptBulkPurchase`); in agent Studio sessions the factory guards ask before other purchase prompts, deny the bulk, subscription, Premium and Robux-transfer prompt APIs, and deny completed purchases (`docs/mcp.md`) ([genre coverage](../../../../docs/research/genre-coverage-2026-10.md), section 5).
 - PolicyService flags are read per player through `GameKit/PolicyGate` and fail closed; which flags apply to Marketplace prompts is UNVERIFIED here (release research, section 1e lists them).
 - Avatar Editor permissions (saving outfits to the account) prompt the player; check the current AvatarEditorService rules before designing around them.
 - No misleading metadata or prices (Community Standards).

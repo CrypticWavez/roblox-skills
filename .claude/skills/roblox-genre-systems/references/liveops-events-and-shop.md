@@ -44,7 +44,7 @@ A neutral systems reference for any genre with timed content: it maps events, ro
 - Randomised offers bought with Robux follow the paid random items rules (odds shown, summing to exactly 100%, `GameKit/PolicyGate` treatments).
 - Prices are read at runtime (`GameKit/CommerceRoblox`); the factory sets no prices.
 - Sales of products outside the originating experience ended on 2026-05-29 (release research, section 2).
-- The factory hooks ask before any purchase prompt and deny completed purchases.
+- In agent Studio sessions the factory hooks ask before purchase prompts, deny the subscription, bulk, Premium and Robux-transfer prompt APIs and completed purchases (`docs/mcp.md`).
 
 ## Test checklist
 - [ ] Event windows open and close at the configured UTC boundaries, including across a server that stays up.

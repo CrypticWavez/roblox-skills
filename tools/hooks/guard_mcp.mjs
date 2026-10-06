@@ -78,7 +78,7 @@ const DATASTORE_WRITE = /\b(Set|Update|Remove|Increment|RemoveVersion|Add)Async\
 // An entry point read or called as .name, :name or ["name"] (table.remove is not one).
 const ENTRY = (names) => String.raw`(?<!\btable)[.:]\s*(?:${names})\b|\[\s*["'](?:${names})["']\s*\]`;
 // An adapter option set to anything but a literal false or nil.
-const ON = (names) => String.raw`\b(?:${names})\s*=(?!=|\s*(?:false|nil)\b)`;
+const ON = (names) => String.raw`(?:\b(?:${names})|\[\s*["'](?:${names})["']\s*\])\s*=(?!=|\s*(?:false|nil)\b)`;
 const kits = (pairs) => pairs.map(([kit, use]) => [new RegExp(String.raw`\b${kit}\b`), new RegExp(use)]);
 // GameKit/CommerceRoblox.prompt opens PromptProductPurchase, PromptGamePassPurchase or
 // PromptSubscriptionPurchase. Which one is catalog data the guard cannot see, so it asks (and
@@ -91,9 +91,9 @@ const KIT_PURCHASE = kits([["CommerceRoblox", ENTRY("prompt")]]);
 // "profilestore" when env.place says the place is live), and the Runtime receipt ledger:
 // ReceiptLedger process (UpdateAsync on its injected store) and RobloxReceiptAdapter store (the
 // DataStore seam) and handler/callback/bind (each runs ledger:process).
-// chooseBackend with a literal kind "datastore" or "profilestore", the options table written before
-// or after the call.
-const STORE_KIND = String.raw`^(?=[\s\S]*?(?:${ENTRY("chooseBackend")}))(?=[\s\S]*?(?:\bkind|\[\s*["']kind["']\s*\])\s*=\s*["'](?:datastore|profilestore)["'])`;
+// chooseBackend with a literal kind "datastore" or "profilestore" (quoted or a [[long]] string), the
+// options table written before or after the call.
+const STORE_KIND = String.raw`^(?=[\s\S]*?(?:${ENTRY("chooseBackend")}))(?=[\s\S]*?(?:\bkind|\[\s*["']kind["']\s*\])\s*=\s*(?:["']|\[=*\[)(?:datastore|profilestore)(?:["']|\]=*\]))`;
 const KIT_STORE_WRITE = kits([
 	["LeaderboardRoblox", `${ENTRY("submit|remove")}|${ON("writes")}`],
 	["LiveBoardRoblox", ENTRY("submit|remove")],

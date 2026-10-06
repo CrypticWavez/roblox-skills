@@ -53,6 +53,7 @@ import argparse
 import datetime
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -331,6 +332,26 @@ def package_nodes(packages, root):
                     folder[module] = {"$path": f"{FACTORY_DIR}/{leaf_pkg}/{module}.luau"}
                 nodes["kits"][leaf_pkg] = folder
     return nodes
+
+
+NOTE_SUFFIXES = {".luau", ".lua", ".md", ".json", ".toml", ".py", ".yml", ".yaml", ".csv", ".txt"}
+NOTE_SKIP = {".git", FACTORY_DIR, "build", "node_modules", "Packages", "ServerPackages", "DevPackages"}
+
+
+def user_files_naming(dest, text):
+    """Relative paths of the game's own text files (not factory/, .git, build or Wally folders) that contain text."""
+    found = []
+    for root, dirs, files in os.walk(dest):
+        dirs[:] = sorted(d for d in dirs if d not in NOTE_SKIP)
+        for name in sorted(files):
+            path = Path(root) / name
+            if path.suffix in NOTE_SUFFIXES:
+                try:
+                    if text in path.read_text(encoding="utf-8"):
+                        found.append(path.relative_to(dest))
+                except (OSError, UnicodeDecodeError):
+                    continue
+    return found
 
 
 def apply_package_nodes(project, packages, root):
@@ -1002,10 +1023,10 @@ def update(dest, requested, bundles, force):
 
     if old_home is not None or moved:
         regenerated = {"default.project.json"} | ({"studio-tests.project.json"} if "studio-tests" in bundles else set())
-        for other in sorted(dest.glob("*.project.json")) + [dest / "AGENTS.md", dest / "README.md"]:
-            if other.name not in regenerated and other.is_file() and f"{OLD_FACTORY_DIR}/" in other.read_text(encoding="utf-8"):
-                print(f"  note: {other.name} still names {OLD_FACTORY_DIR}/ (a user file, left as it is); the factory packages "
-                      f"are in {FACTORY_DIR}/ now")
+        for other in user_files_naming(dest, f"{OLD_FACTORY_DIR}/"):
+            if other.as_posix() not in regenerated:
+                print(f"  note: {other.as_posix()} still names {OLD_FACTORY_DIR}/ (a user file, left as it is); the factory "
+                      f"packages are in {FACTORY_DIR}/ now")
     agents = dest / "AGENTS.md"
     if agents.is_file() and "| Brief key |" not in agents.read_text(encoding="utf-8"):
         print("  note: AGENTS.md predates game-brief/1; copy the Game decisions and Engine settings tables (with the Brief key "

@@ -241,18 +241,28 @@ class ProjectMappings(ReleaseFixtureCase):
     def test_wally_folders_and_authoring_packages_never_map_into_a_replicated_service_in_any_case(self):
         # Windows and macOS resolve names case-insensitively; the authoring packages live in factory/ (new_project.py).
         for target in ("Packages", "packages", "PACKAGES", "devpackages", "factory/SceneKit", "Factory/ProcGen", "factory/pipeline",
-                       "src/server", "src/server/Phases.luau"):
+                       "src/server", "src/server/Phases.luau",
+                       # the whole factory folder holds the authoring packages too, however the path is spelled
+                       "factory", "factory/", "Factory", "./factory/SceneKit", "factory/SceneKit/Building.luau"):
             with self.subTest(target=target):
                 report = self.mapped(target)
                 self.assertEqual(failing(report), ["A01"])
-                self.assertTrue(any(f"maps {target} into a replicated service" in p for p in problems_of(report, "A01")))
+                self.assertTrue(any(f"maps {target.strip('/')} into a replicated service" in p for p in problems_of(report, "A01")))
 
     def test_the_starter_layout_passes(self):
         # Kits and the leaf copies replicate; authoring packages stay in ServerStorage (tools/new_project.py package_nodes).
         for target, service in (("factory/GameKit", "ReplicatedStorage"), ("factory/ProcGen/Rng.luau", "ReplicatedStorage"),
+                                ("factory/SceneKit/Lighting.luau", "ReplicatedStorage"),
                                 ("factory/SceneKit", "ServerStorage"), ("factory/Pipeline", "ServerStorage")):
             with self.subTest(target=target):
                 self.assertEqual(statuses(self.mapped(target, service))["A01"], "PASS")
+
+    def test_the_leaf_list_matches_the_starter(self):
+        sys.path.insert(0, str(ROOT / "tools"))
+        import new_project  # noqa: E402
+
+        leaves = {f"{pkg}/{name}.luau" for pkg, names in new_project.LEAVES.items() for name in names}
+        self.assertEqual(release_check.AUTHORING_LEAVES, leaves)
 
     def test_server_storage_may_hold_server_packages(self):
         dest, _ = self.tree()
@@ -292,6 +302,28 @@ class CatalogTopLevel(ReleaseFixtureCase):
                 report = self.edited(lambda d: d.update(products=value))
                 self.assertIn("A03", failing(report))
                 self.assertIn("src/shared/catalog.json: products must be a list", problems_of(report, "A03"))
+
+
+    def test_every_product_entry_must_be_an_object(self):
+        report = self.edited(lambda d: d["products"].insert(0, "junk"))  # Catalog.define: "products[1] must be a table"
+        self.assertEqual(failing(report), ["A03"])
+        self.assertIn("src/shared/catalog.json: products[1] must be an object (GameKit Catalog.define rejects it)",
+                      problems_of(report, "A03"))
+
+    def test_ad_reward_follows_catalog_define(self):
+        # Catalog.define: adReward is a boolean, only on developer products, whose grants are then fixed (no custom grant).
+        self.assertEqual(statuses(self.edited(lambda d: d["products"][0].update(adReward=True)))["A03"], "PASS")
+        self.assertEqual(statuses(self.edited(lambda d: d["products"][0].update(adReward=False)))["A03"], "PASS")
+        cases = (
+            (0, {"grants": [{"type": "currency", "currency": "currency_a", "amount": 1}]}, "adReward must be true or false"),
+            (1, True, "adReward only on developer products, with fixed"),  # a custom grant is not fixed
+            (2, True, "adReward only on developer products, with fixed"),  # a game pass
+        )
+        for index, value, message in cases:
+            with self.subTest(index=index, value=value):
+                report = self.edited(lambda d: d["products"][index].update(adReward=value))
+                self.assertEqual(failing(report), ["A03"])
+                self.assertTrue(any(message in p for p in problems_of(report, "A03")), problems_of(report, "A03"))
 
 
 class OwnerItems(ReleaseFixtureCase):
