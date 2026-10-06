@@ -212,12 +212,10 @@ test("policy gating fails closed for subscriptions and paid random items", funct
 		run(env, function()
 			return gate:load(who)
 		end)
+		-- isStudio = false: a known live place (an unknown place refuses subscriptions, below)
+		local live = { policy = gate:predicate(who), isStudio = false }
 		for _, key in { "sub_a", "random_box_a" } do
-			t.eq(
-				select(1, Commerce.canPrompt(catalog, key, { policy = gate:predicate(who) })),
-				expected,
-				preset .. key
-			)
+			t.eq(select(1, Commerce.canPrompt(catalog, key, live)), expected, preset .. key)
 		end
 	end
 	-- subscriptions are never prompted in Studio
@@ -225,6 +223,52 @@ test("policy gating fails closed for subscriptions and paid random items", funct
 		false,
 		"studio_subscription",
 	})
+end)
+
+test("a subscription prompt fails closed when the place is unknown", function(t)
+	local catalog = gameCatalog()
+	-- neither isStudio nor a place: treated as Studio, so the subscription is refused
+	t.eq({ Commerce.canPrompt(catalog, "sub_a", { policy = allow }) }, { false, "studio_subscription" })
+	t.eq(
+		{ Commerce.canPrompt(catalog, "sub_a", { policy = allow, isStudio = "no" :: any }) },
+		{ false, "studio_subscription" },
+		"only a boolean false counts as live"
+	)
+	t.eq(select(1, Commerce.canPrompt(catalog, "sub_a", { policy = allow, isStudio = false })), true)
+	-- other kinds do not depend on the place
+	t.eq(select(1, Commerce.canPrompt(catalog, "pass_a", { policy = allow })), true)
+	t.eq(select(1, Commerce.canPrompt(catalog, "currency_pack_a", { policy = allow })), true)
+
+	-- the adapter: no ctx.place and no env never reaches PromptSubscriptionPurchase
+	local market = FakeMarketplace.new()
+	local who = player(9)
+	t.eq({ CommerceRoblox.prompt(market, catalog, "sub_a", who, { policy = allow }) }, {
+		false,
+		"studio_subscription",
+	})
+	t.eq({ CommerceRoblox.prompt(market, catalog, "sub_a", who, { policy = allow }, {}) }, {
+		false,
+		"studio_subscription",
+	})
+	-- env.place supplies the default (FakeEnv defaults to a Studio diagnostic place)
+	t.eq({ CommerceRoblox.prompt(market, catalog, "sub_a", who, { policy = allow }, newEnv()) }, {
+		false,
+		"studio_subscription",
+	})
+	t.eq(#market.prompts, 0)
+	local liveEnv = FakeEnv.new({ roblox = roblox, place = { isStudio = false, gameId = 1, placeId = 1 } })
+	t.eq({ CommerceRoblox.prompt(market, catalog, "sub_a", who, { policy = allow }, liveEnv) }, { true })
+	t.eq(market.prompts, { { method = "PromptSubscriptionPurchase", userId = 9, id = "EXP-1001" } })
+	-- an explicit ctx.isStudio or ctx.place wins over env.place
+	local studioFlag = { policy = allow, isStudio = true }
+	local studioPlace = { policy = allow, place = { isStudio = true, gameId = 0, placeId = 0 } }
+	for _, ctx in { studioFlag, studioPlace } do
+		t.eq({ CommerceRoblox.prompt(market, catalog, "sub_a", who, ctx, liveEnv) }, {
+			false,
+			"studio_subscription",
+		})
+	end
+	t.eq(#market.prompts, 1)
 end)
 
 test("CommerceRoblox.prompt opens the matching prompt only when allowed", function(t)

@@ -12,7 +12,8 @@
 --                                          with GameKit/Retry
 --   ownership(marketplace, opts, env)      Commerce.ownership over ownershipCheck
 --   priceLevels(marketplace, userIds)      GetUsersPriceLevelsAsync: call at join, never cache
---   prompt(marketplace, catalog, key, player, ctx)  Commerce.canPrompt, then the Prompt* call
+--   prompt(marketplace, catalog, key, player, ctx, env?)  Commerce.canPrompt, then the Prompt*
+--                                          call; isStudio defaults from ctx.place, then env.place
 --   bindReceipts(marketplace, process, enums)  BindReceiptHandler(ReceiptType.DeveloperProduct)
 --                                          over Commerce.receiptProcessor -> ReceiptDecision
 --   platform(marketplace, enums)           the productInfo/entitlement seam the inherited
@@ -117,19 +118,25 @@ function CommerceRoblox.priceLevels(marketplace: any, userIds: { number }): (boo
 end
 
 -- Opens the purchase prompt for key when Commerce.canPrompt allows it. ctx is a
--- Commerce.PromptContext; ctx.isStudio defaults from ctx.place.isStudio. Returns (true) or
--- (false, reason, detail) with Commerce.PROMPT_REASONS or "prompt_failed". The prompt only
--- asks: grants come from the receipt handler (developer products) or ownership re-checks.
+-- Commerce.PromptContext; ctx.isStudio defaults from ctx.place.isStudio, then from
+-- env.place.isStudio (EnvRoblox reads RunService). With neither, the place is unknown and a
+-- subscription is refused ("studio_subscription"). Returns (true) or (false, reason, detail)
+-- with Commerce.PROMPT_REASONS or "prompt_failed". The prompt only asks: grants come from the
+-- receipt handler (developer products) or ownership re-checks.
 function CommerceRoblox.prompt(
 	marketplace: any,
 	catalog: any,
 	key: string,
 	player: any,
-	ctx: { [string]: any }?
+	ctx: { [string]: any }?,
+	env: any?
 ): (boolean, string?, any)
 	local context: { [string]: any } = table.clone(ctx or {})
 	if context.isStudio == nil and type(context.place) == "table" then
 		context.isStudio = context.place.isStudio
+	end
+	if context.isStudio == nil and type(env) == "table" and type(env.place) == "table" then
+		context.isStudio = env.place.isStudio
 	end
 	local ok, reason, detail = Commerce.canPrompt(catalog, key, context :: any)
 	if not ok then

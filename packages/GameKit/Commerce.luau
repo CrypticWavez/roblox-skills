@@ -41,7 +41,7 @@ Commerce.PROMPT_REASONS = table.freeze({
 	"policy_unknown", -- a policy feature is needed and no policy predicate was given
 	"policy_denied", -- PolicyGate says no (detail: the feature)
 	"already_owned", -- a pass or subscription the player already has
-	"studio_subscription", -- subscription prompts are refused in Studio
+	"studio_subscription", -- subscriptions prompt only when isStudio == false (a known live place)
 })
 
 Commerce.RECEIPT_REASONS = table.freeze({
@@ -57,7 +57,7 @@ Commerce.RECEIPT_REASONS = table.freeze({
 export type PromptContext = {
 	policy: ((feature: string) -> boolean)?, -- PolicyGate gate:predicate(player)
 	owned: boolean?, -- passes and subscriptions: true when the player already has it
-	isStudio: boolean?,
+	isStudio: boolean?, -- false only in a known live place; nil (unknown) is treated as Studio
 }
 -- Catalog.PriceInfo plus an optional reason, written out flat so literals check against it.
 export type PriceInfo = {
@@ -133,6 +133,8 @@ end
 
 -- (true, nil, product) when a purchase prompt for key may open, else (false, reason, detail).
 -- Reasons are Commerce.PROMPT_REASONS; detail is the feature for policy_denied. Never yields.
+-- A subscription prompt in Studio can take the real payment path, so it opens only when the
+-- caller says the place is live (isStudio = false); an unknown place fails closed.
 function Commerce.canPrompt(catalog: any, key: string, ctx: PromptContext?): (boolean, string?, any)
 	if not validCatalog(catalog) then
 		return false, "invalid_catalog", nil
@@ -161,7 +163,7 @@ function Commerce.canPrompt(catalog: any, key: string, ctx: PromptContext?): (bo
 	if product.kind ~= "devproduct" and context.owned == true then
 		return false, "already_owned", nil
 	end
-	if product.kind == "subscription" and context.isStudio == true then
+	if product.kind == "subscription" and context.isStudio ~= false then
 		return false, "studio_subscription", nil
 	end
 	return true, nil, product

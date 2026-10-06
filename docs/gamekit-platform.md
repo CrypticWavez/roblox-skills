@@ -182,9 +182,9 @@ Products are a catalog/1 table ([runtime-kits.md](runtime-kits.md) section 9.3, 
 7. `already_owned`
 8. `studio_subscription`
 
-Subscriptions need PolicyGate `subscriptions`. Products tagged `paid_random_item` need `paidRandomItems`. Pass `policy = gate:predicate(player)`; with no predicate, a product that needs one is refused.
+Subscriptions need PolicyGate `subscriptions`. Products tagged `paid_random_item` need `paidRandomItems`. Pass `policy = gate:predicate(player)`; with no predicate, a product that needs one is refused. A subscription prompt in Studio can take the real payment path, so a subscription opens only when `isStudio` is `false` (a known live place); a missing `isStudio` counts as Studio and is refused with `studio_subscription`.
 
-`CommerceRoblox.prompt(MarketplaceService, catalog, key, player, ctx)` runs `canPrompt` and then the matching `Prompt*Purchase`. A prompt only asks; nothing is granted from prompt events.
+`CommerceRoblox.prompt(MarketplaceService, catalog, key, player, { policy = gate:predicate(player) }, env)` runs `canPrompt` and then the matching `Prompt*Purchase`. `isStudio` comes from `ctx.isStudio`, then `ctx.place.isStudio`, then `env.place.isStudio` (EnvRoblox reads RunService); with none of them a subscription is refused. A prompt only asks; nothing is granted from prompt events.
 
 Prices for UI: `CommerceRoblox.priceProvider(MarketplaceService, { ttl?, retryAfter?, format? }, env)` returns a provider. `provider:price(product)` never yields and returns `{ state = "ok" | "pending" | "unavailable", text?, robux?, reason? }`. A missing or stale price starts one background read (`GetProductInfoAsync` with `InfoType.Product` or `GamePass`, or `GetSubscriptionProductInfoAsync` for its `DisplayPrice`). `provider.changed` fires `(productKey, info)`. A failed re-read keeps the last good price. Placeholder ids never fetch. Run the provider on the client, where the price is shown, and never trust a price sent to the server.
 
