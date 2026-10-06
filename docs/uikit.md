@@ -52,7 +52,7 @@ Transitions do not use Styling transitions: the UIKit runner owns motion so ever
 | `alpha`, `contrast` | transparency steps; WCAG thresholds (4.5 body, 3 large text and UI parts) |
 
 - Colours are `{ r, g, b }` triples, so tokens are pure data; `Style.color` makes the Color3 through `env.roblox`.
-- `options.colorblindMode` (settings/1 `accessibility.colorblindMode`) applies a game's per-mode slot overrides.
+- `options.colorblindMode` (settings/1 `colorblindMode`, group accessibility; `Settings.effective(...).colorblindMode`) applies a game's per-mode slot overrides.
 - `Tokens.contrast(a, b)` is the WCAG ratio; `Tokens.validate` checks every slot and every text-on-surface pair; `Tokens.digest` hashes a token set.
 - Text always uses `FontFace` (`Font.new` on a built-in `rbxasset://fonts/families/*.json` family), never the legacy `Font` enum.
 
@@ -172,7 +172,7 @@ handle:destroy()                                           -- every Instance and
 - `LoadingScreen` requires nothing (ReplicatedStorage may not have replicated yet), so it is safe in ReplicatedFirst; its look is a frozen copy of the dark tokens. The ReplicatedFirst script calls `RemoveDefaultLoadingScreen()`, drives `step(dt)` from PreRender, reports progress (smoothed, never backwards) and calls `finish()`.
 - `TeleportTransition` is the same kind of require-free cover with a state machine `idle -> covering -> covered -> revealing -> done`. Continuity across a teleport:
   1. The source place builds the gui, plays `cover()`, and once covered calls `TeleportService:SetTeleportGui(gui)` and teleports.
-  2. The destination's ReplicatedFirst script gets the gui from `TeleportService:GetArrivingTeleportGui()`, parents it, adopts it with `TeleportTransition.adopt(gui, env)` (state `covered`) and calls `reveal()` when its own loading is done.
+  2. The destination's ReplicatedFirst script gets the gui from `TeleportService:GetArrivingTeleportGui()`, parents it, adopts it with `TeleportTransition.adopt(gui, { reducedMotion = <the player's reduced-motion preference> })` (state `covered`) and calls `reveal()` when its own loading is done.
   3. A failed teleport (`TeleportInitFailed`) calls `fail(text)`: the message shows and the cover reveals the place the player is still in.
 - The real teleport is T4 (it needs published places) and is never claimed as verified here.
 

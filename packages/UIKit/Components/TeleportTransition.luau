@@ -2,13 +2,14 @@
 -- @tier T1
 -- TeleportTransition: a full-screen cover that hides a teleport, require-free like LoadingScreen
 -- (it must also run in ReplicatedFirst of the destination place). Continuity (documented in
--- docs/uikit.md "Teleports"): before teleporting, the game builds the gui, plays cover() and,
--- once covered, calls TeleportService:SetTeleportGui(gui) and teleports; the destination's
--- ReplicatedFirst script gets the same gui from TeleportService:GetArrivingTeleportGui(),
--- parents it, adopts it with TeleportTransition.adopt(gui, env) (state "covered"), and calls
--- reveal() when its own loading is done. A failed teleport (TeleportInitFailed) calls
--- fail(text): the message shows and the cover reveals the place the player is still in. The
--- real teleport is T4 (it needs published places); this module is the visual state machine:
+-- docs/uikit.md "Loading screens and teleports"): before teleporting, the game builds the gui,
+-- plays cover() and, once covered, calls TeleportService:SetTeleportGui(gui) and teleports; the
+-- destination's ReplicatedFirst script gets the same gui from
+-- TeleportService:GetArrivingTeleportGui(), parents it, adopts it with
+-- TeleportTransition.adopt(gui, { reducedMotion = ... }) (state "covered"), and calls reveal()
+-- when its own loading is done. A failed teleport (TeleportInitFailed) calls fail(text): the
+-- message shows and the cover reveals the place the player is still in. The real teleport is T4
+-- (it needs published places); this module is the visual state machine:
 --   idle -> covering -> covered -> revealing -> done   (fail: covering|covered -> revealing)
 -- step(dt) drives it (RunService.PreRender); reducedMotion shortens every fade to 0.15 s.
 -- Tree: TeleportTransition (ScreenGui) > Cover (Frame) > Label (TextLabel), Message (TextLabel)

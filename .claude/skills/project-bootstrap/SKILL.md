@@ -12,7 +12,7 @@ Turn an explicit game-build request into a new game repository that has the fact
 Only an explicit game-build request from the owner ("start the new game in <repo>", "create the repository for <game>"). Also: pulling factory fixes (packages, skills, hooks, gate, checker, boot runner) into a game repo created by this starter. Not for exploring ideas, not for fixtures, and never on a guess that a game is wanted.
 
 ## Inputs
-The destination directory (new or empty, outside this repo and outside any other git repository), the project name, the packages (default `SceneKit ProcGen Pipeline`; kits `GameKit UIKit Feel Cinematics AVKit` and legacy `Runtime Creator Diagnostics` with `--packages`), optional dependency bundles (`--deps persistence studio-tests networking`), and whatever the request already decided, to record after scaffolding.
+The destination directory (new or empty, outside this repo and outside any other git repository), the project name, the packages (default: authoring `SceneKit ProcGen Pipeline` plus kits `GameKit UIKit Feel Cinematics AVKit`; legacy `Runtime Creator Diagnostics` are opt-in; `--packages` replaces the list), optional dependency bundles (`--deps persistence studio-tests networking`), and whatever the request already decided, to record after scaffolding.
 
 ## Required context
 `docs/starter.md` (layout, managed files, dependency policy, update flow); `tools/new_project.py` docstring; `docs/runtime-kits.md` (package classes, tiers, module names); AGENTS.md Boundary (the factory never decides game content).
@@ -25,7 +25,7 @@ The destination directory (new or empty, outside this repo and outside any other
 
 ## Procedure
 1. Confirm the request is explicit and names where the repository goes; if not, ask. Do not choose a genre, theme, world, characters, economy or UI.
-2. Run `python3 tools/new_project.py <dest> --name <Name>`; add `--packages GameKit ...` for the kits the request needs (their dependencies are added) and `--deps` bundles only when the request needs them. Never run `wally install` yourself: print the owner's command.
+2. Run `python3 tools/new_project.py <dest> --name <Name>`; the defaults suit most requests; `--packages` replaces the list, so give the full set (e.g. the defaults plus `Runtime`) when the request needs a different one (dependencies are added) and `--deps` bundles only when the request needs them. Never run `wally install` yourself: print the owner's command.
 3. In `<dest>`: `git init` (the Codex hooks find the repo root with git), `rokit install`, `python3 tools/check.py`; every step must pass except a SKIPPED Selene (needs `selene generate-roblox-std`) and, with `--deps`, `deps` until the owner installs and commits `wally.lock`.
 4. Record decisions the request states: `production/brief.json`, the `AGENTS.md` tables (same values; step `brief` compares them) and a dated row in `docs/decisions.md`. Leave every other field TBD; the stage stays concept.
 5. Commit, and give the owner the commands to create and push the remote. Next work follows skill roblox-production-pipeline. Never publish the place or upload assets.

@@ -32,8 +32,6 @@ Every core is T0 (pure Luau, runs in Lune with `tests/fakes/FakeEnv.luau`); ever
 | [AnimSetRoblox](../packages/GameKit/AnimSetRoblox.luau) | T3 `action_animset_clip` | Animation hooks (game-supplied ids, or Studio-only temporary ids), priorities, Animator lookup | `gamekit_action_adapters` |
 | [AuthorityRoblox](../packages/GameKit/AuthorityRoblox.luau) | T3 `authority_simulation_bind` | shared Server Authority plumbing: bindStep, the 64-attribute writer, AuthorityMode, raw IAS builder | `gamekit_action_adapters` |
 
-`AuthorityRoblox` is not in the frozen module list of runtime-kits.md section 11; it is reported to the coordinator for addition.
-
 ## 2. Conventions shared by every module
 
 - **Refuse, do not raise, on client data.** Every function that takes untrusted input (positions, claims, requests, inputs) returns `(false, reason)` or a record with `reason`, never raises, and changes nothing on refusal. Definitions are game data: `define`/`new` raise with every problem joined; `validate` returns the problem list.
@@ -127,7 +125,7 @@ Opt-in with Workspace attribute `SETUP_ONLY_KitFixture = "authority"` on the kit
 
 - [authority_Arena](../fixtures/kits/shared/authority_Arena.luau) (shared ModuleScript): the core. Server-owned body markers move from client input through Movement; claims go through Cooldowns and the Hitbox validator; zones (an area, a hazard pad, a kill volume) apply through Vitals; RoundLoop runs the rounds. Input is token-bucketed (`rate_limited`), validated (`bad_input`), clamped and sequenced (`stale`). Numbers in `Arena.CONFIG` are fixture values, not tuning.
 - [authority_Sim.server](../fixtures/kits/server/authority_Sim.server.luau): builds the floor, zone volumes and markers at y = 800 (a convention), the `SETUP_ONLY_Authority` holder with an `Input` (UnreliableRemoteEvent) and a `Claim` remote, steps the arena through `bindStep`, writes attributes through `writeAttributes`, and prints `AUTHORITY_EVENT <json>` lines.
-- [authority_Input.client](../fixtures/kits/client/authority_Input.client.luau): builds `Arena.ACTIONS` as raw IAS, sends camera-relative input with a sequence number, raycasts primary presses against the markers and sends claims stamped with the `ArenaClock` attribute it sees.
+- [authority_Input.client](../fixtures/kits/client/authority_Input.client.luau): builds `Arena.ACTIONS` plus the jump and slide requests as one `InputMap` map through `InputMapRoblox`, sends camera-relative input with a sequence number, raycasts primary presses against the markers and sends claims stamped with the `ArenaClock` attribute it sees.
 - Remotes carry discrete, sequenced messages. Under AuthorityMode Server the engine may replicate InputAction state itself (UNVERIFIED); the validated remote works either way.
 
 Run it: build the place (`rojo build fixtures/kits.project.json -o build/kits.rbxl`), open it as an unpublished place, set Workspace.AuthorityMode to Server and `SETUP_ONLY_KitFixture` to `authority` in Studio, then play with Server and 2 clients.

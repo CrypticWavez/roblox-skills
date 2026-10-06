@@ -9,7 +9,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | Status | Count |
 |---|---|
 | VERIFIED_STRONG | 9 |
-| VERIFIED_ACCEPTABLE | 26 |
+| VERIFIED_ACCEPTABLE | 27 |
 | WEAK | 4 |
 | PARTIAL | 41 |
 | BROKEN | 1 |
@@ -29,11 +29,11 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [T04](#t04) | Agent tooling | Tiered hooks (FAST_ON_EDIT, PRE_COMMIT, PRE_RELEASE) and publish/spend guards | VERIFIED_ACCEPTABLE | P1 | Self-test in the pre-commit gate and CI (404/404 on the integrated branch); live denials observed; `guard_mcp` on a real Studio event pending (owner step). |
 | [T05](#t05) | Agent tooling | Permission rules apply on a fresh checkout | BLOCKED_EXTERNAL | P3 | Warnings observed; deny protection still covered by `Edit(weppy-project-sync/**)`. |
 | [T06](#t06) | Agent tooling | Specialist subagents with explicit ownership | VERIFIED_STRONG | P3 | Real parallel tasks completed and merged (5 workers, then 10 groups). |
-| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_ACCEPTABLE | P1 | Pre-commit tier executed on the integrated branch in this pass; strict CI on 367cd72; strict CI on the integrated head pending. |
+| [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_ACCEPTABLE | P1 | Both tiers on the integrated head in the container (nothing skipped); strict CI on 367cd72; strict CI on the integrated head pending. |
 | [T08](#t08) | Agent tooling | Continuous integration | VERIFIED_ACCEPTABLE | P1 | Green strict CI on 367cd72; the integrated head is pending. |
 | [T09](#t09) | Agent tooling | Pinned Luau toolchain | WEAK | P2 | `python3 tools/pc_doctor.py` on the PC shows PASS for path-order and toolchain:rojo (7.7.0). |
-| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_ACCEPTABLE | P2 | Selene step green in CI. |
-| [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | VERIFIED_STRONG | P2 | Rojo builds of all five projects in the container; four in CI, kits pending there. |
+| [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_ACCEPTABLE | P2 | Selene step green in CI; container run on the integrated head. |
+| [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | VERIFIED_STRONG | P2 | Rojo builds of all five projects in the container; five in the workflow, four run in CI so far. |
 | [T12](#t12) | Agent tooling | Reusable project starter | VERIFIED_ACCEPTABLE | P1 | `starter-smoke` in the pre-commit gate and CI; `tools/starter_smoke.py`; Python unit tests. |
 | [T13](#t13) | Agent tooling | Publish/spend guards and MCP settings for Codex | PARTIAL | P1 | Hook, rule and config parity in the pre-commit self-test; live Codex behaviour pending. |
 | [T14](#t14) | Agent tooling | Engine probe runner and tier enforcement (studio_run, kit_tiers) | PARTIAL | P1 | `reports/engine/kitsmoke_all.json` PASS from the Studio CLI route; `kit_tiers.py --check` in the gate. |
@@ -101,6 +101,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [K18](#k18) | Runtime kits | AI kit (navigation, perception, behaviour trees, waves, checkpoints) | PARTIAL | P2 | ENGINE_DONE ok for both probes. |
 | [K19](#k19) | Runtime kits | Placement grid, team balance and leaderboards | PARTIAL | P3 | Lune specs. |
 | [K20](#k20) | Runtime kits | Kit smoke harness (all probe registries in one Studio run) | PARTIAL | P1 | `reports/engine/kitsmoke_all.json` PASS. |
+| [K21](#k21) | Runtime kits | Cross-group integration slices (race, stalker AI, projectile arena, session persistence, UI onboarding, authority client) | VERIFIED_ACCEPTABLE | P2 | Lune spec with golden in the pre-commit gate. |
 | [D01](#d01) | Research | Fresh tooling research with select/reject decisions | VERIFIED_ACCEPTABLE | P3 | Decisions applied: built-in Studio MCP, Rokit over Aftman, mcp-for-blender 2.1.8, bpy 5.2 LTS in CI, Open Cloud execution and asset uploads rejected for this factory. |
 | [D02](#d02) | Research | Deep observational game dossiers | PARTIAL | P3 | n/a |
 | [D03](#d03) | Research | In-engine test runner in CI (Jest Lua via Open Cloud Luau Execution) | BLOCKED_EXTERNAL | P2 | CI job green. |
@@ -223,7 +224,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 **S09 Material library and MaterialService overrides (material-library/1)** (PARTIAL)
 
-1. On the kits place prepared as in K20 with `SETUP_ONLY_KitFixture = lookdev`, run probe `lookdev_material_override` from `fixtures/kits/shared/lookdev_probes.luau` through Studio MCP `execute_luau` and capture the swatches.
+1. On the kits place prepared as in K20 with `SETUP_ONLY_KitFixture = lookdev`, run `python3 tools/studio_run.py --probe lookdev_material_override` and capture the swatches.
 
 **S10 Kit piece swap (kit/1)** (PARTIAL)
 
@@ -415,7 +416,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** None.
 - **ACTUAL STATE:** `.claude/agents/`: roblox-engineer (packages, tests), technical-artist (Blender), qa-reviewer (read-only), researcher (docs/research). File ownership table in `docs/architecture.md`; Codex follows the same table via AGENTS.md.
-- **EVIDENCE:** Fresh Claude session init lists all four agents. On 2026-10-05 a workflow ran roblox-engineer (ProcGen, SceneKit), technical-artist (Blender QA) and general-purpose engineers in five isolated worktrees with disjoint file sets, each checked by a read-only qa-reviewer; all five merged without code conflicts (only the regenerated golden hash file overlapped). On 2026-10-06 ten build groups (G1 to G8, G9a, G9b) worked in separate worktrees from one frozen contract (`docs/runtime-kits.md`, section 11 ownership list); their commits were integrated onto one branch where the full Lune suite (1191 cases) and the Python tests (182) pass.
+- **EVIDENCE:** Fresh Claude session init lists all four agents. On 2026-10-05 a workflow ran roblox-engineer (ProcGen, SceneKit), technical-artist (Blender QA) and general-purpose engineers in five isolated worktrees with disjoint file sets, each checked by a read-only qa-reviewer; all five merged without code conflicts (only the regenerated golden hash file overlapped). On 2026-10-06 ten build groups (G1 to G8, G9a, G9b) worked in separate worktrees from one frozen contract (`docs/runtime-kits.md`, section 11 ownership list); their commits were integrated onto one branch where the full Lune suite (1214 cases after the K21 slices) and the Python tests (183) pass.
 - **DEFECT:** None open.
 - **ROOT CAUSE:** n/a
 - **IMPACT:** Low.
@@ -427,20 +428,20 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Repo gate (fast / pre-commit / pre-release)** · Agent tooling · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** Workbench `tools/check.py` 43 checks passed at 19:43Z.
-- **ACTUAL STATE:** `tools/check.py` runs StyLua, JSON, the shared-pattern secret scan over every committable file, skills sync, gap matrix, doc links (relative links, heading anchors, well-formed URLs), the knowledge index and record paths, the fixtures README, asset provenance, Rojo sourcemaps of every project (orphan `.luau` files fail), a self-test that feeds each content check a broken input, hook self-test, Selene, Lune specs, the inherited suites, fixture builds with golden hashes (added, removed and changed fixtures fail; a missing golden fails) and the project-starter smoke; pre-release adds Blender templates, round trip, QA self-test and previews. A skipped step other than Selene fails by default and in the installed git hook; `--strict` (CI) also fails on Selene. `--update-golden` rewrites every golden, `--update-golden=NAME[,NAME]` only the named ones (fixture-hashes, studio-smoke or a spec golden), and a `golden-update` step lists what changed. For the runtime kits the coordinator is adding pre-commit steps `python-unit` (every `tests/test_*.py`), `playbook-lint`, `asset-sources`, `luau-defs-lock`, `kit-tiers` and `capture-staleness` (non-fatal), and pre-release steps `luau-lsp-analyze`, `blender-kit`, `gltf-validate-templates` and previews of the five course fixtures.
-- **EVIDENCE:** Pre-release tier passed in the cloud container on the merged branch (Selene SKIPPED there: no network for its std). Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. Integration pass: the pre-commit tier passes on the integrated branch (Selene skipped); the commands behind the new steps were run there: 182 Python tests OK (1 skipped without luau-lsp on PATH), playbook lint PASS, asset sources 0 problems, luau-defs lock ok, capture staleness 1 CURRENT and 1 STALE, while `kit_tiers.py --check` fails until `reports/kit-tiers.json` is generated and `luau_analyze.py` is 86 files over its baseline (T15). Each group ran `--tier pre-release` green on its own branch (Selene skipped); G6 and G9b on bpy 5.0.1, 5.1.2 and 5.2.2.
-- **DEFECT:** The integrated head has not run in strict CI. Before the new steps can pass there, `reports/kit-tiers.json` must be generated and the luau-lsp baseline re-recorded or the new diagnostics fixed. Selene is skipped in the container.
+- **ACTUAL STATE:** `tools/check.py` runs StyLua, JSON, the shared-pattern secret scan over every committable file, skills sync, gap matrix, doc links (relative links, heading anchors, well-formed URLs), the knowledge index and record paths, the fixtures README, asset provenance, Rojo sourcemaps of every project (orphan `.luau` files fail), a self-test that feeds each content check a broken input, hook self-test, Selene, Lune specs, the inherited suites, fixture builds with golden hashes (added, removed and changed fixtures fail; a missing golden fails) and the project-starter smoke; pre-release adds Blender templates, round trip, QA self-test and previews. Without `--strict`, Selene and (pre-release only) `luau-lsp-analyze` may skip; any other skipped step fails, in the installed git hook too; `--strict` (CI) allows none. `--update-golden` rewrites every golden, `--update-golden=NAME[,NAME]` only the named ones (fixture-hashes, studio-smoke or a spec golden), and a `golden-update` step lists what changed. For the runtime kits, pre-commit also runs `python-unit` (every `tests/test_*.py`), `playbook-lint`, `asset-sources`, `luau-defs-lock`, `kit-tiers` and `capture-staleness` (non-fatal), and pre-release runs `material-library`, `blender-kit`, `gltf-validate-templates`, previews of the five course fixtures, `luau-lsp-analyze` and `starter-smoke-full`.
+- **EVIDENCE:** Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. On the integrated head (fd29fd6) in the cloud container, with a locally generated Roblox std and a source-built luau-lsp 1.70.1: pre-commit PASS with nothing skipped (Selene 0 errors, 183 Python tests, kit-tiers, 1214 Lune cases) and pre-release PASS with nothing skipped on bpy 5.0.1, 5.1.2 and 5.2.2 (Blender templates, round trip, QA self-test, material library, kit bake, glTF validation, 9 previews, luau-lsp 0 files over, full starter smoke).
+- **DEFECT:** The integrated head has not run in strict CI yet.
 - **ROOT CAUSE:** New steps and ten groups' code landed together.
 - **IMPACT:** Until CI runs, a step that only fails under `--strict` or on Windows/CI tooling would go unnoticed.
-- **FIX:** Generate `reports/kit-tiers.json`, settle the luau-lsp baseline, push and run both tiers in strict CI.
-- **VERIFICATION:** Pre-commit tier executed on the integrated branch in this pass; strict CI on 367cd72; strict CI on the integrated head pending.
+- **FIX:** Push and keep both tiers green in strict CI on the PR head.
+- **VERIFICATION:** Both tiers on the integrated head in the container (nothing skipped); strict CI on 367cd72; strict CI on the integrated head pending.
 
 ### T08
 
 **Continuous integration** · Agent tooling · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** None.
-- **ACTUAL STATE:** `.github/workflows/factory.yml`: a pre-commit job (Rokit toolchain, Selene std generation, Rojo builds of the projects, `--tier pre-commit --strict`) and a Blender matrix on bpy 5.1.2 (the PC's version) and 5.2.2 LTS that runs `--tier pre-release --strict`. For the integration the coordinator is adding the `kits` place to the Rojo build loop and the luau-lsp steps (`rokit install`, `python3 tools/luau_defs.py`, `python3 tools/luau_analyze.py`).
+- **ACTUAL STATE:** `.github/workflows/factory.yml`: a pre-commit job (Rokit toolchain, Selene std generation, Rojo builds of the projects, `--tier pre-commit --strict`) and a Blender matrix on bpy 5.1.2 (the PC's version) and 5.2.2 LTS that runs `--tier pre-release --strict`. The integration (c70ff63) added the `kits` place to the Rojo build loop and the luau-lsp steps (`rokit install`, `python3 tools/luau_defs.py`, then `luau-lsp-analyze` inside the pre-release tier); the current workflow has not run in CI yet.
 - **EVIDENCE:** Runs 3 to 5 passed (pre-commit gate with Selene and nothing skipped, Blender templates and round trip on both bpy versions). Run 37393231152 on 367cd72 passed all three jobs in strict mode (pre-commit with Selene, pre-release on bpy 5.1.2 and 5.2.2).
 - **DEFECT:** Not yet run on the integrated head. Untested in Actions: the kits place build, the rokit download of luau-lsp 1.70.1 (the release asset was refused in the cloud container, so G9b built it from source) and every new gate step.
 - **ROOT CAUSE:** The integration has not been pushed yet.
@@ -466,13 +467,13 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Selene lint with the Roblox standard library** · Agent tooling · VERIFIED_ACCEPTABLE · P2
 
 - **PREVIOUS CLAIM:** Selene in the workbench gate.
-- **ACTUAL STATE:** `selene generate-roblox-std` cannot fetch the API dump through the cloud proxy, so the container reports SKIPPED. CI generates the std first and lints `packages` with it.
-- **EVIDENCE:** GitHub Actions run 3 (1eee84a): `[ok  ] selene`; container gate output `selene SKIPPED` with the reason.
-- **DEFECT:** Not linted in the cloud container, and the integrated kit code has not been linted with the Roblox std anywhere yet: groups linted their own files with a scratch `std = "luau"` config (0 findings in their modules after fixes; G4's run found two shadowed `select` builtins).
-- **ROOT CAUSE:** Network policy of the cloud environment.
+- **ACTUAL STATE:** A plain `selene generate-roblox-std` fails TLS through the cloud proxy, so a fresh container with no `roblox.yml` reports Selene SKIPPED. CI generates the std first and lints `packages` with it.
+- **EVIDENCE:** GitHub Actions run 3 (1eee84a): `[ok  ] selene`. On the integrated head this container used a Roblox std generated from a locally served API dump: c70ff63 fixed the 2 errors and 3 warnings it found in kit code and 1 in the starter's Boot.luau, and the pre-commit gate's `selene packages` reports 0 errors, 0 warnings and 0 parse errors (fd29fd6).
+- **DEFECT:** Strict CI has not run Selene on the integrated head yet.
+- **ROOT CAUSE:** The proxy's TLS interception breaks selene's own fetch of the API dump.
 - **IMPACT:** Lint regressions would only show in CI.
 - **FIX:** CI pre-commit job (strict, so a skip fails it).
-- **VERIFICATION:** Selene step green in CI.
+- **VERIFICATION:** Selene step green in CI; container run on the integrated head.
 
 ### T11
 
@@ -480,24 +481,24 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Three Rojo fixture builds in the workbench gate.
 - **ACTUAL STATE:** All five projects build from a clean clone: creator, diagnostic, factory, network and the kits diagnostic place (`fixtures/kits.project.json`: every kit package plus opt-in fixtures keyed by the Workspace attribute `SETUP_ONLY_KitFixture`). `network.project.json` used to read `../artifacts/network/SourceManifest.luau`, which only the PC workbench generated; it now reads `build/network/SourceManifest.luau`, written by `python3 tools/network_manifest.py` from the place's own sources (per-file sha256 and the combined `input_sha256` that the Echo scripts put in their evidence).
-- **EVIDENCE:** Cloud container: `python3 tools/network_manifest.py` then `rojo build fixtures/network.project.json` (Rojo 7.7.1) built the place, and deserialising it in Lune listed FaultQueue, Settings and SourceManifest under ReplicatedStorage.WorkbenchNetwork. On the integrated branch `rojo build fixtures/kits.project.json` built SETUP_ONLY_Kits_Diagnostic. CI builds creator, diagnostic, factory and network; kits is being added.
+- **EVIDENCE:** Cloud container: `python3 tools/network_manifest.py` then `rojo build fixtures/network.project.json` (Rojo 7.7.1) built the place, and deserialising it in Lune listed FaultQueue, Settings and SourceManifest under ReplicatedStorage.WorkbenchNetwork. On the integrated branch `rojo build fixtures/kits.project.json` built SETUP_ONLY_Kits_Diagnostic. CI builds creator, diagnostic, factory and network; kits was added to the loop in c70ff63 and has not run in CI yet.
 - **DEFECT:** The workbench's own manifest format is unknown; this one keeps the only field the scripts read.
 - **ROOT CAUSE:** Generated file referenced but never committed.
 - **IMPACT:** n/a
 - **FIX:** Generator plus CI build of every project.
-- **VERIFICATION:** Rojo builds of all five projects in the container; four in CI, kits pending there.
+- **VERIFICATION:** Rojo builds of all five projects in the container; five in the workflow, four run in CI so far.
 
 ### T12
 
 **Reusable project starter** · Agent tooling · VERIFIED_ACCEPTABLE · P1
 
 - **PREVIOUS CLAIM:** Not claimed (mission section 1).
-- **ACTUAL STATE:** `tools/new_project.py <dest>` scaffolds a separate starter/2 game repository with infrastructure only: factory packages laid out by class (authoring packages in `ServerStorage.Authoring`, kits in `ReplicatedStorage.Kits` plus leaf copies of ProcGen Rng/Grid/Graph and SceneKit Vec/Lighting, legacy packages in `ReplicatedStorage.Legacy`, `ServerPackages`), a phased boot skeleton that tolerates absent kits (T17), the pinned toolchain, the Lune runner and specs, a gate with fast, pre-commit and pre-release tiers (skills-packages, brief, deps, blink when a `.blink` file exists, asset-provenance, release-check), CI with `--strict` and a committed-lockfile check, the release checker (Q02), the production pipeline (Q10), optional pinned dependency bundles (T18), the Claude and Codex guards, game-repo AGENTS/CLAUDE templates with every game-design field left TBD, 15 skills and `starter.json` with each module's tier, Lune flag and probe. `--update` refreshes packages, skills, hooks and managed files, adds new bundles, migrates starter/1 and refuses when files were edited locally. It refuses a destination inside the factory or a non-empty one, and never runs a git write.
-- **EVIDENCE:** Gate step `starter-smoke` (pre-commit) scaffolds into a temp dir, runs `git init` there and runs that repo's own gate, plus the refusals and `--update`. On the integrated branch `tests/test_new_project.py` (22) and `tests/test_release_check.py` (14) pass. G8 also ran `tools/starter_smoke.py` (19 checks PASS), a manual scaffold whose own pre-commit gate passed (28 Lune cases, Rojo build), and an all-kits scaffold (37 Lune specs, Rojo build).
-- **DEFECT:** The generated CI has never run on GitHub and a generated place has not been opened in Studio (T17). `DEFAULT_PACKAGES` is still authoring-only (SceneKit, ProcGen, Pipeline), so the kits are opt-in until it is flipped and `tools/starter_smoke.py --strict` is rerun.
+- **ACTUAL STATE:** `tools/new_project.py <dest>` scaffolds a separate starter/2 game repository with infrastructure only: factory packages laid out by class (authoring packages in `ServerStorage.Authoring`, kits in `ReplicatedStorage.Kits` plus leaf copies of ProcGen Rng/Grid/Graph and SceneKit Vec/Lighting, legacy packages in `ReplicatedStorage.Kits` beside the kits, `ServerPackages`), a phased boot skeleton that tolerates absent kits (T17), the pinned toolchain, the Lune runner and specs, a gate with fast, pre-commit and pre-release tiers (skills-packages, brief, deps, blink when a `.blink` file exists, asset-provenance, release-check), CI with `--strict` and a committed-lockfile check, the release checker (Q02), the production pipeline (Q10), optional pinned dependency bundles (T18), the Claude and Codex guards, game-repo AGENTS/CLAUDE templates with every game-design field left TBD, 17 skills and `starter.json` with each module's tier, Lune flag and probe. `--update` refreshes packages, skills, hooks and managed files, adds new bundles, migrates starter/1, moves an older `ReplicatedStorage.Legacy` folder next to the kits and refuses when files were edited locally. It refuses a destination inside the factory or a non-empty one, and never runs a git write.
+- **EVIDENCE:** Gate step `starter-smoke` (pre-commit) scaffolds into a temp dir, runs `git init` there and runs that repo's own gate, plus the refusals and `--update`. On the integrated branch `tests/test_new_project.py` (23) and `tests/test_release_check.py` (14) pass. G8 also ran `tools/starter_smoke.py` (19 checks PASS), a manual scaffold whose own pre-commit gate passed (28 Lune cases, Rojo build), and an all-kits scaffold (37 Lune specs, Rojo build). Since c70ff63 `DEFAULT_PACKAGES` is the authoring packages plus all five kits, and `starter-smoke-full` (pre-release) scaffolds them and runs the new repo's gate: PASS on the integrated head.
+- **DEFECT:** The generated CI has never run on GitHub and a generated place has not been opened in Studio (T17).
 - **ROOT CAUSE:** No game repository exists (setup-only).
 - **IMPACT:** First real use may surface CI setup issues.
-- **FIX:** After the kit merge, flip `DEFAULT_PACKAGES` and rerun `tools/starter_smoke.py --strict`; on the first explicit game-build request, push the new repo and confirm its CI is green.
+- **FIX:** On the first explicit game-build request, push the new repo and confirm its CI is green.
 - **VERIFICATION:** `starter-smoke` in the pre-commit gate and CI; `tools/starter_smoke.py`; Python unit tests.
 
 ### T13
@@ -518,12 +519,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Engine probe runner and tier enforcement (studio_run, kit_tiers)** · Agent tooling · PARTIAL · P1
 
 - **PREVIOUS CLAIM:** None.
-- **ACTUAL STATE:** `tools/studio_run.py` runs a `tests/engine/<probe>.luau` entry (39 exist) through the documented Studio command line (RunScript on a local place under `build/`, default `build/kits.rbxl`; `--placeId`, `--universeId` and places outside `build/` are refused), parses ENGINE_CHECK/ENGINE_DONE lines into `reports/engine/<probe>.json` (engine-report/1), records play-session output with `--from-output` (pinned by sha256), and reports BLOCKED_EXTERNAL with exit 3 where Studio is absent. `tools/kit_tiers.py` requires `--!strict` and one `@tier` header per kit module and a registered probe for every T3 module, and joins Studio evidence into `reports/kit-tiers.json` (kit-tiers/1); `tests/kits_load.spec.luau` enforces the same headers in Lune.
-- **EVIDENCE:** On the integrated branch: `tests/test_studio_run.py` (17, including a fake Studio CLI) and `tests/test_kit_tiers.py` (9) pass; `studio_run.py --probe kitsmoke_all` gives BLOCKED_EXTERNAL, exit 3; `kit_tiers.py --print`: 161 modules (157 kit), T0 88, T1 38, T3 27, T4 8, 30 header-named probes all PENDING, 0 of 27 T3 modules with a passing probe, no problems; `kit_tiers.py --check` fails because `reports/kit-tiers.json` has not been generated yet.
-- **DEFECT:** No Studio run; whether the Studio command line needs a logged-in user and whether RunScript runs in Edit mode are unverified. `reports/kit-tiers.json` is not generated yet.
+- **ACTUAL STATE:** `tools/studio_run.py` runs a `tests/engine/<probe>.luau` entry (41 exist) through the documented Studio command line (RunScript on a local place under `build/`, default `build/kits.rbxl`; `--placeId`, `--universeId` and places outside `build/` are refused), parses ENGINE_CHECK/ENGINE_DONE lines into `reports/engine/<probe>.json` (engine-report/1), records play-session output with `--from-output` (pinned by sha256), and reports BLOCKED_EXTERNAL with exit 3 where Studio is absent. `tools/kit_tiers.py` requires `--!strict` and one `@tier` header per kit module and a registered probe for every T3 module, and joins Studio evidence into `reports/kit-tiers.json` (kit-tiers/1); `tests/kits_load.spec.luau` enforces the same headers in Lune.
+- **EVIDENCE:** On the integrated branch: `tests/test_studio_run.py` (17, including a fake Studio CLI) and `tests/test_kit_tiers.py` (9) pass; `studio_run.py --probe kitsmoke_all` gives BLOCKED_EXTERNAL, exit 3; `kit_tiers.py --print`: 161 modules (157 kit), T0 88, T1 38, T3 27, T4 8, 30 header-named probes all PENDING, 0 of 27 T3 modules with a passing probe, no problems; `reports/kit-tiers.json` is now generated and `kit_tiers.py --check` passes in the pre-commit gate; 41 `tests/engine/` entries.
+- **DEFECT:** No Studio run; whether the Studio command line needs a logged-in user and whether RunScript runs in Edit mode are unverified.
 - **ROOT CAUSE:** Studio runs only on the PC.
 - **IMPACT:** Every T3 claim stays PENDING.
-- **FIX:** Generate and commit `reports/kit-tiers.json` (`python3 tools/kit_tiers.py`); the owner runs the probes on the PC.
+- **FIX:** The owner runs the probes on the PC and re-runs `python3 tools/kit_tiers.py`.
 - **VERIFICATION:** `reports/engine/kitsmoke_all.json` PASS from the Studio CLI route; `kit_tiers.py --check` in the gate.
 
 ### T15
@@ -532,11 +533,11 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** None (luau-lsp was pinned but never run).
 - **ACTUAL STATE:** `luau-defs.lock.json` pins the Roblox definitions and API docs by commit (0382dc76) and sha256; `tools/luau_defs.py` fetches and verifies them into `build/luau-lsp/`. `tools/luau_analyze.py` runs `luau-lsp analyze` over `packages/` and `fixtures/` with a Rojo sourcemap and fails on any per-file increase over `tests/golden/luau-lsp-baseline.json` (exit 3, SKIPPED, without a binary). The repo-local Claude Code plugin `luau-lsp@roblox-factory` runs the same server and definitions; it is an LSP server, not MCP (`docs/pc-setup.md`).
-- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under.
-- **DEFECT:** The baseline predates the kit merge, so the pre-release step fails on the integrated branch until the new diagnostics are fixed or re-recorded with reasons. CI's rokit-installed binary is untested (release download refused here); the plugin has not run inside a Claude Code session.
+- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under. Typing passes fixed every kit file (GameKit, UIKit, Cinematics, Feel, AVKit, authoring kits and kit fixtures to 0) and the baseline was re-recorded: 278 diagnostics in 38 files, 0 over (fd29fd6 names each file that fell and why; none rose).
+- **DEFECT:** CI's rokit-installed binary is untested (release download refused here); the plugin has not run inside a Claude Code session.
 - **ROOT CAUSE:** Groups wrote modules without a shared analyzer run; the proxy blocks the release asset; cloud sessions start no LSP.
-- **IMPACT:** Type regressions in the kits are not gated until the baseline is current.
-- **FIX:** `python3 tools/luau_defs.py --verify`, fix what is real, then `python3 tools/luau_analyze.py --update-baseline` and name the files that rose and why in the commit; in CI run `rokit install`, `python3 tools/luau_defs.py` and `python3 tools/luau_analyze.py`, building luau-lsp from source if rokit cannot fetch it.
+- **IMPACT:** Type regressions are gated in strict CI and in any local pre-release run that has the binary; a local run without it may skip the step.
+- **FIX:** In CI run `rokit install`, `python3 tools/luau_defs.py` and `python3 tools/luau_analyze.py`, building luau-lsp from source if rokit cannot fetch it.
 - **VERIFICATION:** `luau_analyze.py` reports 0 files over on the integrated head in CI; on the PC the plugin shows diagnostics after an edit.
 
 ### T16
@@ -766,7 +767,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not present (metadata graphs only).
 - **ACTUAL STATE:** `packages/SceneKit`: plans are data, built from seeds and style profiles, validated (part budget, door clear width against every wall, room clearance, stair rise, headroom and oriented-box obstruction at any yaw, prop clipping and support), hashed into manifests, compared between revisions, rendered, and applied in Studio with undo; `Apply.scene` replaces the previous model of the same name unless `{replace = false}`. Part specs can carry a light (Point/Spot/Surface) or a sign (SurfaceGui with placeholder text), validated by `light_placement` and `sign_text`; `Building.decorate` places one light per room and neutral props along walls with a seed, clear of doorways, stair openings and windows. Dressing is opt-in and no fixture uses it. Prop clipping now confirms AABB hits with oriented-box penetration, as the stair checks do. Light validation now errors above range 120 (the engine cap) and warns above 60 and at more than 4 lights or more than 1 shadow-casting light per room. Lighting presets are S05, the material library S09 and kit/1 piece swaps S10.
-- **EVIDENCE:** Lune specs (`tests/scenekit.spec.luau`, `tests/scenekit_layout.spec.luau`: 300 seeded subdivisions with no bisected doorway, 36 two-storey buildings and the settlement-202 houses with every doorway clear, railing vs next flight at 3 to 5 storeys, yawed stairs, the fixture ramp clear of the Annex; `tests/scenekit_dressing.spec.luau`: a 48-building decorate sweep plus yaws 30, 90 and 217 with every room lit, zero penetration and doorway width intact, and the cap-120 error and 60 warning cases). On the integrated branch `lune run tests/run.luau scenekit` passes 81 cases in 9 files. A scratch sweep of 240 decorated cases found 0 failures, and 7 sabotaged decorate rules were each caught. All 11 SETUP_ONLY fixtures build and validate with stable hashes; the six scene fixtures kept their hashes through the integration. Studio parity of the smoke scenes was observed at 9c12091 (S02); the replace-then-undo path and dressing have not run in Studio.
+- **EVIDENCE:** Lune specs (`tests/scenekit.spec.luau`, `tests/scenekit_layout.spec.luau`: 300 seeded subdivisions with no bisected doorway, 36 two-storey buildings and the settlement-202 houses with every doorway clear, railing vs next flight at 3 to 5 storeys, yawed stairs, the fixture ramp clear of the Annex; `tests/scenekit_dressing.spec.luau`: a 48-building decorate sweep plus yaws 30, 90 and 217 with every room lit, zero penetration and doorway width intact, and the cap-120 error and 60 warning cases). On the integrated branch `lune run tests/run.luau scenekit` passes 82 cases in 9 files. A scratch sweep of 240 decorated cases found 0 failures, and 7 sabotaged decorate rules were each caught. All 11 SETUP_ONLY fixtures build and validate with stable hashes; the six scene fixtures kept their hashes through the integration. Studio parity of the smoke scenes was observed at 9c12091 (S02); the replace-then-undo path and dressing have not run in Studio.
 - **DEFECT:** Fixed in this pass: stair headroom at 3+ storeys, inverted gable slopes, ramp yaw, front camera; after review: Apply not replacing with no options, partitions cutting doorways, railing clipping the next flight, the fixture ramp buried in a foundation, AABB stair checks failing at non-axis yaw.
 - **ROOT CAUSE:** Rotation-convention errors, caught by validators and renders.
 - **IMPACT:** n/a after fixes.
@@ -831,11 +832,11 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** `assets/material-library.json` (material-library/1) names 15 neutral materials. `SceneKit/Materials` builds a tier-0 plan that switches a built-in material place-wide to an existing MaterialVariant with `SetBaseMaterialOverride` (no upload), and tier-1 variant plans that list the map slots still pending (OpenGL normals, power of two, 1024 px by default). Blender's `factory.py bake --mode tile` writes entries in the same format and `material-preview` renders sphere and cube tiles.
-- **EVIDENCE:** On the integrated branch `scenekit_materials` 6 passes; probe `lookdev_material_override` passes against fakes; G6's tile-bake and material-preview cases are in `qa-selftest` (51/51 on bpy 5.0.1, 5.1.2 and 5.2.2).
-- **DEFECT:** The MaterialService override is unverified (Lune lacks the methods, and building variants needs plugin security); no map has been bound in Studio; `lookdev_material_override` has no `tests/engine/` entry, so it runs through `execute_luau`.
+- **EVIDENCE:** On the integrated branch `scenekit_materials` 7 passes; probe `lookdev_material_override` passes against fakes; G6's tile-bake and material-preview cases are in `qa-selftest` (51/51 on bpy 5.0.1, 5.1.2 and 5.2.2).
+- **DEFECT:** The MaterialService override is unverified (Lune lacks the methods, and building variants needs plugin security); no map has been bound in Studio; the probe has a Studio runner now (`tests/engine/lookdev_material_override.luau`) but has not run.
 - **ROOT CAUSE:** Engine-only behaviour.
 - **IMPACT:** Material swaps may look or behave differently in the engine.
-- **FIX:** Run `lookdev_material_override` through `execute_luau` on the kits place with the lookdev fixture and capture the swatches.
+- **FIX:** Run `python3 tools/studio_run.py --probe lookdev_material_override` on the kits place with the lookdev fixture and capture the swatches.
 - **VERIFICATION:** ENGINE_DONE ok plus a swatch capture.
 
 ### S10
@@ -882,7 +883,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Determinism and manifests** · Procedural generation · VERIFIED_STRONG · P1
 
 - **PREVIOUS CLAIM:** Hash-drift blocking for planning records.
-- **ACTUAL STATE:** Same seed gives the same manifest hash; canonical sorted JSON; golden hashes for fixtures and the Studio smoke; course manifests carry `course.hash`; spec goldens pin the kit slices (gamekit-action, gamekit-economy, gamekit-world, cinematics-orbit, av-presets, uikit-ease, kit-smoke, gamekit_platform_queue, gamekit_platform_telemetry_calls). `--update-golden=NAME` rewrites one golden at a time.
+- **ACTUAL STATE:** Same seed gives the same manifest hash; canonical sorted JSON; golden hashes for fixtures and the Studio smoke; course manifests carry `course.hash`; spec goldens pin the kit slices (gamekit-action, gamekit-economy, gamekit-world, cinematics-orbit, av-presets, uikit-ease, kit-smoke, gamekit_platform_queue, gamekit_platform_telemetry_calls, slices-integration). `--update-golden=NAME` rewrites one golden at a time.
 - **EVIDENCE:** `fixture-hashes` gate step locally and in CI; the forest fixture builds byte-identical twice and was added to the golden without changing the other five hashes. The five course fixtures were added with the scoped `--update-golden=fixture-hashes`; on the integrated branch all 11 fixtures PASS and the six earlier hashes are unchanged (arena 20898139, cave a9fa3357, dungeon 06ace82c, forest 3d7d7cb5, modular_building dec2fd84, settlement bc5005c2).
 - **DEFECT:** None found.
 - **ROOT CAUSE:** n/a
@@ -1056,7 +1057,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **DEFECT:** Pieces have not been imported into Studio (B06, S10); greybox art only; icons are not byte-identical across Blender versions; intake has run only on the bundled fixture.
 - **ROOT CAUSE:** Headless by design; no third-party asset sourced (setup-only).
 - **IMPACT:** The first real intake may need a normalise or bake fix.
-- **FIX:** Gate step `blender-kit` (pre-release, being added) builds a kit on every pre-release run.
+- **FIX:** Gate step `blender-kit` (pre-release, added in c70ff63) builds a kit on every pre-release run; it passed on bpy 5.0.1, 5.1.2 and 5.2.2 on the integrated head, not yet in CI.
 - **VERIFICATION:** Executed headless on three bpy versions.
 
 ### B12
@@ -1065,7 +1066,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** `tools/gltf_validate.py` (pure Python, gltf-validate/1) checks the GLB container, buffers and views, accessor bounds and alignment, attributes, at most 4 influences, normalised weights, the node graph, skins, morph targets, animation samplers, image headers (size, power of two) and TEXCOORD_0; `gltf-transform inspect` runs only when npx exists and the owner opts in.
-- **EVIDENCE:** On the integrated branch `tests/test_gltf_validate.py` 22 OK; G6: every template GLB passes. Gate step `gltf-validate-templates` (pre-release, being added) validates them on every pre-release run.
+- **EVIDENCE:** On the integrated branch `tests/test_gltf_validate.py` 22 OK; G6: every template GLB passes. Gate step `gltf-validate-templates` (pre-release, added in c70ff63) validates them on every pre-release run; it passed on the three bpy versions on the integrated head, not yet in CI.
 - **DEFECT:** Not the Khronos validator (no extension semantics); the gltf-transform path was not exercised.
 - **ROOT CAUSE:** Pure Python by choice (no network, no Node dependency).
 - **IMPACT:** Extension-level problems would pass.
@@ -1117,8 +1118,8 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed (persistence existed only as the inherited ReceiptLedger, R01).
 - **ACTUAL STATE:** `GameKit/PlayerData` (T0): session-locked data with versioned migrations and three backends (memory, DataStore, an injected ProfileStore that is never vendored); load refusals are closed reasons (locked, corrupt, newer_schema, migration_failed, too_large); `grantReceipt` and `keyStore`. `PlayerDataRoblox` (T3, probe `platform_playerdata_memory`) chooses the backend and binds with kicks, autosave and a BindToClose flush. `SettingsStore` persists settings/1 and gives a patch schema for a guarded remote.
-- **EVIDENCE:** On the integrated branch: `gamekit_platform_data` 33 and `gamekit_platform_settings` 7, with FakeDataStore and FakeProfileStore failure injection (throttling, a stolen session, a player leaving mid-load, a newer schema).
-- **DEFECT:** Probe `platform_playerdata_memory` has not run; real DataStore and ProfileStore sessions are T4 (never claimed here). Not yet wired as the economy kit's store (K08) in a running game.
+- **EVIDENCE:** On the integrated branch: `gamekit_platform_data` 33 and `gamekit_platform_settings` 7, with FakeDataStore and FakeProfileStore failure injection (throttling, a stolen session, a player leaving mid-load, a newer schema). The `session_persistence` slice in `slices_integration` (22 cases, golden slices-integration) runs two servers over one FakeDataStore: the second is refused while the first holds the lock, a stolen lock reports lock_lost, a migration runs once and data round-trips exactly, with Wallet, Inventory, Progression, SettingsStore and Onboarding using `keyStore` as their store.
+- **DEFECT:** Probe `platform_playerdata_memory` has not run; real DataStore and ProfileStore sessions are T4 (never claimed here). Wired as the economy kit's store only in Lune (the session_persistence slice), not in a running game.
 - **ROOT CAUSE:** Studio runs only on the PC; live persistence needs a published place.
 - **IMPACT:** Session locking against the real services is unproven.
 - **FIX:** Run the probe; live sessions only in a future game's private test place.
@@ -1143,7 +1144,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Commerce foundation partially verified (workbench).
 - **ACTUAL STATE:** `GameKit/Commerce` (T0): `canPrompt` with closed reasons, a price provider that never yields, an ownership cache (subscription, negative and unknown TTLs), a grant writer and a receipt processor that grants once and returns Processed only after a durable save. `CommerceRoblox` (T4, no probe) fetches info, prices, ownership and price levels, prompts only after `canPrompt` and binds receipts on `BindReceiptHandler`. UIKit `ShopCard` shows catalog/1 entries with no purchase call.
-- **EVIDENCE:** On the integrated branch `gamekit_platform_commerce` 14 with FakeMarketplace; runtime 31 (ReceiptLedger retention, R01).
+- **EVIDENCE:** On the integrated branch `gamekit_platform_commerce` 14 with FakeMarketplace; runtime 31 (ReceiptLedger retention, R01). The `session_persistence` slice delivers one receipt twice through a PlayerData session and it grants once; it found that a live Wallet or Inventory later overwrote a receipt grant, fixed in 39991f5 (callers reload from `onResult`, `docs/gamekit-platform.md`).
 - **DEFECT:** Live prompts, prices and receipts are T4 and excluded here (X01). Unconfirmed: whether BindReceiptHandler receives ad-reward receipts, the receipt re-delivery window, the GetUsersPriceLevelsAsync shape and whether developer products carry IsForSale; the code fails closed on each.
 - **ROOT CAUSE:** Purchases need a published place and the owner's account.
 - **IMPACT:** Commerce logic is proven against fakes only.
@@ -1181,9 +1182,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Server Authority fixture (BindToSimulation, Input Action System input)** · Runtime kits · PARTIAL · P1
 
 - **PREVIOUS CLAIM:** Not claimed.
-- **ACTUAL STATE:** `fixtures/kits/shared/authority_Arena.luau` is the core, run in Lune and Studio: input is token-bucketed, validated, clamped and sequenced. `authority_Sim.server.luau` uses one `bindStep`, attributes through a 64-per-Instance writer, an UnreliableRemoteEvent for input and a RemoteEvent for claims; `authority_Input.client.luau` builds raw IAS actions and stamps claims with the `ArenaClock` attribute. Opt-in with `SETUP_ONLY_KitFixture = authority`, on diagnostic places only. Four authority probes: `authority_simulation_bind`, `authority_mode`, `authority_attribute_budget`, `authority_input_actions`.
-- **EVIDENCE:** On the integrated branch `gamekit_action_authority` passes inside the 131 action cases; the round_arena slice runs the arena with an exploiter bot and a 150 ms bot; the kits place build contains the scripts (Script, LocalScript, ModuleScripts as intended, G2).
-- **DEFECT:** Never run in Studio; BindToSimulation's shape and IAS replication to the server are unverified. The client still builds IAS actions directly rather than through InputMap (K13).
+- **ACTUAL STATE:** `fixtures/kits/shared/authority_Arena.luau` is the core, run in Lune and Studio: input is token-bucketed, validated, clamped and sequenced. `authority_Sim.server.luau` uses one `bindStep`, attributes through a 64-per-Instance writer, an UnreliableRemoteEvent for input and a RemoteEvent for claims; `authority_Input.client.luau` builds its actions from one `GameKit/InputMap` map through `InputMapRoblox` and stamps claims with the `ArenaClock` attribute. Opt-in with `SETUP_ONLY_KitFixture = authority`, on diagnostic places only. Four authority probes: `authority_simulation_bind`, `authority_mode`, `authority_attribute_budget`, `authority_input_actions`.
+- **EVIDENCE:** On the integrated branch `gamekit_action_authority` passes inside the 131 action cases; the round_arena slice runs the arena with an exploiter bot and a 150 ms bot; the kits place build contains the scripts (Script, LocalScript, ModuleScripts as intended, G2). The `authority_input_client` slice loads the client script itself in Lune over fakes and its payloads pass the fixture arena; `tests/engine/authority_simulation_bind.luau` is now the Studio runner for that probe (not run).
+- **DEFECT:** Never run in Studio; BindToSimulation's shape and IAS replication to the server are unverified.
 - **ROOT CAUSE:** Studio runs only on the PC; AuthorityMode is an owner setting.
 - **IMPACT:** Server-authoritative play is proven only headlessly.
 - **FIX:** Owner sets AuthorityMode Server, runs the authority suite and a 2-client session.
@@ -1194,9 +1195,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Economy and progression kit (wallet, items, inventory, progression, objectives, streaks, crafting, generators, unlocks, seasons, live-ops, economy simulation)** · Runtime kits · VERIFIED_ACCEPTABLE · P2
 
 - **PREVIOUS CLAIM:** Not claimed.
-- **ACTUAL STATE:** All T0 with the store, sink and policy injected: Wallet (integer currencies, caps and floors, atomic multi-currency transactions, two-phase prepare/commit/rollback, retry-safe transaction ids, store written before reporting), ItemDefs and Inventory (stacks, instances with uids, equip slots by kind, capacity, weight, unique and paid items kept apart, atomic apply, quarantine on load), Progression, Objectives, Streaks, Crafting (refuses recipe data that would multiply items), Generators (capped offline earnings from server UTC), UnlockGraph (refuses cycles and unreachable nodes), SeasonTrack (free and premium tracks as flags, no prices), LiveOps (UTC windows, seeded rotations) and EconomySim (offline Monte Carlo, economy-sim/1 report).
-- **EVIDENCE:** On the integrated branch: `gamekit_economy` 141 cases in 17 files and `gamekit_slices_economy` 3 with golden gamekit-economy matching (plot_generator 8220246e, collection_loop 5b0b8486); G3: EconomySim gives the same report for the same seed, conserves currency and matches a closed-form case.
-- **DEFECT:** Not exercised with PlayerData (K02), Telemetry or live DataStores in a running game; every number is the game's to set.
+- **ACTUAL STATE:** All T0 with the store, sink and policy injected: Wallet (integer currencies, caps and floors, atomic multi-currency transactions, two-phase prepare/commit/rollback, retry-safe transaction ids, store written before reporting; a store that refuses a write (returns false) fails the change with `store_failed` and reports nothing; `reload()` re-reads after another writer), ItemDefs and Inventory (stacks, instances with uids, equip slots by kind, capacity, weight, unique and paid items kept apart, atomic apply, quarantine on load), Progression, Objectives, Streaks, Crafting (refuses recipe data that would multiply items), Generators (capped offline earnings from server UTC), UnlockGraph (refuses cycles and unreachable nodes), SeasonTrack (free and premium tracks as flags, no prices), LiveOps (UTC windows, seeded rotations) and EconomySim (offline Monte Carlo, economy-sim/1 report).
+- **EVIDENCE:** On the integrated branch: `gamekit_economy` 141 cases in 17 files and `gamekit_slices_economy` 3 with golden gamekit-economy matching (plot_generator 8220246e, collection_loop 5b0b8486); G3: EconomySim gives the same report for the same seed, conserves currency and matches a closed-form case. The `session_persistence` and `projectile_arena` slices drive Wallet, Inventory and Progression from PlayerData and from round results; they found that a refused write was counted as saved (fixed in 39991f5, with `Wallet.reload` and `Inventory.reload`).
+- **DEFECT:** Exercised with PlayerData (K02) and Telemetry only in Lune (slices), not with live DataStores in a running game; every number is the game's to set.
 - **ROOT CAUSE:** Setup-only: no game exists; live services are T4.
 - **IMPACT:** Integration with persistence is proven by interface only.
 - **FIX:** Wire PlayerData as the store and Telemetry as the sink in the first game; tune with EconomySim.
@@ -1221,7 +1222,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** T0: Trade (escrow state machine; any change resets both accepts; accept names the current revision; confirm countdown; two-phase commit across inventories and wallets with rollback; journal idempotency; one open trade per player), Plots (claims resolve in call order; ordered, seeded or nearest assignment), Followers (line, grid, arc and ring formations, stable slots, catch-up and teleport), Outfits (outfit/1 validation and HumanoidDescription plans; no asset ids ship), Dialogue (dialogue/1 graphs checked for unreachable nodes, islands, missing exits and endless loops; sessions resume without re-running effects), Onboarding (funnel that resumes after rejoin) and VotingRound (seeded ballots, no self votes, tie-breaks). T3: FollowersRoblox (AlignPosition and AlignOrientation from BindToSimulation, PreSimulation fallback, probe `economy_followers_formation`) and OutfitsRoblox (probe `economy_outfits_apply`). Probes `economy_plots_claim_race` and `economy_trade_two_client` exercise the cores in a session.
-- **EVIDENCE:** On the integrated branch the economy specs pass (trade 13, probes 3); G3: a 400-round seeded trade fuzz with injected store failures conserved every item, uid and coin; the probe registry passes against FakeEconomyEngine (wiring only) and the two-client probe fails without two players.
+- **EVIDENCE:** On the integrated branch the economy specs pass (trade 13, probes 3); G3: a 400-round seeded trade fuzz with injected store failures conserved every item, uid and coin; the probe registry passes against FakeEconomyEngine (wiring only) and the two-client probe fails without two players. The `ui_onboarding_flow` and `session_persistence` slices drive Onboarding through UIKit and PlayerData: order enforced, resume after rejoin, each event reported once, and a refused write now fails as `store_failed` (39991f5).
 - **DEFECT:** The four `economy_` probes have not run. Unverified: the BindToSimulation callback signature (FollowersRoblox derives dt from the clock if none is passed), whether `Humanoid.ApplyDescriptionAsync` exists (chosen at run time) and the default avatar scale ranges.
 - **ROOT CAUSE:** Studio runs only on the PC.
 - **IMPACT:** Follower and outfit adapters are unproven in the engine.
@@ -1260,11 +1261,11 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** `InputMap` (T0): contexts, reserved actions, rebinding with swap, saved overrides that round-trip (applied together, conflicts reverted one by one), glyphs and deterministic validation messages. `InputMapRoblox` (T3, probe `inputmap_contexts`) builds one InputContext per context, one InputAction per action and one InputBinding per binding.
-- **EVIDENCE:** On the integrated branch `gamekit_inputmap` 12, including a seeded 600-edit run in which a reserved action never ends up unbound.
-- **DEFECT:** Input firing through IAS bindings and where an InputContext must be parented are unverified; whether a Sink context can take the client's system keys is unverified (they are refused instead). The authority fixture does not use InputMap yet.
+- **EVIDENCE:** On the integrated branch `gamekit_inputmap` 12, including a seeded 600-edit run in which a reserved action never ends up unbound. The authority client fixture now builds its actions through InputMapRoblox (eba5d6e); the `authority_input_client` and `ui_onboarding_flow` slices exercise it.
+- **DEFECT:** Input firing through IAS bindings and where an InputContext must be parented are unverified; whether a Sink context can take the client's system keys is unverified (they are refused instead).
 - **ROOT CAUSE:** Studio runs only on the PC.
 - **IMPACT:** Rebinding is proven headlessly only.
-- **FIX:** Run probe `inputmap_contexts`; rewire `authority_Input.client.luau` through InputMapRoblox.
+- **FIX:** Run probe `inputmap_contexts`.
 - **VERIFICATION:** ENGINE_DONE ok for `inputmap_contexts`.
 
 ### K14
@@ -1358,6 +1359,19 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **FIX:** Owner runs `kitsmoke_all` on the PC.
 - **VERIFICATION:** `reports/engine/kitsmoke_all.json` PASS.
 
+### K21
+
+**Cross-group integration slices (race, stalker AI, projectile arena, session persistence, UI onboarding, authority client)** · Runtime kits · VERIFIED_ACCEPTABLE · P2
+
+- **PREVIOUS CLAIM:** None.
+- **ACTUAL STATE:** `tests/slices_integration.spec.luau` composes modules of at least three groups per slice through their public APIs, seeded, with fakes injected through env: race_loop_vehicle (Course, Zones, Vehicles, Checkpoints, Leaderboard, Telemetry), stalker_ai (Dungeon, NavAgentRoblox over FakePathfinding, Perception, BehaviorTree, Vitals, RoundLoop, AudioCues, Shake), projectile_arena (microArena, TeamBalance, RoundLoop, RemoteGuard, Projectile and Hitbox rewind, Vitals, Wallet, Progression, HitStop, Popups), session_persistence (PlayerData on two servers, the economy kits, SettingsStore, Onboarding, Commerce receipts, Telemetry), ui_onboarding_flow (Onboarding, Settings, Cinematics skip, InputMap, UIKit) and authority_input_client (the Studio client script loaded in Lune). Each asserts its invariants before its digest goes into golden slices-integration.
+- **EVIDENCE:** On the integrated branch `lune run tests/run.luau slices_integration`: 22 passed, golden slices-integration stable over repeated runs; the full suite 1214 passed in 91 files. The slices found two real bugs, fixed in 39991f5: a refused store write counted as saved (Wallet, Inventory, Onboarding) and a live Wallet or Inventory overwriting receipt grants.
+- **DEFECT:** Headless only: engine behaviour of the adapters in these slices is still the T3 probes' job (K20), and nothing here shows a slice is fun or performs on devices.
+- **ROOT CAUSE:** Studio runs only on the PC.
+- **IMPACT:** Composition bugs between kits are caught in the gate; engine bugs are not.
+- **FIX:** 747db48 (slices), 39991f5 (fixes); add a slice when a new kit joins a loop.
+- **VERIFICATION:** Lune spec with golden in the pre-commit gate.
+
 ### D01
 
 **Fresh tooling research with select/reject decisions** · Research · VERIFIED_ACCEPTABLE · P3
@@ -1402,7 +1416,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Research and knowledge database** · Research · PARTIAL · P2
 
 - **PREVIOUS CLAIM:** Knowledge records verified on the workbench (inherited).
-- **ACTUAL STATE:** `knowledge/records/` holds 23 records copied from the owner's workbench. 22 cite tools, tests and reports that exist only there (39 of 40 cited paths are absent from this repo), so they are now scoped `workbench` with `*_on_workbench` statuses and a note; `knowledge/INDEX.md` lists the records and research docs. The gate's `knowledge-paths` step fails a record that cites a missing path without that scope, and `knowledge-index` fails a stale index.
+- **ACTUAL STATE:** `knowledge/records/` holds 25 records: 22 copied from the owner's workbench and 3 repo-scoped (including the two written for the kits). The 22 cite tools, tests and reports that exist only there (39 of 40 cited paths are absent from this repo), so they are now scoped `workbench` with `*_on_workbench` statuses and a note; `knowledge/INDEX.md` lists the records and research docs. The gate's `knowledge-paths` step fails a record that cites a missing path without that scope, and `knowledge-index` fails a stale index.
 - **EVIDENCE:** Gate steps `knowledge-index` and `knowledge-paths`; a planted record claiming 'verified' failed.
 - **DEFECT:** Most records are claims this repo cannot reproduce.
 - **ROOT CAUSE:** Records were copied without their tools.
@@ -1507,7 +1521,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Asset intake skill.
 - **ACTUAL STATE:** `assets/provenance.json` is the registry (source, licence, approval, date, purpose), and the `asset-provenance` gate step scans every committable file for Roblox asset ids (rbxassetid, rbxthumb, asset, library, catalog and store URLs, `?id=`, and AssetId/MeshId/TextureId/SoundId/AnimationId/ImageId/DecalId fields). An unregistered id fails, 0 is the only placeholder, and only approved ids may appear in place content. The registry holds one id, a research citation inherited from the workbench. `roblox-asset-intake` describes the approval procedure. External CC0 files have their own pinned route (Q11): `assets/sources.json` and a `files` list with `source_key` in `assets/provenance.json`.
-- **EVIDENCE:** Gate step `asset-provenance` (778 files scanned and 1 registered id on the integrated branch; 224 files when it landed); a planted unregistered id failed with its file and line.
+- **EVIDENCE:** Gate step `asset-provenance` (every committable file scanned and 1 registered id on the integrated head; 224 files when it landed); a planted unregistered id failed with its file and line.
 - **DEFECT:** No asset has been through the intake approval path, so approved entries are unexercised.
 - **ROOT CAUSE:** Setup-only: no assets are sourced.
 - **IMPACT:** The approval half is untested until the first real intake.
@@ -1520,8 +1534,8 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Genre system checklists and inherited runtime modules.
 - **ACTUAL STATE:** Reusable gameplay logic now lives in the runtime kits (K01 to K20): GameKit (platform services, action, economy and progression, levels and AI, input map, world cycle, debug commands), UIKit, Cinematics, AVKit and Feel, built as pure cores plus `*Roblox` adapters. `tools/kit_tiers.py` counts 161 modules (157 kit): 88 T0 and 38 T1 proven in Lune, 27 T3 adapters awaiting Studio probes and 8 T4 adapters (live services) never claimed. 29 genre playbooks map genres to these modules (Q09); the inherited pure-Luau modules remain (R01). Nothing picks a genre, content or prices (X02).
-- **EVIDENCE:** On the integrated branch `lune run tests/run.luau`: 1191 passed, 0 failed (90 files); `kits_load` 167; `kit_tiers.py --print`: 30 header-named probes, all PENDING.
-- **DEFECT:** No T3 adapter has run in Studio (0 of 27 with a passing probe). Cross-kit wiring (PlayerData as the economy store, Telemetry as the sink, PolicyGate as the paid-random predicate, InputMap in the authority fixture, the odds disclosure in UI) is proven by interface only.
+- **EVIDENCE:** On the integrated branch `lune run tests/run.luau`: 1214 passed, 0 failed (91 files); `kits_load` 167; `kit_tiers.py --print`: 30 header-named probes, all PENDING.
+- **DEFECT:** No T3 adapter has run in Studio (0 of 27 with a passing probe). PolicyGate as the paid-random predicate and the odds disclosure in UI are proven by interface only; PlayerData as the economy store, Telemetry as the sink and InputMap in the authority fixture are exercised headlessly by the K21 slices.
 - **ROOT CAUSE:** Studio runs only on the PC; no game exists to wire the kits together (setup-only).
 - **IMPACT:** The cores are tested building blocks; engine behaviour and integration need the owner's probe runs and a first game.
 - **FIX:** Owner runs `kitsmoke_all` and the group probes (T14, K20); wire the kits in the first game repo.
@@ -1534,10 +1548,10 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **PREVIOUS CLAIM:** Analytics foundation partially verified (workbench).
 - **ACTUAL STATE:** `GameKit/Telemetry` (T0) maps kit-event/1 events with batching and redaction; `TelemetryRoblox` (T3, probe `platform_telemetry_recorder`) forwards them, and live AnalyticsService delivery is T4. `tools/analytics_report.py` builds an offline report from kit-event/1 JSONL (and the legacy neutral session rows) with date windows and synthetic-event exclusion; `fixtures/analytics/kit_events.jsonl` and `expected_kit_report.json` are its fixtures.
 - **EVIDENCE:** On the integrated branch `tests/test_analytics_report.py` 15 OK and `gamekit_platform_telemetry` 20 (golden `gamekit_platform_telemetry_calls`).
-- **DEFECT:** Probe `platform_telemetry_recorder` has not run; live AnalyticsService delivery is T4 (owner, in a published game); the analytics knowledge record still describes the workbench tool.
+- **DEFECT:** Probe `platform_telemetry_recorder` has not run; live AnalyticsService delivery is T4 (owner, in a published game); the workbench record `analytics-offline-session-foundation` still describes the workbench tool, while the repo record `kit-event-offline-report` describes `tools/analytics_report.py`.
 - **ROOT CAUSE:** Live delivery needs a published place; the record predates the port.
 - **IMPACT:** Event mapping and reports are proven offline only.
-- **FIX:** Run the recorder probe; re-scope the knowledge record to the repo tool; check live delivery in a future game's test place.
+- **FIX:** Run the recorder probe; retire or re-scope the workbench analytics record; check live delivery in a future game's test place.
 - **VERIFICATION:** Python and Lune tests in the gate; Studio pending.
 
 ### Q09
@@ -1547,10 +1561,10 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **PREVIOUS CLAIM:** 11 genre checklists in `roblox-genre-systems`.
 - **ACTUAL STATE:** `.agents/skills/roblox-genre-systems/references/taxonomy.json` (genre-taxonomy/1) maps all 17 genres and 43 subgenres of the research table to a primary playbook (plus optional also-playbooks) or a reasoned exclusion (only Utility & Other), with aliases and 4 cross-cutting playbooks. 29 playbooks share 9 sections and cite kit modules; none picks a genre, content or prices. `tools/playbook_lint.py` checks the map against the research doc, the format, that Covers/Also lines match the map, that cited modules exist in the ownership list or on disk, and neutral wording.
 - **EVIDENCE:** On the integrated branch `python3 tools/playbook_lint.py`: PASS, 29 playbooks, 17 genres, 43 subgenres, 622 module citations, now resolved against the merged kits (notes only for authoring modules found on disk); `tests/test_playbook_lint.py` 28 OK, including a failure case per rule.
-- **DEFECT:** Playbooks are references, not playtested; the per-genre slices a critique suggested and a taxonomy-to-slice link are not built. Earlier plans said 39 subgenres; the cited table has 43 and the lint follows it.
+- **DEFECT:** Playbooks are references, not playtested; six cross-group slices exist (K21), but not one per genre, and no taxonomy-to-slice link. Earlier plans said 39 subgenres; the cited table has 43 and the lint follows it.
 - **ROOT CAUSE:** Gameplay quality needs a game and players.
 - **IMPACT:** Guidance may need revision once a game uses it.
-- **FIX:** Gate step `playbook-lint` (pre-commit, being added).
+- **FIX:** Gate step `playbook-lint` (pre-commit, added in c70ff63).
 - **VERIFICATION:** Lint and unit tests.
 
 ### Q10

@@ -10,13 +10,13 @@
 | Game repo starter | `tools/new_project.py`, `templates/starter` (boot skeleton, release checker, production pipeline) | a separate game repository | `starter-smoke`, `starter-smoke-full`, `tests/test_new_project.py`, `tests/test_release_check.py` |
 | Observation | Blender renders of manifests/assets, Studio `screen_capture`, manifest diffs | Cycles CPU / Studio | images reviewed per change |
 | Inherited first pass | `packages/Runtime`, `Creator`, `Diagnostics`, `fixtures/*.project.json` | Studio | first-pass receipts (see gap matrix) |
+| Agent layer | `AGENTS.md`, `CLAUDE.md`, `.agents/skills` -> `.claude/skills`, `.claude/agents`, hooks, `.mcp.json` | Claude Code + Codex | `tools/check.py` (skills-sync, hooks-selftest) |
 
 Dependencies point one way: kits require only kits and the leaves `ProcGen/{Rng,Grid,Graph}`, `SceneKit/{Vec,Lighting}`; the inherited packages may require kits (for example `Runtime/CommerceCatalog` uses `GameKit/Catalog`, and the moved audio and UI modules are shims over AVKit and UIKit), never the reverse. `tests/kits_load.spec.luau` enforces the kit side.
-| Agent layer | `AGENTS.md`, `CLAUDE.md`, `.agents/skills` -> `.claude/skills`, `.claude/agents`, hooks, `.mcp.json` | Claude Code + Codex | `tools/check.py` (skills-sync, hooks-selftest) |
 
 ## Context budget
 - Permanent instructions: `AGENTS.md` (~50 lines) + `CLAUDE.md` (~10 lines).
-- Task context: one skill (each < 80 lines) plus the module header it names. Every SKILL.md has the same ten `##` sections (Purpose, Triggers, Inputs, Required context, Tools, Procedure, Outputs, Acceptance, Failure, Related); `tools/sync_skills.py --check` enforces them with the frontmatter rules.
+- Task context: one skill plus the module header it names. Most skills stay under 80 lines; the three Blender skills and roblox-animation-integration run to 83-112, and `tools/sync_skills.py` caps every SKILL.md at 500. Every SKILL.md has the same ten `##` sections (Purpose, Triggers, Inputs, Required context, Tools, Procedure, Outputs, Acceptance, Failure, Related); `tools/sync_skills.py --check` enforces them with the frontmatter rules.
 - Everything else is retrieved on demand (`rg`, JSON reports). Large legacy checklists live in skill `references/` and load only for that task.
 - Deterministic tools (generators, validators, QA) produce compact JSON so agents read summaries, not raw scenes.
 
