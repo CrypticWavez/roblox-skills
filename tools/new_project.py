@@ -299,7 +299,7 @@ def update(dest, requested, force):
         why += [f"present but not in starter.json: {unrecorded}"] if unrecorded else []
         raise Refused("; ".join(why) + ". Move game changes out of packages/ or pass --force to overwrite.")
 
-    fresh = package_record(packages)
+    fresh, changed = package_record(packages), False
     for pkg in packages:
         target = dest / "packages" / pkg
         old = recorded.get(pkg, {}).get("sha256")
@@ -310,7 +310,11 @@ def update(dest, requested, force):
         if target.exists():
             shutil.rmtree(target)
         copy_tree(PACKAGES / pkg, target)
+        changed = True
         print(f"  {pkg}: {'updated' if old else 'added'} {(old or '-')[:12]} -> {fresh[pkg]['sha256'][:12]}")
+    if not changed:
+        print(f"already up to date; {path} left unchanged")
+        return 0
     recorded.update(fresh)
     starter["packages"] = dict(sorted(recorded.items()))
     starter["factory"] = factory_info()
