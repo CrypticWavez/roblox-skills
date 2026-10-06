@@ -1,0 +1,29 @@
+{
+  "schema": "luau-defs-lock/1",
+  "note": "Roblox type definitions and API docs for luau-lsp, pinned by commit and sha256. tools/luau_defs.py fetches them into build/luau-lsp/ (gitignored) and verifies each hash; tools/luau_analyze.py and plugins/luau-lsp read them from there. Bump the commit together with rokit.toml's luau-lsp pin.",
+  "luau_lsp": {
+    "version": "1.70.1",
+    "tag": "1.70.1",
+    "commit": "0382dc76ca9b73df3c8e7c9cd85a8dd493cbd0ae",
+    "licence": "MIT",
+    "licence_url": "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/0382dc76ca9b73df3c8e7c9cd85a8dd493cbd0ae/LICENSE.md",
+    "security_level": "PluginSecurity",
+    "security_level_note": "The VS Code extension's default level. Kits run as game scripts (None) and the Studio tooling as plugin-level code (execute_luau, command bar); one level for both is a known approximation (UNVERIFIED which level suits game scripts best)."
+  },
+  "files": [
+    {
+      "name": "globalTypes.PluginSecurity.d.luau",
+      "role": "definitions",
+      "url": "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/0382dc76ca9b73df3c8e7c9cd85a8dd493cbd0ae/scripts/globalTypes.PluginSecurity.d.luau",
+      "sha256": "e441a5cefd41d05649e14659b5bc23147bb1637b91ff86b04cbf1f45d8a4573c",
+      "bytes": 703468
+    },
+    {
+      "name": "en-us.json",
+      "role": "docs",
+      "url": "https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/0382dc76ca9b73df3c8e7c9cd85a8dd493cbd0ae/scripts/api-docs/en-us.json",
+      "sha256": "9657c394021d9c3690d99c9bcdc11e74c7539fceb6b9859997ccc06f082d957b",
+      "bytes": 7397421
+    }
+  ]
+}

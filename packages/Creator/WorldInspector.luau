@@ -1,6 +1,17 @@
 --!strict
 -- SETUP_ONLY read-only inspection of an explicitly owned unpublished diagnostic root.
+local Env = require("../GameKit/Env")
+
 local WorldInspector = {}
+
+-- Target check shared by the Creator inspectors (Observation, AnimationInspector, WorldInspector)
+-- and kit debug code: GameKit/Env.check on the running session's place, ok only in Studio with
+-- GameId 0 and PlaceId 0. Server and client both qualify, so server probes can inspect too; a
+-- published game or place is refused (reasons published_game, published_place, not_studio).
+local function assertDiagnosticTarget(what: string)
+	local ok, env = pcall(Env.studio)
+	Env.assertDiagnostic(if ok then env else {} :: any, what)
+end
 
 local defaults = {
 	max_descendants = 256,
@@ -97,11 +108,7 @@ local function vector(value: Vector3): { number }
 end
 
 function WorldInspector.new(options: any): any
-	local runService = game:GetService("RunService")
-	assert(
-		runService:IsStudio() and runService:IsClient() and game.GameId == 0 and game.PlaceId == 0,
-		"unpublished SETUP_ONLY Studio client required"
-	)
+	assertDiagnosticTarget("WorldInspector")
 	assert(type(options) == "table", "world inspection options required")
 	local root = options.root
 	assert(

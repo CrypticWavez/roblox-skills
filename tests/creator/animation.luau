@@ -92,4 +92,64 @@ check(
 	end),
 	"nonfinite probe rejected"
 )
-print("PASS " .. count .. " animation threshold/contact cases; no engine track playback acceptance")
+-- Shared target check (GameKit/Env.check through Env.studio): a fake DataModel stands in for
+-- the Roblox globals. A published game or place and a non-Studio session are refused; an
+-- unpublished Studio server is accepted (the client-only restriction is gone), so the call
+-- gets past the target check and fails on the missing options instead.
+local function withGame(fakeGame, callback)
+	local globals = getfenv(0)
+	local previous = globals.game
+	globals.game = fakeGame
+	local ok, err = pcall(callback)
+	globals.game = previous
+	return ok, tostring(err)
+end
+local function fakeGame(studio, gameId, placeId, client)
+	local runService = {
+		IsStudio = function()
+			return studio
+		end,
+		IsServer = function()
+			return not client
+		end,
+		IsClient = function()
+			return client
+		end,
+	}
+	return {
+		GameId = gameId,
+		PlaceId = placeId,
+		GetService = function(_, name)
+			assert(name == "RunService", "unexpected service " .. tostring(name))
+			return runService
+		end,
+	}
+end
+local function refusal(fake)
+	local ok, err = withGame(fake, function()
+		Inspector.new(nil)
+	end)
+	check(not ok, "constructor raised")
+	return err
+end
+check(string.find(refusal(nil), "missing_place", 1, true) ~= nil, "no DataModel (Lune) is refused")
+check(
+	string.find(refusal(fakeGame(true, 4242, 0, false)), "published_game", 1, true) ~= nil,
+	"published GameId refused"
+)
+check(
+	string.find(refusal(fakeGame(true, 0, 4242, true)), "published_place", 1, true) ~= nil,
+	"published PlaceId refused"
+)
+check(string.find(refusal(fakeGame(false, 0, 0, true)), "not_studio", 1, true) ~= nil, "live session refused")
+local serverErr = refusal(fakeGame(true, 0, 0, false))
+check(
+	string.find(serverErr, "refused", 1, true) == nil
+		and string.find(serverErr, "animation options required", 1, true) ~= nil,
+	"unpublished Studio server passes the target check: " .. serverErr
+)
+print(
+	"PASS "
+		.. count
+		.. " animation threshold/contact cases (target check included); no engine track playback acceptance"
+)

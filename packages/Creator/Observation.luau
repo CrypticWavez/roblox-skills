@@ -1,8 +1,19 @@
 --!strict
 -- SETUP_ONLY bounded native inspection. No gameplay, remotes, uploads or screen recording.
+local Env = require("../GameKit/Env")
+
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Observation = {}
+
+-- Target check shared by the Creator inspectors (Observation, AnimationInspector, WorldInspector)
+-- and kit debug code: GameKit/Env.check on the running session's place, ok only in Studio with
+-- GameId 0 and PlaceId 0. Server and client both qualify, so server probes can inspect too; a
+-- published game or place is refused (reasons published_game, published_place, not_studio).
+local function assertDiagnosticTarget(what: string)
+	local ok, env = pcall(Env.studio)
+	Env.assertDiagnostic(if ok then env else {} :: any, what)
+end
 
 local function finite(value: any): boolean
 	return type(value) == "number" and value == value and math.abs(value) < math.huge
@@ -60,10 +71,7 @@ local function ring(capacity: number): any
 end
 
 function Observation.new(options: any): any
-	assert(
-		RunService:IsStudio() and RunService:IsClient() and game.GameId == 0 and game.PlaceId == 0,
-		"observation requires an explicitly selected unpublished Studio client"
-	)
+	assertDiagnosticTarget("Observation")
 	assert(type(options) == "table" and label(options.id), "observation options need a stable id")
 	assert(
 		type(options.roots) == "table" and #options.roots >= 1 and #options.roots <= 4,
