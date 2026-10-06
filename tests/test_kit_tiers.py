@@ -13,6 +13,14 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import kit_tiers  # noqa: E402
 
+def engine_report(status, probes=None, route="studio-cli", **extra):
+    """A reports/engine document shaped like tools/studio_run.py writes it (engine-report/1)."""
+    doc = {"schema": "engine-report/1", "status": status, "source": {"route": route}, **extra}
+    if probes is not None:
+        doc["probes"] = probes
+    return json.dumps(doc)
+
+
 CONTRACT = "## 7. Probe contract\n\n- **Name.** `^[a-z][a-z0-9_]+$`, owner prefix: `foundation_` (Stage 0); `platform_` (G1); `kitsmoke_`, `perf_` (G9b).\n"
 
 
@@ -130,6 +138,38 @@ class KitTiersTest(unittest.TestCase):
         self.assertEqual(self.report()["probes"][0]["evidence"], "BLOCKED_EXTERNAL")
         self.assertEqual(self.report()["counts"]["t3_with_passing_probe"], 0)
 
+    def test_every_named_probe_is_checked_and_must_pass(self):
+        self.write("packages/GameKit/SignalRoblox.luau",
+                   "--!strict\n-- @tier T3\n-- probe: platform_signal\n-- probe: platform_signal_wires\n-- Adapter.\nreturn {}\n")
+        code, text = self.run_tool()
+        self.assertEqual(code, 1)
+        self.assertIn("SignalRoblox.luau: probe platform_signal_wires is not registered", text,
+                      "the second probe line is checked, not dropped")
+        self.write("fixtures/kits/shared/platform_probes.luau",
+                   "local probes = {}\nfunction probes.platform_signal(ctx) end\nfunction probes.platform_signal_wires(ctx) end\nreturn probes\n")
+        self.assertEqual(self.run_tool()[0], 0)
+        report = self.report()
+        self.assertEqual(report["modules"][1]["probes"], ["platform_signal", "platform_signal_wires"])
+        self.assertEqual([p["name"] for p in report["probes"]], ["platform_signal", "platform_signal_wires"], "one row per named probe")
+        self.assertEqual(report["counts"]["probes"], 2)
+
+        self.write("reports/engine/kitsmoke_all.json", engine_report("PASS", ["platform_signal"], route="from-output"))
+        self.run_tool()
+        report = self.report()
+        self.assertEqual({p["name"]: p["evidence"] for p in report["probes"]}, {"platform_signal": "PASS", "platform_signal_wires": "PENDING"})
+        self.assertEqual(report["counts"]["t3_with_passing_probe"], 0, "one passing probe of two does not prove the module")
+
+        self.write("reports/engine/kitsmoke_all.json", engine_report("PASS", ["platform_signal", "platform_signal_wires"], route="from-output"))
+        self.run_tool()
+        self.assertEqual(self.report()["counts"]["t3_with_passing_probe"], 1)
+
+    def test_a_probe_named_twice_is_a_problem(self):
+        self.write("packages/GameKit/SignalRoblox.luau", "--!strict\n-- @tier T3\n-- probe: platform_signal\n-- probe: platform_signal\nreturn {}\n")
+        code, text = self.run_tool()
+        self.assertEqual(code, 1)
+        self.assertIn("SignalRoblox.luau: probe platform_signal is named twice", text)
+        self.assertEqual(self.report()["modules"][1]["probes"], ["platform_signal"])
+
     def test_missing_report_fails_check(self):
         code, text = self.run_tool("--check")
         self.assertEqual(code, 1)
@@ -139,6 +179,10 @@ class KitTiersTest(unittest.TestCase):
         report = kit_tiers.build(ROOT)
         self.assertEqual(report["problems"], [])
         self.assertIn("perf_capture", [p["name"] for p in report["probes"]])
+        audio = next(m for m in report["modules"] if m["path"] == "packages/AVKit/AudioGraphRoblox.luau")
+        self.assertEqual(audio["probes"], ["av_audiograph_wires", "av_audio_master_level"], "both header probes are tracked")
+        for name in audio["probes"]:
+            self.assertIn(audio["path"], next(p for p in report["probes"] if p["name"] == name)["modules"])
         self.assertTrue(all(p["evidence"] != "PASS" or p.get("report") for p in report["probes"]), "a pass always cites its report")
 
 

@@ -248,32 +248,37 @@ def with_dependencies(requested):
 
 
 def module_header(text):
-    """(tier, probe) from the comment block after `--!strict` (docs/runtime-kits.md section 5)."""
+    """(tier, probes) from the comment block after `--!strict` (docs/runtime-kits.md section 5): probes lists
+    every `-- probe:` line in order (a module may name several, like AVKit/AudioGraphRoblox)."""
     lines = text.splitlines()
     index = 1 if lines and lines[0].startswith("--!") else 0
-    tier = probe = None
+    tier, probes = None, []
     while index < len(lines) and lines[index].startswith("--"):
         tier = tier or (TIER_RE.match(lines[index]) or [None, None])[1]
-        probe = probe or (PROBE_RE.match(lines[index]) or [None, None])[1]
+        probe = (PROBE_RE.match(lines[index]) or [None, None])[1]
+        if probe and probe not in probes:
+            probes.append(probe)
         index += 1
-    return tier, probe
+    return tier, probes
 
 
 def module_records(root, packages):
-    """{Pkg/Module: {class, tier, lune, probe?}} for every .luau module of the given packages under root/packages."""
+    """{Pkg/Module: {class, tier, lune, probe?, probes?}} for every .luau module of the given packages under
+    root/packages. probes lists every probe the header names; probe (the first) stays for starter/2 readers."""
     records = {}
     for pkg in packages:
         base = root / "packages" / pkg
         for path in sorted(base.rglob("*.luau")):
             name = f"{pkg}/{path.relative_to(base).with_suffix('').as_posix()}"
-            tier, probe = module_header(path.read_text(encoding="utf-8"))
+            tier, probes = module_header(path.read_text(encoding="utf-8"))
             adapter = name.rsplit("/", 1)[-1].endswith("Roblox")
             # Cores load in Lune whatever their tier (the factory's kits_load contract); engine
             # adapters (*Roblox) and the legacy Roblox-only modules never do.
             lune = not adapter and name not in LEGACY_ROBLOX_ONLY
             record = {"class": CLASS_OF[pkg], "tier": tier, "lune": lune}
-            if probe:
-                record["probe"] = probe
+            if probes:
+                record["probe"] = probes[0]
+                record["probes"] = probes
             records[name] = record
     return records
 
@@ -284,7 +289,7 @@ def tier_summary(modules):
         key = record["tier"] or "untiered"
         counts[key] = counts.get(key, 0) + 1
     pending = sorted(
-        ({"probe": r["probe"], "module": name} for name, r in modules.items() if r.get("probe") and r["tier"] in ("T3", "T4")),
+        ({"probe": probe, "module": name} for name, r in modules.items() if r["tier"] in ("T3", "T4") for probe in r.get("probes", [])),
         key=lambda item: (item["probe"], item["module"]),
     )
     return dict(sorted(counts.items())), pending

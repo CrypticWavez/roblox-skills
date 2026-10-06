@@ -8,14 +8,14 @@ Rules (docs/runtime-kits.md sections 5 and 7; tests/kits_load.spec.luau enforces
 - every module under packages/{GameKit,UIKit,AVKit,Feel,Cinematics} starts with --!strict and its header
   comment block holds exactly one `-- @tier T0..T4` line; any other package module that carries a tier
   line is held to the same rules (Diagnostics/PerfProbeRoblox, Pipeline/KitSmoke);
-- a T3 module names its probe (`-- probe: <name>`); a T4 module may;
+- a T3 module names its probes, one `-- probe: <name>` line each (at least one); a T4 module may;
 - a probe name is a lower_snake label with an owner prefix listed in docs/runtime-kits.md section 7, and it
   is registered: a whole word in a fixtures/kits/<side>/*_probes.luau registry, or tests/engine/<probe>.luau.
 
 Evidence per probe comes from reports/engine/<probe>.json, or from reports/engine/kitsmoke_all.json when the
-probe ran there (tools/studio_run.py writes both). Without a report a probe is PENDING; a T3 module is only as
-proven as its probe, and T4 is never claimed here. The report has no dates, so it changes only when headers,
-registrations or engine reports change. Exit 0 when the rules hold (and, with --check, the report is current),
+probe ran there (tools/studio_run.py writes both). Without a report a probe is PENDING; a T3 module is proven
+only when every probe it names passes, and T4 is never claimed here. The report has no dates, so it changes
+only when headers, registrations or engine reports change. Exit 0 when the rules hold (and, with --check, the report is current),
 else 1.
 """
 import argparse
@@ -49,7 +49,7 @@ def owner_prefixes(root):
 
 def parse_header(text):
     lines = text.split("\n")
-    header = {"strict": lines[0].rstrip("\r") == "--!strict", "tier": None, "probe": None, "problems": []}
+    header = {"strict": lines[0].rstrip("\r") == "--!strict", "tier": None, "probes": [], "problems": []}
     tiers = 0
     for raw in lines[1:]:
         line = raw.rstrip("\r")
@@ -63,7 +63,10 @@ def parse_header(text):
             header["problems"].append(f"malformed tier line: {line}")
         probe = PROBE_LINE.match(line)
         if probe:
-            header["probe"] = probe.group(1)
+            if probe.group(1) in header["probes"]:
+                header["problems"].append(f"probe {probe.group(1)} is named twice")
+            else:
+                header["probes"].append(probe.group(1))
     if tiers > 1:
         header["problems"].append("more than one @tier line")
     return header
@@ -147,10 +150,10 @@ def build(root):
             own.append("header needs a '-- @tier T0..T4' line")
         elif tier not in ("T0", "T1", "T2", "T3", "T4"):
             own.append(f"tier {tier} is not T0..T4")
-        probe = header["probe"]
-        if tier == "T3" and probe is None:
+        named = header["probes"]
+        if tier == "T3" and not named:
             own.append("a T3 module names its probe: '-- probe: <name>'")
-        if probe is not None:
+        for probe in named:
             if not PROBE_NAME.match(probe) or len(probe) > 64 or not any(probe.startswith(p) for p in prefixes):
                 own.append(f"probe {probe} needs a lower_snake name with an owner prefix ({CONTRACT} section 7)")
             else:
@@ -160,8 +163,8 @@ def build(root):
                 entry = probes.setdefault(probe, {"name": probe, "modules": [], "registered_in": places})
                 entry["modules"].append(rel)
         row = {"path": rel, "kit": is_kit, "tier": tier}
-        if probe is not None:
-            row["probe"] = probe
+        if named:
+            row["probes"] = named
         rows.append(row)
         problems.extend(f"{rel}: {p}" for p in own)
     probe_rows = []
@@ -180,7 +183,8 @@ def build(root):
     for row in probe_rows:
         evidence[row["evidence"]] = evidence.get(row["evidence"], 0) + 1
     t3 = [r for r in rows if r["tier"] == "T3"]
-    t3_proven = [r for r in t3 if any(p["name"] == r.get("probe") and p["evidence"] == "PASS" for p in probe_rows)]
+    passing = {p["name"] for p in probe_rows if p["evidence"] == "PASS"}
+    t3_proven = [r for r in t3 if r.get("probes") and all(name in passing for name in r["probes"])]
     return {
         "schema": SCHEMA,
         "counts": {
@@ -221,7 +225,7 @@ def main(argv=None):
     counts = report["counts"]
     summary = (f"kit_tiers: {counts['modules']} modules ({counts['kit_modules']} kit), tiers {counts['by_tier']}, "
                f"{counts['probes']} probes, evidence {counts['evidence'] or {}}, "
-               f"T3 with a passing probe {counts['t3_with_passing_probe']}/{counts['t3_modules']}")
+               f"T3 with every probe passing {counts['t3_with_passing_probe']}/{counts['t3_modules']}")
     path = root / REPORT
     if args.print:
         sys.stdout.write(text)

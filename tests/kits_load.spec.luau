@@ -192,11 +192,11 @@ local function allowedTarget(path: string): boolean
 	return false
 end
 
-export type Header = { strict: boolean, tier: string?, probe: string?, problems: { string } }
+export type Header = { strict: boolean, tier: string?, probes: { string }, problems: { string } }
 
 local function parseHeader(source: string): Header
 	local lines = string.split(source, "\n")
-	local header: Header = { strict = lines[1] == "--!strict", tier = nil, probe = nil, problems = {} }
+	local header: Header = { strict = lines[1] == "--!strict", tier = nil, probes = {}, problems = {} }
 	local tiers = 0
 	for index = 2, #lines do
 		local line = string.gsub(lines[index], "\r$", "")
@@ -211,8 +211,10 @@ local function parseHeader(source: string): Header
 			table.insert(header.problems, "malformed tier line: " .. line)
 		end
 		local probe = string.match(line, "^%-%- probe: (%S+)%s*$")
-		if probe then
-			header.probe = probe
+		if probe and table.find(header.probes, probe) then
+			table.insert(header.problems, "probe " .. probe .. " is named twice")
+		elseif probe then
+			table.insert(header.probes, probe)
 		end
 	end
 	if tiers > 1 then
@@ -245,11 +247,11 @@ local function inspectModule(rel: string, source: string, ctx: Context): { strin
 	elseif not string.match(tier, "^T[0-4]$") then
 		table.insert(problems, "tier " .. tier .. " is not T0..T4")
 	end
-	if tier == "T3" and header.probe == nil then
+	if tier == "T3" and #header.probes == 0 then
 		table.insert(problems, "a T3 module names its probe: '-- probe: <name>'")
 	end
-	local probe = header.probe
-	if probe then
+	-- Every `-- probe:` line counts (AVKit/AudioGraphRoblox names two); tools/kit_tiers.py reads the same.
+	for _, probe in header.probes do
 		local prefixed = false
 		for _, prefix in PROBE_PREFIXES do
 			if string.sub(probe, 1, #prefix) == prefix then
@@ -488,6 +490,43 @@ test("checker rejects bad headers, probes, GetService in cores and init.luau", f
 	)
 	t.eq(problemsFor("packages/GameKit/Core.luau", GOOD_HEADER .. "-- game:GetService is for adapters\n"), {})
 	t.ok(mentions(problemsFor("packages/UIKit/Components/init.luau", GOOD_HEADER), "init.luau"))
+end)
+
+test("checker reads every probe line, not just the last one", function(t)
+	local two = "--!strict\n-- @tier T3\n-- probe: platform_known\n-- probe: platform_unknown\n-- Adapter.\n"
+	t.eq(parseHeader(two).probes, { "platform_known", "platform_unknown" })
+	t.ok(
+		mentions(problemsFor("packages/AVKit/ARoblox.luau", two), "probe platform_unknown is not registered")
+	)
+	local swapped = "--!strict\n-- @tier T3\n-- probe: platform_unknown\n-- probe: platform_known\n"
+	t.ok(
+		mentions(
+			problemsFor("packages/AVKit/ARoblox.luau", swapped),
+			"probe platform_unknown is not registered"
+		),
+		"the first probe is checked too"
+	)
+	t.ok(
+		mentions(
+			problemsFor(
+				"packages/AVKit/ARoblox.luau",
+				"--!strict\n-- @tier T3\n-- probe: mystery_a\n-- probe: platform_known\n"
+			),
+			"probe mystery_a needs a lower_snake name with an owner prefix"
+		)
+	)
+	t.ok(
+		mentions(
+			problemsFor(
+				"packages/AVKit/ARoblox.luau",
+				"--!strict\n-- @tier T3\n-- probe: platform_known\n-- probe: platform_known\n"
+			),
+			"probe platform_known is named twice"
+		)
+	)
+	t.eq(parseHeader("--!strict\n-- @tier T0\n-- Text.\n").probes, {})
+	local audio = parseHeader(fs.readFile(ROOT .. "/packages/AVKit/AudioGraphRoblox.luau"))
+	t.eq(audio.probes, { "av_audiograph_wires", "av_audio_master_level" })
 end)
 
 test("checker masks long strings and escapes without losing positions", function(t)

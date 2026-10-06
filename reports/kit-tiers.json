@@ -7,11 +7,11 @@
       "T4": 8
     },
     "evidence": {
-      "PENDING": 30
+      "PENDING": 31
     },
     "kit_modules": 157,
     "modules": 161,
-    "probes": 30,
+    "probes": 31,
     "t3_modules": 27,
     "t3_with_passing_probe": 0
   },
@@ -34,7 +34,10 @@
     {
       "kit": true,
       "path": "packages/AVKit/AudioGraphRoblox.luau",
-      "probe": "av_audio_master_level",
+      "probes": [
+        "av_audiograph_wires",
+        "av_audio_master_level"
+      ],
       "tier": "T3"
     },
     {
@@ -65,7 +68,9 @@
     {
       "kit": true,
       "path": "packages/AVKit/VfxPoolRoblox.luau",
-      "probe": "av_vfx_grid",
+      "probes": [
+        "av_vfx_grid"
+      ],
       "tier": "T3"
     },
     {
@@ -76,7 +81,9 @@
     {
       "kit": true,
       "path": "packages/Cinematics/CinematicsRoblox.luau",
-      "probe": "cin_play_sample",
+      "probes": [
+        "cin_play_sample"
+      ],
       "tier": "T3"
     },
     {
@@ -92,7 +99,9 @@
     {
       "kit": false,
       "path": "packages/Diagnostics/PerfProbeRoblox.luau",
-      "probe": "perf_capture",
+      "probes": [
+        "perf_capture"
+      ],
       "tier": "T3"
     },
     {
@@ -103,7 +112,9 @@
     {
       "kit": true,
       "path": "packages/Feel/FeelRoblox.luau",
-      "probe": "feel_marker_cue",
+      "probes": [
+        "feel_marker_cue"
+      ],
       "tier": "T3"
     },
     {
@@ -149,13 +160,17 @@
     {
       "kit": true,
       "path": "packages/GameKit/AnimSetRoblox.luau",
-      "probe": "action_animset_clip",
+      "probes": [
+        "action_animset_clip"
+      ],
       "tier": "T3"
     },
     {
       "kit": true,
       "path": "packages/GameKit/AuthorityRoblox.luau",
-      "probe": "authority_simulation_bind",
+      "probes": [
+        "authority_simulation_bind"
+      ],
       "tier": "T3"
     },
     {
@@ -231,7 +246,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/EnvRoblox.luau",
-      "probe": "foundation_env_studio",
+      "probes": [
+        "foundation_env_studio"
+      ],
       "tier": "T3"
     },
     {
@@ -247,7 +264,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/FollowersRoblox.luau",
-      "probe": "economy_followers_formation",
+      "probes": [
+        "economy_followers_formation"
+      ],
       "tier": "T3"
     },
     {
@@ -268,7 +287,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/HitboxRoblox.luau",
-      "probe": "action_hitbox_shapecast",
+      "probes": [
+        "action_hitbox_shapecast"
+      ],
       "tier": "T3"
     },
     {
@@ -279,7 +300,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/InputMapRoblox.luau",
-      "probe": "inputmap_contexts",
+      "probes": [
+        "inputmap_contexts"
+      ],
       "tier": "T3"
     },
     {
@@ -290,7 +313,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/InteractRoblox.luau",
-      "probe": "action_interact_prompt",
+      "probes": [
+        "action_interact_prompt"
+      ],
       "tier": "T3"
     },
     {
@@ -361,7 +386,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/MovementRoblox.luau",
-      "probe": "action_movement_humanoid",
+      "probes": [
+        "action_movement_humanoid"
+      ],
       "tier": "T3"
     },
     {
@@ -372,7 +399,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/NavAgentRoblox.luau",
-      "probe": "lvl_pathfinding_probe",
+      "probes": [
+        "lvl_pathfinding_probe"
+      ],
       "tier": "T3"
     },
     {
@@ -398,13 +427,17 @@
     {
       "kit": true,
       "path": "packages/GameKit/OutfitsRoblox.luau",
-      "probe": "economy_outfits_apply",
+      "probes": [
+        "economy_outfits_apply"
+      ],
       "tier": "T3"
     },
     {
       "kit": true,
       "path": "packages/GameKit/PartyRoblox.luau",
-      "probe": "platform_party_simulator",
+      "probes": [
+        "platform_party_simulator"
+      ],
       "tier": "T3"
     },
     {
@@ -425,7 +458,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/PlayerDataRoblox.luau",
-      "probe": "platform_playerdata_memory",
+      "probes": [
+        "platform_playerdata_memory"
+      ],
       "tier": "T3"
     },
     {
@@ -441,7 +476,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/PolicyGateRoblox.luau",
-      "probe": "platform_policy_emulator",
+      "probes": [
+        "platform_policy_emulator"
+      ],
       "tier": "T3"
     },
     {
@@ -477,7 +514,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/RemoteGuardRoblox.luau",
-      "probe": "platform_remoteguard_flood",
+      "probes": [
+        "platform_remoteguard_flood"
+      ],
       "tier": "T3"
     },
     {
@@ -493,7 +532,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/RoundLoopRoblox.luau",
-      "probe": "action_round_replication",
+      "probes": [
+        "action_round_replication"
+      ],
       "tier": "T3"
     },
     {
@@ -549,7 +590,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/TelemetryRoblox.luau",
-      "probe": "platform_telemetry_recorder",
+      "probes": [
+        "platform_telemetry_recorder"
+      ],
       "tier": "T3"
     },
     {
@@ -580,7 +623,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/VehicleRigRoblox.luau",
-      "probe": "action_vehicle_drive",
+      "probes": [
+        "action_vehicle_drive"
+      ],
       "tier": "T3"
     },
     {
@@ -611,7 +656,9 @@
     {
       "kit": true,
       "path": "packages/GameKit/WorldCycle.luau",
-      "probe": "worldcycle_phases",
+      "probes": [
+        "worldcycle_phases"
+      ],
       "tier": "T1"
     },
     {
@@ -622,19 +669,25 @@
     {
       "kit": true,
       "path": "packages/GameKit/ZonesRoblox.luau",
-      "probe": "action_zones_enter_exit",
+      "probes": [
+        "action_zones_enter_exit"
+      ],
       "tier": "T3"
     },
     {
       "kit": false,
       "path": "packages/Pipeline/ImportInspector.luau",
-      "probe": "import_appearance",
+      "probes": [
+        "import_appearance"
+      ],
       "tier": "T3"
     },
     {
       "kit": false,
       "path": "packages/Pipeline/KitSmoke.luau",
-      "probe": "kitsmoke_all",
+      "probes": [
+        "kitsmoke_all"
+      ],
       "tier": "T3"
     },
     {
@@ -645,7 +698,9 @@
     {
       "kit": true,
       "path": "packages/UIKit/AuditRoblox.luau",
-      "probe": "ui_gallery_audit",
+      "probes": [
+        "ui_gallery_audit"
+      ],
       "tier": "T3"
     },
     {
@@ -796,7 +851,9 @@
     {
       "kit": true,
       "path": "packages/UIKit/Ease.luau",
-      "probe": "ui_ease_parity",
+      "probes": [
+        "ui_ease_parity"
+      ],
       "tier": "T0"
     },
     {
@@ -817,7 +874,9 @@
     {
       "kit": true,
       "path": "packages/UIKit/Nav.luau",
-      "probe": "ui_nav_keyboard",
+      "probes": [
+        "ui_nav_keyboard"
+      ],
       "tier": "T1"
     },
     {
@@ -833,7 +892,9 @@
     {
       "kit": true,
       "path": "packages/UIKit/StyleRoblox.luau",
-      "probe": "ui_style_sheet",
+      "probes": [
+        "ui_style_sheet"
+      ],
       "tier": "T3"
     },
     {
@@ -960,6 +1021,18 @@
         "tests/engine/av_audio_master_level.luau"
       ],
       "runner": "tests/engine/av_audio_master_level.luau"
+    },
+    {
+      "evidence": "PENDING",
+      "modules": [
+        "packages/AVKit/AudioGraphRoblox.luau"
+      ],
+      "name": "av_audiograph_wires",
+      "registered_in": [
+        "fixtures/kits/shared/lookdev_probes.luau",
+        "tests/engine/av_audiograph_wires.luau"
+      ],
+      "runner": "tests/engine/av_audiograph_wires.luau"
     },
     {
       "evidence": "PENDING",

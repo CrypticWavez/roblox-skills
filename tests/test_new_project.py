@@ -176,10 +176,22 @@ class PackageClasses(Scaffold):
 class Tiers(Scaffold):
     def test_module_header_parse(self):
         self.assertEqual(np.module_header("--!strict\n-- @tier T3\n-- probe: foundation_x\n-- What it is.\nlocal M = {}"),
-                         ("T3", "foundation_x"))
-        self.assertEqual(np.module_header("--!strict\n-- @tier T0\n-- Text.\n"), ("T0", None))
-        self.assertEqual(np.module_header("--!strict\n-- No tier here.\nlocal x = 1\n-- @tier T1\n"), (None, None))
-        self.assertEqual(np.module_header("local x = 1\n"), (None, None))
+                         ("T3", ["foundation_x"]))
+        self.assertEqual(np.module_header("--!strict\n-- @tier T0\n-- Text.\n"), ("T0", []))
+        self.assertEqual(np.module_header("--!strict\n-- No tier here.\nlocal x = 1\n-- @tier T1\n"), (None, []))
+        self.assertEqual(np.module_header("local x = 1\n"), (None, []))
+
+    def test_every_probe_line_is_recorded_and_pending(self):
+        # Before: module_header kept only the first probe line, so a starter dropped the module's other probes.
+        two = "--!strict\n-- @tier T3\n-- probe: av_one\n-- probe: av_two\n-- probe: av_one\n-- Adapter.\n"
+        self.assertEqual(np.module_header(two), ("T3", ["av_one", "av_two"]))
+        modules = np.module_records(ROOT, ["AVKit"])
+        audio = modules["AVKit/AudioGraphRoblox"]
+        self.assertEqual(audio["probes"], ["av_audiograph_wires", "av_audio_master_level"])
+        self.assertEqual(audio["probe"], "av_audiograph_wires", "starter/2 readers (tests/packages.spec.luau) read a string")
+        _, pending = np.tier_summary(modules)
+        self.assertEqual([p["probe"] for p in pending if p["module"] == "AVKit/AudioGraphRoblox"],
+                         ["av_audio_master_level", "av_audiograph_wires"])
 
     def test_starter_json_records_modules_tiers_and_pending_probes(self):
         dest, _ = self.scaffold(packages=["GameKit"])
@@ -188,7 +200,7 @@ class Tiers(Scaffold):
         modules = starter["modules"]
         self.assertEqual(modules["GameKit/Check"], {"class": "kits", "tier": "T0", "lune": True})
         env = modules["GameKit/EnvRoblox"]
-        self.assertEqual((env["tier"], env["lune"], env["probe"]), ("T3", False, "foundation_env_studio"))
+        self.assertEqual((env["tier"], env["lune"], env["probe"], env["probes"]), ("T3", False, "foundation_env_studio", ["foundation_env_studio"]))
         self.assertIn({"probe": "foundation_env_studio", "module": "GameKit/EnvRoblox"}, starter["pending_probes"])
         self.assertEqual(sum(starter["tiers"].values()), len(modules))
         self.assertTrue(all(m["lune"] for name, m in modules.items() if name.startswith("ProcGen/")))
