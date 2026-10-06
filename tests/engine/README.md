@@ -44,7 +44,7 @@ Client probes (`perf_capture_client`) and anything that needs a running simulati
 3. Save the Output (or the Studio MCP console output) to a file under `build/` and record it:
    `python3 tools/studio_run.py --probe kitsmoke_all --from-output build/<file>.txt`
 
-The report's `source.route` is `from-output` and `source.output_sha256` pins the captured file. Output from `lune run tools/lune/kit_smoke.luau` parses the same way but is Lune evidence, not Studio evidence: never record it under `reports/engine/`.
+The report's `source.route` is `from-output` and `source.output_sha256` pins the captured file. Output from `lune run tools/lune/kit_smoke.luau` is Lune evidence, not Studio evidence: its `ENGINE_DONE` lines carry `"runtime":"lune"` (`tests/fakes/FakeKitSmoke.luau`), and `tools/studio_run.py` refuses such output (exit 2) and writes nothing under `reports/engine/`. `tools/kit_tiers.py` counts only `engine-report/1` reports with a `studio-cli` or `from-output` route; an evidence file that is anything else is INVALID_REPORT and fails `--check`.
 
 ## Lune side
 

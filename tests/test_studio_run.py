@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -41,6 +42,10 @@ ENGINE_DONE {"checks":1,"errors":0,"failed":0,"ok":true,"passed":1,"probes":["ki
 ENGINE_CHECK {"check":"frames_sampled","ok":true,"probe":"perf_capture_client"}
 ENGINE_DONE {"checks":1,"errors":0,"failed":0,"ok":true,"passed":1,"probes":["perf_capture_client"]}
 """
+
+# The Lune runner's lines (tools/lune/kit_smoke.luau prints them; tests/golden/kit-smoke.json records them).
+KIT_SMOKE_GOLDEN = json.loads((ROOT / "tests" / "golden" / "kit-smoke.json").read_text())
+LUNE = "\n".join(KIT_SMOKE_GOLDEN["server"]["lines"] + KIT_SMOKE_GOLDEN["client"]["lines"]) + "\n"
 
 
 class EvaluateTest(unittest.TestCase):
@@ -81,6 +86,16 @@ class EvaluateTest(unittest.TestCase):
         status, body = studio_run.evaluate("kitsmoke_all", TWO_RUNS)
         self.assertEqual(status, "PASS", body["problems"])
         self.assertEqual(body["probes"], ["kitsmoke_registries", "perf_capture_client"])
+
+    def test_lune_output_is_refused(self):
+        self.assertIn('"runtime":"lune"}', LUNE, "FakeKitSmoke marks every ENGINE_DONE line it emits")
+        # The lines parse and pass on their own; only the mark tells them apart from a play-session capture.
+        self.assertEqual(studio_run.evaluate("kitsmoke_all", LUNE)[0], "PASS")
+        with self.assertRaises(studio_run.Refused) as caught:
+            studio_run.refuse_lune_output(LUNE, "out.txt")
+        self.assertIn("2 ENGINE_DONE line(s) say runtime lune", str(caught.exception))
+        studio_run.refuse_lune_output(GOOD, "out.txt")
+        studio_run.refuse_lune_output(TWO_RUNS, "out.txt")
 
     def test_bad_json_is_a_problem(self):
         status, body = studio_run.evaluate("foundation_env_studio", GOOD + "ENGINE_CHECK {not json}\n")
@@ -165,6 +180,27 @@ class RouteTest(unittest.TestCase):
         self.assertNotIn("someone", raw)
         self.assertIn("<repo>/packages/GameKit/Env.luau", raw)
 
+    def test_from_output_refuses_lune_output(self):
+        # Before: Lune output recorded as a PASS engine-report/1 under reports/engine, which kit_tiers then
+        # counted as Studio evidence for the kitsmoke_ and perf_ probes.
+        output = self.tmp / "kit_smoke.txt"
+        output.write_text("REGISTRY server/kitsmoke_probes kitsmoke_debug_commands\n" + LUNE + "GOLDEN kit-smoke: matches\n")
+        code, text = self.run_tool("--probe", "kitsmoke_all", "--from-output", str(output))
+        self.assertEqual(code, 2, text)
+        self.assertIn("REFUSED", text)
+        self.assertIn("runtime lune", text)
+        self.assertFalse(self.reports.exists(), "nothing is recorded under the reports folder")
+
+    @unittest.skipIf(shutil.which("lune") is None, "lune not installed")
+    def test_lune_kit_smoke_run_is_refused(self):
+        proc = subprocess.run(["lune", "run", "tools/lune/kit_smoke.luau"], cwd=ROOT, capture_output=True, text=True, timeout=300)
+        self.assertEqual(proc.returncode, 0, proc.stdout[-2000:] + proc.stderr[-2000:])
+        output = self.tmp / "kit_smoke.txt"
+        output.write_text(proc.stdout)
+        code, text = self.run_tool("--probe", "kitsmoke_all", "--from-output", str(output))
+        self.assertEqual(code, 2, text)
+        self.assertFalse(self.reports.exists())
+
     def test_fake_studio_cli_route(self):
         fake = self.tmp / "FakeStudio"
         fake.write_text(
@@ -185,6 +221,23 @@ class RouteTest(unittest.TestCase):
         self.assertEqual(report["source"]["studio_exit"], "exit 0")
         self.assertTrue(report["source"]["place"].startswith("build/"))
         self.assertEqual(len(report["source"]["place_sha256"]), 64)
+
+    def test_fake_studio_printing_lune_output_is_refused(self):
+        fake = self.tmp / "FakeStudio"
+        fake.write_text(
+            "#!/usr/bin/env python3\n"
+            "import sys\n"
+            "args = sys.argv[1:]\n"
+            "out = args[args.index('--outputFile') + 1]\n"
+            f"open(out, 'w').write({LUNE!r})\n"
+        )
+        fake.chmod(fake.stat().st_mode | stat.S_IXUSR)
+        place = self.tmp / "kits.rbxl"
+        place.write_bytes(b"<roblox/>")
+        code, text = self.run_tool("--probe", "kitsmoke_all", "--studio", str(fake), "--place", str(place))
+        self.assertEqual(code, 2, text)
+        self.assertIn("REFUSED the Studio run's output", text)
+        self.assertFalse(self.reports.exists())
 
     def test_find_studio_order(self):
         fake = self.tmp / "Studio.exe"

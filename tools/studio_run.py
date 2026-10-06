@@ -21,7 +21,9 @@ recorded with --from-output.
 Results: reports/engine/<probe>.json (schema engine-report/1) for a real run or a parsed output, with
 repo-relative paths only. Where Studio is absent (this Linux container, CI) the status is
 BLOCKED_EXTERNAL, nothing under reports/ is written (build/engine/<probe>.json instead) and the exit
-code is 3, never 0. Exit codes: 0 PASS, 1 FAIL, 2 refused or bad usage, 3 BLOCKED_EXTERNAL.
+code is 3, never 0. Output from Lune (tools/lune/kit_smoke.luau over fakes; its ENGINE_DONE lines carry
+"runtime":"lune") is refused on either route and writes nothing: Lune output is never engine evidence.
+Exit codes: 0 PASS, 1 FAIL, 2 refused or bad usage, 3 BLOCKED_EXTERNAL.
 """
 import argparse
 import datetime
@@ -140,6 +142,15 @@ def parse_output(text):
         runs.append({"checks": current, "done": None})
         problems.append(f"{len(current)} ENGINE_CHECK line(s) after the last ENGINE_DONE: a run did not finish")
     return {"runs": runs, "problems": problems}
+
+
+def refuse_lune_output(text, where):
+    """Raises Refused when any ENGINE_DONE line says it ran in Lune (tests/fakes/FakeKitSmoke.luau marks
+    them "runtime":"lune"): those probes ran against fakes, which is not engine evidence."""
+    marked = [run for run in parse_output(text)["runs"] if run["done"] and run["done"].get("runtime") == "lune"]
+    if marked:
+        raise Refused(f"{where}: {len(marked)} ENGINE_DONE line(s) say runtime lune; Lune output (tools/lune/kit_smoke.luau) "
+                      "is not engine evidence and is never recorded under reports/engine. Record the Studio output instead")
 
 
 def run_problems(run):
@@ -292,8 +303,13 @@ def main(argv=None):
 
     if args.from_output:
         text = Path(args.from_output).read_text(encoding="utf-8", errors="replace")
+        try:
+            refuse_lune_output(text, args.from_output)
+        except Refused as err:
+            print(f"REFUSED {err}")
+            return EXIT["REFUSED"]
         # The output's digest ties the report to the captured file; the route says it was not a CLI
-        # run here. Lune output (tools/lune/kit_smoke.luau) parses too, but is not Studio evidence.
+        # run here.
         source.update({"route": "from-output", "output_sha256": sha256_file(Path(args.from_output))})
         status, body = evaluate(args.probe, text)
         report = scrub(report_document(args.probe, status, body, source), secrets)
@@ -327,6 +343,7 @@ def main(argv=None):
                 text = (output.read_text(encoding="utf-8", errors="replace") if output.exists() else "") or (err.stdout or "")
                 text = text.decode("utf-8", "replace") if isinstance(text, bytes) else text
                 exit_note = f"timed out after {args.timeout}s"
+        refuse_lune_output(text, "the Studio run's output")
     except Refused as err:
         print(f"REFUSED {err}")
         return EXIT["REFUSED"]

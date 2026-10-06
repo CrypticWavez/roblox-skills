@@ -7,7 +7,8 @@
 -- 2. Golden: the G9b registries (kitsmoke_*) run on a fake server and a fake client
 --    (tests/fakes/FakeKitSmoke.luau); their ENGINE lines must match tests/golden/kit-smoke.json.
 -- Other groups' probes are loaded, not run: each group runs its own registry against its fakes.
--- This is Lune evidence only; Studio evidence is `python3 tools/studio_run.py --probe kitsmoke_all`.
+-- This is Lune evidence only; Studio evidence is `python3 tools/studio_run.py --probe kitsmoke_all`. Its
+-- ENGINE_DONE lines carry "runtime":"lune" (FakeKitSmoke.mark), so studio_run.py --from-output refuses them.
 -- Exit 0 on success, 1 on any problem.
 local process = require("@lune/process")
 local FakeKitSmoke = require("../../tests/fakes/FakeKitSmoke")

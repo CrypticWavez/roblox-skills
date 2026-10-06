@@ -8,7 +8,7 @@
       "ENGINE_CHECK {\"check\":\"frames_sampled\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
       "ENGINE_CHECK {\"check\":\"triangles_read\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
       "ENGINE_CHECK {\"check\":\"client_side\",\"ok\":true,\"probe\":\"perf_capture_client\"}",
-      "ENGINE_DONE {\"checks\":7,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":7,\"probes\":[\"kitsmoke_registries\",\"perf_capture_client\"]}"
+      "ENGINE_DONE {\"checks\":7,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":7,\"probes\":[\"kitsmoke_registries\",\"perf_capture_client\"],\"runtime\":\"lune\"}"
     ],
     "summary": {
       "checks": 7,
@@ -39,7 +39,7 @@
       "ENGINE_CHECK {\"check\":\"instance_count_read\",\"ok\":true,\"probe\":\"perf_capture\"}",
       "ENGINE_CHECK {\"check\":\"world_walk_counted\",\"ok\":true,\"probe\":\"perf_capture\"}",
       "ENGINE_CHECK {\"check\":\"frame_timing\",\"detail\":{\"running\":true},\"ok\":true,\"probe\":\"perf_capture\"}",
-      "ENGINE_DONE {\"checks\":15,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":15,\"probes\":[\"kitsmoke_debug_commands\",\"kitsmoke_inspector_target\",\"kitsmoke_registries\",\"perf_capture\"]}"
+      "ENGINE_DONE {\"checks\":15,\"errors\":0,\"failed\":0,\"ok\":true,\"passed\":15,\"probes\":[\"kitsmoke_debug_commands\",\"kitsmoke_inspector_target\",\"kitsmoke_registries\",\"perf_capture\"],\"runtime\":\"lune\"}"
     ],
     "summary": {
       "checks": 15,

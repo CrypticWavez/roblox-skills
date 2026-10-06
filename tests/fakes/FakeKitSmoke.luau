@@ -9,6 +9,8 @@
 --   sources(sides, filter?)  registries on disk (KitSmoke.fromFiles over @lune/fs)
 --   loader, preload()  kit("GameKit/Probe") -> packages/GameKit/Probe; PRELOAD loads before a run
 --   golden()           the deterministic G9b run: server and client kitsmoke_ registries
+--   mark(line)         adds "runtime":"lune" to an ENGINE_DONE line: Lune output is never engine
+--                      evidence, and tools/studio_run.py refuses output that carries the mark
 local fs = require("@lune/fs")
 local FakeEnv = require("./FakeEnv")
 local FakePerfEngine = require("./FakePerfEngine")
@@ -182,6 +184,15 @@ function FakeKitSmoke.sources(sides: { string }?, filter: ((name: string) -> boo
 	return kept
 end
 
+-- Every ENGINE_DONE line a fake run emits says it came from Lune. "runtime" sorts after "probes", the
+-- last key of the canonical done line, so appending it keeps the JSON canonical.
+function FakeKitSmoke.mark(line: string): string
+	if string.sub(line, 1, #"ENGINE_DONE {") == "ENGINE_DONE {" and string.sub(line, -1) == "}" then
+		return string.sub(line, 1, -2) .. ',"runtime":"lune"}'
+	end
+	return line
+end
+
 local function ownRegistry(name: string): boolean
 	return string.sub(name, 1, #"kitsmoke_") == "kitsmoke_"
 end
@@ -199,7 +210,7 @@ function FakeKitSmoke.runSide(side: string, sideSources: { any }?): any
 				env = env,
 				kit = FakeKitSmoke.loader,
 				emit = function(line: string)
-					table.insert(lines, line)
+					table.insert(lines, FakeKitSmoke.mark(line))
 				end,
 			})
 			return { summary = summary, problems = problems }

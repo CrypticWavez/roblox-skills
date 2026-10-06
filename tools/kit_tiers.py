@@ -13,10 +13,11 @@ Rules (docs/runtime-kits.md sections 5 and 7; tests/kits_load.spec.luau enforces
   is registered: a whole word in a fixtures/kits/<side>/*_probes.luau registry, or tests/engine/<probe>.luau.
 
 Evidence per probe comes from reports/engine/<probe>.json, or from reports/engine/kitsmoke_all.json when the
-probe ran there (tools/studio_run.py writes both). Without a report a probe is PENDING; a T3 module is proven
-only when every probe it names passes, and T4 is never claimed here. The report has no dates, so it changes
-only when headers, registrations or engine reports change. Exit 0 when the rules hold (and, with --check, the report is current),
-else 1.
+probe ran there (tools/studio_run.py writes both). Without a report a probe is PENDING; a report that is not
+an engine-report/1 object with a studio_run route and status PASS, FAIL or BLOCKED_EXTERNAL is INVALID_REPORT
+and a problem. A T3 module is proven only when every probe it names passes, and T4 is never claimed here.
+The report has no dates, so it changes only when headers, registrations or engine reports change. Exit 0
+when the rules hold (and, with --check, the report is current), else 1.
 """
 import argparse
 import json
@@ -34,6 +35,9 @@ TIER_LOOSE = re.compile(r"^--\s*@tier")
 PROBE_LINE = re.compile(r"^-- probe: (\S+)\s*$")
 PROBE_NAME = re.compile(r"^[a-z][a-z0-9_]+$")
 SIDES = ("shared", "server", "client")
+ENGINE_SCHEMA = "engine-report/1"
+ENGINE_ROUTES = ("studio-cli", "from-output")  # tools/studio_run.py
+ENGINE_STATUSES = ("PASS", "FAIL", "BLOCKED_EXTERNAL")
 
 
 def owner_prefixes(root):
@@ -111,8 +115,26 @@ def modules(root):
     return out
 
 
+def report_problem(doc):
+    """Why a parsed reports/engine document is not engine evidence, or None."""
+    if not isinstance(doc, dict):
+        return "is not a JSON object"
+    if doc.get("schema") != ENGINE_SCHEMA:
+        return f"schema is {doc.get('schema')!r}, not {ENGINE_SCHEMA}"
+    source = doc.get("source")
+    route = source.get("route") if isinstance(source, dict) else None
+    if route not in ENGINE_ROUTES:
+        return f"source.route is {route!r}, not one of {', '.join(ENGINE_ROUTES)} (tools/studio_run.py)"
+    if doc.get("status") not in ENGINE_STATUSES:
+        return f"status is {doc.get('status')!r}, not one of {', '.join(ENGINE_STATUSES)}"
+    if not isinstance(doc.get("probes", []), list):
+        return "probes is not a list"
+    return None
+
+
 def engine_evidence(probe, root):
-    """(status, report path) from reports/engine; PENDING when no report names the probe."""
+    """(status, report path, why) from reports/engine; PENDING when no report names the probe. why says
+    what is wrong with the report when the status is INVALID_REPORT, else it is None."""
     engine = root / "reports" / "engine"
     own = engine / f"{probe}.json"
     candidates = [own] if own.is_file() else []
@@ -120,17 +142,21 @@ def engine_evidence(probe, root):
     if combined.is_file():
         candidates.append(combined)
     for path in candidates:
+        rel = path.relative_to(root).as_posix()
         try:
             doc = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return "INVALID_REPORT", path.relative_to(root).as_posix()
-        if path == own or probe in (doc.get("probes") or []):
-            status = doc.get("status")
+        except (OSError, ValueError):  # no error text: it can carry a machine path into the report
+            return "INVALID_REPORT", rel, "is not readable JSON"
+        why = report_problem(doc)
+        if why:
+            return "INVALID_REPORT", rel, why
+        if path == own or probe in doc.get("probes", []):
+            status = doc["status"]
             if path != own and status == "PASS":
                 failed = {f.get("probe") for f in doc.get("failures") or [] if isinstance(f, dict)}
                 status = "FAIL" if probe in failed else "PASS"
-            return (status if status in ("PASS", "FAIL", "BLOCKED_EXTERNAL") else "INVALID_REPORT"), path.relative_to(root).as_posix()
-    return "PENDING", None
+            return status, rel, None
+    return "PENDING", None, None
 
 
 def build(root):
@@ -167,16 +193,19 @@ def build(root):
             row["probes"] = named
         rows.append(row)
         problems.extend(f"{rel}: {p}" for p in own)
-    probe_rows = []
+    probe_rows, invalid = [], {}
     for name in sorted(probes):
         entry = probes[name]
-        status, report = engine_evidence(name, root)
+        status, report, why = engine_evidence(name, root)
+        if why:
+            invalid[report] = why
         runner = f"tests/engine/{name}.luau" if (root / "tests" / "engine" / f"{name}.luau").is_file() else (
             "tests/engine/kitsmoke_all.luau" if any(p.startswith("fixtures/") for p in entry["registered_in"]) else None)
         row = {**entry, "evidence": status, "runner": runner}
         if report:
             row["report"] = report
         probe_rows.append(row)
+    problems.extend(f"{report}: {why}; it is not engine evidence (tools/studio_run.py writes {ENGINE_SCHEMA})" for report, why in sorted(invalid.items()))
     by_tier, evidence = {}, {}
     for row in rows:
         by_tier[row["tier"] or "none"] = by_tier.get(row["tier"] or "none", 0) + 1

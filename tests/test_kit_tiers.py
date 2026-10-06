@@ -110,31 +110,48 @@ class KitTiersTest(unittest.TestCase):
 
     def test_engine_evidence_from_own_and_combined_reports(self):
         self.write("tests/engine/platform_signal.luau", "-- entry\n")
-        self.write("reports/engine/platform_signal.json", json.dumps({"status": "PASS", "probes": ["platform_signal"]}))
-        self.run_tool()
+        self.write("reports/engine/platform_signal.json", engine_report("PASS", ["platform_signal"]))
+        self.assertEqual(self.run_tool()[0], 0)
         probe = self.report()["probes"][0]
         self.assertEqual((probe["evidence"], probe["report"], probe["runner"]), ("PASS", "reports/engine/platform_signal.json", "tests/engine/platform_signal.luau"))
         self.assertEqual(self.report()["counts"]["t3_with_passing_probe"], 1)
 
         (self.tmp / "reports/engine/platform_signal.json").unlink()
-        self.write("reports/engine/kitsmoke_all.json", json.dumps({
-            "status": "FAIL", "probes": ["platform_signal", "other"],
-            "failures": [{"probe": "other", "check": "x"}],
-        }))
+        self.write("reports/engine/kitsmoke_all.json", engine_report(
+            "FAIL", ["platform_signal", "other"], route="from-output", failures=[{"probe": "other", "check": "x"}]))
         self.run_tool()
         self.assertEqual(self.report()["probes"][0]["evidence"], "FAIL", "a failing combined run is not a pass for anyone")
 
-        self.write("reports/engine/kitsmoke_all.json", json.dumps({"status": "PASS", "probes": ["platform_signal"]}))
+        self.write("reports/engine/kitsmoke_all.json", engine_report("PASS", ["platform_signal"], route="from-output"))
         self.run_tool()
         self.assertEqual(self.report()["probes"][0]["evidence"], "PASS")
 
-        self.write("reports/engine/kitsmoke_all.json", "{broken")
-        self.run_tool()
-        self.assertEqual(self.report()["probes"][0]["evidence"], "INVALID_REPORT")
+    def test_invalid_engine_reports_are_problems_and_fail_check(self):
+        # Before: a schemaless {"status": "PASS"} counted as evidence and INVALID_REPORT added no problem,
+        # so --check passed over a corrupt or hand-written file.
+        for text, needle in (
+            ("{broken", "is not readable JSON"),
+            ("[1, 2]", "is not a JSON object"),
+            (json.dumps({"status": "PASS", "probes": ["platform_signal"]}), "schema is None, not engine-report/1"),
+            (engine_report("PASS", ["platform_signal"], route="lune"), "source.route is 'lune'"),
+            (json.dumps({"schema": "engine-report/1", "status": "PASS", "probes": ["platform_signal"]}), "source.route is None"),
+            (engine_report("MAYBE", ["platform_signal"]), "status is 'MAYBE'"),
+            (engine_report("PASS", "platform_signal"), "probes is not a list"),
+        ):
+            with self.subTest(text=text):
+                self.write("reports/engine/kitsmoke_all.json", text)
+                code, out = self.run_tool()
+                self.assertEqual(code, 1, out)
+                report = self.report()
+                self.assertEqual(report["probes"][0]["evidence"], "INVALID_REPORT")
+                self.assertEqual(report["counts"]["t3_with_passing_probe"], 0)
+                self.assertEqual(len(report["problems"]), 1, report["problems"])
+                self.assertIn("reports/engine/kitsmoke_all.json: " + needle, report["problems"][0])
+                self.assertEqual(self.run_tool("--check")[0], 1, "a current report with an invalid evidence file still fails --check")
 
     def test_blocked_external_is_not_a_pass(self):
-        self.write("reports/engine/platform_signal.json", json.dumps({"status": "BLOCKED_EXTERNAL"}))
-        self.run_tool()
+        self.write("reports/engine/platform_signal.json", engine_report("BLOCKED_EXTERNAL"))
+        self.assertEqual(self.run_tool()[0], 0)
         self.assertEqual(self.report()["probes"][0]["evidence"], "BLOCKED_EXTERNAL")
         self.assertEqual(self.report()["counts"]["t3_with_passing_probe"], 0)
 
