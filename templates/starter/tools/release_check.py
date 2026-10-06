@@ -34,6 +34,8 @@ META_SCHEMA = "release-meta/1"
 OWNER_SCHEMA = production.OWNER_SCHEMA
 WALLY_DIRS = {"Packages", "ServerPackages", "DevPackages"}
 FACTORY_DIR = "factory"  # the factory packages in a game repo (tools/new_project.py)
+# GameKit Catalog.validate: the only top-level keys of a catalog/1 file (Catalog.define rejects others).
+CATALOG_KEYS = ("schema", "mode", "products")
 # GameKit Commerce.RANDOM_TAG: Commerce.canPrompt needs PolicyGate paidRandomItems for a product with this tag.
 RANDOM_TAG = "paid_random_item"
 LABEL = production.LABEL
@@ -70,7 +72,7 @@ ITEMS = [
      "spec": "No code in src/ connects OnServerEvent or assigns OnServerInvoke directly: server handlers are registered through GameKit/RemoteGuard (rate limits, schema checks) or generated from a Blink schema (paths listed in release.json generated).",
      "source": "skill roblox-multiplayer-integrity"},
     {"id": "A03", "tier": "A", "title": "Catalog ready for release",
-     "spec": "Monetization code needs a catalog/1 file (release.json catalog). It is in mode game; keys are unique labels; kinds are devproduct, gamepass or subscription; ids are real (integers > 0, EXP- ids for subscriptions) and unique; every enabled product has ownershipVerified; grants are non-empty; display has a nameKey; adReward only on developer products with fixed grants; no price-like key anywhere. Code never hard-codes product, pass or subscription ids.",
+     "spec": "Monetization code needs a catalog/1 file (release.json catalog). It is in mode game, with only the top-level keys GameKit Catalog.define accepts (schema, mode, products) and a products list; keys are unique labels; kinds are devproduct, gamepass or subscription; ids are real (integers > 0, EXP- ids for subscriptions) and unique; every enabled product has ownershipVerified; grants are non-empty; display has a nameKey; adReward only on developer products with fixed grants; no price-like key anywhere. Code never hard-codes product, pass or subscription ids.",
      "source": "factory docs/runtime-kits.md (catalog/1); " + DOCS + "production/monetization/developer-products"},
     {"id": "A04", "tier": "A", "title": "Exactly one server receipt handler",
      "spec": "Developer products are granted only from one receipt handler (MarketplaceService.ProcessReceipt or BindReceiptHandler) in server code; none in client or shared code; no server grant keyed on PromptProductPurchaseFinished.",
@@ -503,6 +505,10 @@ def check_a03(ctx):
         return problems + [f"{ctx.catalog_rel}: schema must be catalog/1"], []
     if catalog.get("mode") != "game":
         problems.append(f"{ctx.catalog_rel}: mode is {catalog.get('mode')!r}; a release needs mode game with real ids")
+    for key in sorted(str(k) for k in catalog if k not in CATALOG_KEYS):
+        problems.append(f"{ctx.catalog_rel}: unexpected top-level key {key!r} (GameKit Catalog.define accepts only {', '.join(CATALOG_KEYS)})")
+    if not isinstance(catalog.get("products"), list):
+        problems.append(f"{ctx.catalog_rel}: products must be a list")
     keys, ids = set(), set()
     for index, product in enumerate(ctx.products()):
         key = product.get("key")

@@ -262,6 +262,38 @@ class ProjectMappings(ReleaseFixtureCase):
         self.assertEqual(statuses(release_check.run_checks(dest))["A01"], "PASS")
 
 
+class CatalogTopLevel(ReleaseFixtureCase):
+    """A03 rejects at the top level what GameKit Catalog.define rejects (packages/GameKit/Catalog.luau)."""
+
+    def test_the_top_level_keys_are_catalog_validates(self):
+        source = (ROOT / "packages" / "GameKit" / "Catalog.luau").read_text(encoding="utf-8")
+        loop = re.search(r"for key in catalog do\s*\n\s*if ((?:key ~= \"\w+\"(?: and )?)+) then", source)
+        self.assertIsNotNone(loop, "the top-level key check of Catalog.validate not found")
+        self.assertEqual(sorted(re.findall(r'"(\w+)"', loop.group(1))), sorted(release_check.CATALOG_KEYS))
+
+    def edited(self, change):
+        dest = Path(tempfile.mkdtemp(prefix="catalog-", dir=self.tmp))
+        materialise(dest)
+        path = dest / "src" / "shared" / "catalog.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        change(data)
+        path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+        return release_check.run_checks(dest)
+
+    def test_an_unknown_top_level_key_fails_a03(self):
+        report = self.edited(lambda d: d.update(note="ids are synthetic"))  # Catalog.define: "unexpected key note"
+        self.assertEqual(failing(report), ["A03"])
+        self.assertIn("src/shared/catalog.json: unexpected top-level key 'note' (GameKit Catalog.define accepts only schema, mode, "
+                      "products)", problems_of(report, "A03"))
+
+    def test_products_must_be_a_list(self):
+        for value in ({"currency_pack_a": {}}, None, "products"):
+            with self.subTest(products=value):
+                report = self.edited(lambda d: d.update(products=value))
+                self.assertIn("A03", failing(report))
+                self.assertIn("src/shared/catalog.json: products must be a list", problems_of(report, "A03"))
+
+
 class OwnerItems(ReleaseFixtureCase):
     def owner_file(self, dest, records, exceptions=()):
         path = dest / "release" / "owner-fixture.json"
