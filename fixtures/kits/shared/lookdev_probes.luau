@@ -121,7 +121,7 @@ function probes.av_vfx_grid(ctx: any)
 	folder:Destroy()
 end
 
-local function audioSetup(ctx: any, options: any): any
+local function audioSetup(ctx: any, options: any): (any, any)
 	local env = ctx.env
 	local lib = env.roblox
 	local folder = lib.Instance.new("Folder")

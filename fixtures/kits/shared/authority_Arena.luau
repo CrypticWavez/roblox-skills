@@ -43,9 +43,15 @@ Arena.CONFIG = table.freeze({
 	minPlayers = 1,
 })
 
+-- The shape of AuthorityRoblox.ActionsSpec (this module has no requires, so no type import). A
+-- binding is one keyCode, or up/down/left/right key codes for a Direction2D composite.
+type Binding = { keyCode: string?, up: string?, down: string?, left: string?, right: string? }
+type ActionSpec = { name: string, type: string, bindings: { Binding } }
+type ActionsSpec = { context: string, priority: number, actions: { ActionSpec } }
+
 -- Raw IAS actions the client fixture builds (AuthorityRoblox.buildActions; G4's InputMap
 -- replaces this raw build after merge). Names are functions, bindings are defaults.
-Arena.ACTIONS = table.freeze({
+local ACTIONS: ActionsSpec = {
 	context = "SETUP_ONLY_Authority",
 	priority = 1,
 	actions = {
@@ -66,7 +72,8 @@ Arena.ACTIONS = table.freeze({
 			bindings = { { keyCode = "MouseLeftButton" }, { keyCode = "ButtonR2" } },
 		},
 	},
-})
+}
+Arena.ACTIONS = table.freeze(ACTIONS)
 
 export type V3 = { x: number, y: number, z: number }
 export type Options = {

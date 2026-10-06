@@ -304,11 +304,13 @@ end
 -- The perf/1 budgets document Python tools read (snake_case, plain tables).
 function Budgets.document(): { [string]: any }
 	local classes = {}
-	for name, limits in Budgets.CLASSES do
+	local byClass: { [string]: { [string]: number } } = Budgets.CLASSES
+	for name, limits in byClass do
 		classes[name] = table.clone(limits)
 	end
 	local documentedKeys = {}
-	for name, keys in Budgets.DOCUMENTED_KEYS do
+	local keysByClass: { [string]: { [string]: string } } = Budgets.DOCUMENTED_KEYS
+	for name, keys in keysByClass do
 		documentedKeys[name] = table.clone(keys)
 	end
 	return {

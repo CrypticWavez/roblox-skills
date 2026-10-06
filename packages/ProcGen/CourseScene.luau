@@ -23,10 +23,20 @@ local MARK = 0.2 -- thickness of flat markers (slots, spawn pads), studs
 
 local function attrs(asset: string, extra: { [string]: any }?): { [string]: any }
 	local out: { [string]: any } = { asset = asset }
-	for key, value in extra or {} do
+	local fields: { [string]: any } = extra or {}
+	for key, value in fields do
 		out[key] = value
 	end
 	return out
+end
+
+-- scene:group for a body that returns nothing. Scene.group is generic over one return value, so
+-- a body without a return does not type-check against `() -> T`; this one returns nil for it.
+local function group(scene: Scene, name: string, body: () -> ())
+	scene:group(name, function()
+		body()
+		return nil
+	end)
 end
 
 local PAD_ROLE = { spawn = "spawn", platform = "platform", checkpoint = "checkpoint", finish = "finish" }
@@ -36,7 +46,7 @@ local function jumpCourse(scene: Scene, course: any)
 	for _, cp in course.checkpoints do
 		checkpointOf[cp.pad] = cp.index
 	end
-	scene:group("Pads", function()
+	group(scene, "Pads", function()
 		for index, pad in course.pads do
 			local role = PAD_ROLE[pad.role] or "platform"
 			local extra: { [string]: any } = { CoursePad = pad.id }
@@ -60,7 +70,7 @@ local function jumpCourse(scene: Scene, course: any)
 		end
 	end)
 	if #course.hazards > 0 then
-		scene:group("Hazards", function()
+		group(scene, "Hazards", function()
 			for _, hazard in course.hazards do
 				scene:add({
 					role = "hazard",
@@ -74,7 +84,7 @@ local function jumpCourse(scene: Scene, course: any)
 		end)
 	end
 	if course.structures and #course.structures > 0 then
-		scene:group("Structures", function()
+		group(scene, "Structures", function()
 			for _, structure in course.structures do
 				scene:add({
 					role = "structure",
@@ -92,7 +102,7 @@ local function raceLoop(scene: Scene, course: any)
 	local samples = course.samples
 	local n = #samples
 	local width = course.params.width
-	scene:group("Track", function()
+	group(scene, "Track", function()
 		for i = 1, n do
 			local a, b = samples[i], samples[i % n + 1]
 			local dx, dy, dz = b.pos.x - a.pos.x, b.pos.y - a.pos.y, b.pos.z - a.pos.z
@@ -119,7 +129,7 @@ local function raceLoop(scene: Scene, course: any)
 			})
 		end
 	end)
-	scene:group("Gates", function()
+	group(scene, "Gates", function()
 		for _, gate in course.checkpoints do
 			local point = samples[gate.sample]
 			local r = math.rad(point.yaw)
@@ -164,7 +174,7 @@ local function raceLoop(scene: Scene, course: any)
 			})
 		end
 	end)
-	scene:group("Grid", function()
+	group(scene, "Grid", function()
 		for _, slot in course.spawn.slots do
 			local point = samples[slot.sample]
 			local lift = slot.lateral * math.sin(math.rad(point.bank))
@@ -184,7 +194,7 @@ end
 local function lanes(scene: Scene, course: any)
 	local cell = course.grid.cellSize
 	local width, rows = course.grid.width, course.grid.height
-	scene:group("Ground", function()
+	group(scene, "Ground", function()
 		scene:add({
 			role = "ground",
 			name = "ground",
@@ -207,7 +217,7 @@ local function lanes(scene: Scene, course: any)
 			attributes = attrs("course_base", { Finish = true }),
 		})
 	end)
-	scene:group("Lanes", function()
+	group(scene, "Lanes", function()
 		local seenStart = {}
 		for _, run in course.segments do
 			-- Cells from..to inclusive; a run after the lane's first starts one cell in, so the
@@ -231,7 +241,7 @@ local function lanes(scene: Scene, course: any)
 			})
 		end
 	end)
-	scene:group("Slots", function()
+	group(scene, "Slots", function()
 		for _, slot in course.slots do
 			scene:add({
 				role = "slot",
@@ -246,7 +256,7 @@ end
 
 local function microArena(scene: Scene, course: any)
 	local arena = course.arena
-	scene:group("Floor", function()
+	group(scene, "Floor", function()
 		if #course.tiles > 0 then
 			for index, tile in course.tiles do
 				scene:add({
@@ -278,7 +288,7 @@ local function microArena(scene: Scene, course: any)
 		end
 	end)
 	if arena.edge == "wall" then
-		scene:group("Edge", function()
+		group(scene, "Edge", function()
 			local height = 6
 			if arena.shape == "round" then
 				-- Wall pieces about 8 studs long on a ring just outside the floor.
@@ -319,7 +329,7 @@ local function microArena(scene: Scene, course: any)
 			end
 		end)
 	end
-	scene:group("Pieces", function()
+	group(scene, "Pieces", function()
 		for _, piece in course.segments do
 			scene:add({
 				role = piece.role,
@@ -334,7 +344,7 @@ local function microArena(scene: Scene, course: any)
 			})
 		end
 	end)
-	scene:group("Spawns", function()
+	group(scene, "Spawns", function()
 		for _, slot in course.spawn.slots do
 			scene:add({
 				role = "spawn",
@@ -361,7 +371,7 @@ function CourseScene.into(scene: Scene, course: any): Scene
 	assert(type(course) == "table" and course.schema == "course/1", "CourseScene: not a course/1 manifest")
 	local builder = BUILDERS[course.kind]
 	assert(builder, "CourseScene: unknown course kind " .. tostring(course.kind))
-	scene:group(course.kind, function()
+	group(scene, course.kind, function()
 		builder(scene, course)
 	end)
 	local meta = scene.meta :: any

@@ -169,7 +169,12 @@ local function jumpChecks(course: any, rules: any?, checks: { Check })
 		if not link.ok then
 			table.insert(
 				bad,
-				string.format("segment %d %s: %s", segment.index, tostring(segment.kind), link.reason)
+				string.format(
+					"segment %d %s: %s",
+					segment.index,
+					tostring(segment.kind),
+					tostring(link.reason)
+				)
 			)
 		end
 	end

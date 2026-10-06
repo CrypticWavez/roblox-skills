@@ -100,7 +100,7 @@ function ReceiptLedger.new(options: Options)
 		"minRetentionDays must be 1..3650"
 	)
 	local window = retentionDays * DAY
-	local now = options.now or os.time
+	local now: () -> number = options.now or os.time
 	assert(type(now) == "function", "now must be a function returning unix seconds")
 	local waitFor = options.wait or function(_seconds: number) end
 	local products: { [number]: Product } = {}

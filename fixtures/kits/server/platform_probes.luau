@@ -113,7 +113,8 @@ function probes.platform_playerdata_memory(ctx: any)
 	local PlayerData = ctx.kit("GameKit/PlayerData")
 	local PlayerDataRoblox = ctx.kit("GameKit/PlayerDataRoblox")
 	local env = ctx.env
-	local shared = { values = {}, locks = {} }
+	-- PlayerData.MemoryShared: stored documents and session locks by key ("player_<userId>").
+	local shared: { values: { [string]: any }, locks: { [string]: string } } = { values = {}, locks = {} }
 	local function options(serverId: string, sharedStore: any): any
 		return {
 			template = { visits = 0, flags = {} },

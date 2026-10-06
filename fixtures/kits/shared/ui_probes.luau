@@ -39,7 +39,8 @@ local function uiContext(ctx: any, extra: { [string]: any }?): any
 		options.measure = layout.measure
 		options.class = layout.class
 	end
-	for key, value in extra or {} do
+	local overrides: { [string]: any } = extra or {}
+	for key, value in overrides do
 		options[key] = value
 	end
 	return Build.context(options)

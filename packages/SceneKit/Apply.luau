@@ -28,7 +28,7 @@ Apply.defaultEnv = defaultEnv
 -- reverts everything it changed; the recording is committed on success and cancelled when `body`
 -- errors (the error is re-raised). Without a ChangeHistoryService (Lune) `body` simply runs.
 -- options.history injects a service (specs record the calls); options.env supplies Enum.
-function Apply.withUndo(name: string, body: () -> any, options: { history: any?, env: any? }?): any
+function Apply.withUndo(name: string, body: () -> ...any, options: { history: any?, env: any? }?): any
 	local history = options and options.history
 	if history == nil then
 		local okHistory, service = pcall(function()
@@ -171,7 +171,8 @@ function Apply.scene(
 			part.Transparency = spec.transparency or 0
 			part:SetAttribute("SceneKitId", spec.id)
 			part:SetAttribute("Role", spec.role)
-			for key, value in spec.attributes or {} do
+			local attributes: { [string]: any } = spec.attributes or {}
+			for key, value in attributes do
 				part:SetAttribute(key, value)
 			end
 			if spec.light then

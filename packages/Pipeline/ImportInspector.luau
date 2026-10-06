@@ -288,7 +288,7 @@ local function appearanceChecks(parts: { any }, look: Appearance, readColours: C
 	local out: { Check } = {}
 	local kind = look.kind
 	if kind == "palette_atlas" or kind == "baked" then
-		local wanted = look.maps or {}
+		local wanted: { [string]: string } = look.maps or {}
 		for _, role in ROLE_ORDER do
 			if role ~= "color" and wanted[role] == nil then
 				continue
@@ -365,7 +365,8 @@ local function appearanceChecks(parts: { any }, look: Appearance, readColours: C
 		})
 	elseif kind == "library" then
 		local names = {}
-		for _, m in look.materials or {} do
+		local refs: { string } = look.materials or {}
+		for _, m in refs do
 			table.insert(names, (string.gsub(m, "^library:", "")))
 		end
 		local applied = 0
@@ -398,8 +399,8 @@ function ImportInspector.inspect(root: any, expected: Expectation, options: Opti
 	if #parts == 0 then
 		return { pass = false, checks = checks, notChecked = {} }
 	end
-	local readTris = (options and options.triangles) or ImportInspector.studioTriangles
-	local readColours = (options and options.colours) or ImportInspector.studioColours
+	local readTris: TriangleReader = (options and options.triangles) or ImportInspector.studioTriangles
+	local readColours: ColourReader = (options and options.colours) or ImportInspector.studioColours
 	local meshRead, meshTris, meshErr = false, nil, nil
 	local function triangles(): ({ { { number } } }?, string?)
 		if not meshRead then
@@ -973,7 +974,7 @@ function ImportInspector.inspectClips(sidecar: any, observed: { ClipObservation 
 					),
 			})
 		end
-		local got = found.markers or {}
+		local got: { { name: string, time: number, param: string? } } = found.markers or {}
 		if #got == 0 then
 			table.insert(checks, {
 				name = "clip_markers:" .. clip.name,

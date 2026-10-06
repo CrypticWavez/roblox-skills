@@ -38,7 +38,8 @@ local function part(name: string, size: Vector3, cframe: CFrame, props: { [strin
 	p.Anchored = true
 	p.TopSurface = Enum.SurfaceType.Smooth
 	p.BottomSurface = Enum.SurfaceType.Smooth
-	for key, value in props or {} do
+	local assigned: { [string]: any } = props or {}
+	for key, value in assigned do
 		(p :: any)[key] = value
 	end
 	p:SetAttribute("SETUP_ONLY_Lookdev", true)

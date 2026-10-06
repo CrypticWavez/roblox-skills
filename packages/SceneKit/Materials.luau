@@ -350,14 +350,18 @@ function Materials.resolve(ref: string, library: any?): (any?, string?)
 	if type(ref) ~= "string" then
 		return nil, "reference must be a string"
 	end
-	local kind, rest = string.match(ref, "^(%a+):(.+)$")
 	if ref == "vertex_color" then
 		return { kind = "vertex_color" }, nil
-	elseif kind == "library" then
+	end
+	local kind, rest = string.match(ref, "^(%a+):(.+)$")
+	if kind == nil or rest == nil then
+		return nil, "unknown material reference " .. ref
+	end
+	if kind == "library" then
 		if library == nil then
 			return nil, "library:" .. rest .. " needs a material library"
 		end
-		local material = Materials.find(library, rest :: string)
+		local material = Materials.find(library, rest)
 		if material == nil then
 			return nil, "library has no material " .. tostring(rest)
 		end
@@ -368,7 +372,7 @@ function Materials.resolve(ref: string, library: any?): (any?, string?)
 		end
 		return { kind = "builtin", material = rest }, nil
 	elseif kind == "atlas" then
-		if string.find(rest :: string, "..", 1, true) or string.find(rest :: string, "/", 1, true) then
+		if string.find(rest, "..", 1, true) or string.find(rest, "/", 1, true) then
 			return nil, "atlas file must be a plain file name next to the kit"
 		end
 		return { kind = "atlas", file = rest }, nil

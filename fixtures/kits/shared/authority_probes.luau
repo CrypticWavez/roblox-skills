@@ -82,10 +82,19 @@ function probes.authority_attribute_budget(ctx: any)
 	folder:Destroy()
 end
 
+-- The shape of AuthorityRoblox.ActionsSpec (kit modules come from ctx.kit, so no type import). A
+-- binding is one keyCode, or up/down/left/right key codes for a Direction2D composite.
+type Binding = { keyCode: string?, up: string?, down: string?, left: string?, right: string? }
+type ActionsSpec = {
+	context: string,
+	priority: number,
+	actions: { { name: string, type: string, bindings: { Binding } } },
+}
+
 function probes.authority_input_actions(ctx: any)
 	local AuthorityRoblox = ctx.kit("GameKit/AuthorityRoblox")
 	local roblox = ctx.env.roblox
-	local context, actions = AuthorityRoblox.buildActions({
+	local spec: ActionsSpec = {
 		context = "SETUP_ONLY_AuthorityProbe",
 		priority = 1,
 		actions = {
@@ -100,7 +109,8 @@ function probes.authority_input_actions(ctx: any)
 				bindings = { { up = "W", down = "S", left = "A", right = "D" }, { keyCode = "Thumbstick1" } },
 			},
 		},
-	}, roblox, nil)
+	}
+	local context, actions = AuthorityRoblox.buildActions(spec, roblox, nil)
 	local primary, move = actions["gameplay.primary"], actions["gameplay.move"]
 	ctx.check("context_built", context.ClassName == "InputContext" and context.Priority == 1)
 	ctx.check("action_types", primary.Type.Name == "Bool" and move.Type.Name == "Direction2D")

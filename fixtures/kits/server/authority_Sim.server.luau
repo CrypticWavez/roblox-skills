@@ -82,7 +82,7 @@ local holder = Instance.new("Folder")
 holder.Name = "SETUP_ONLY_Authority"
 local function remote(name: string, unreliable: boolean): any
 	local ok, instance = pcall(Instance.new, if unreliable then "UnreliableRemoteEvent" else "RemoteEvent")
-	local event = if ok then instance else Instance.new("RemoteEvent")
+	local event: Instance = if ok then instance else Instance.new("RemoteEvent")
 	event.Name = name
 	event.Parent = holder
 	return event

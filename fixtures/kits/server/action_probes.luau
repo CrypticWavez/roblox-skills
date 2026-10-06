@@ -60,8 +60,9 @@ end
 
 -- Wraps a probe body: stages its folder, runs it, then always runs its deferred cleanups (in
 -- reverse) and removes the folder, so a probe that raises leaves nothing bound or built. The
--- error is re-raised for Probe.runAll to record as check "error".
-local function staged(name: string, body: (ctx: any, folder: any, defer: (fn: () -> ()) -> ()) -> ())
+-- error is re-raised for Probe.runAll to record as check "error". The body's results are ignored
+-- (typed `...any` so pcall's error value has a slot in its result type).
+local function staged(name: string, body: (ctx: any, folder: any, defer: (fn: () -> ()) -> ()) -> ...any)
 	return function(ctx: any)
 		local folder = stage(ctx, name)
 		local cleanups = {}

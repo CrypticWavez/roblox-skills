@@ -43,6 +43,12 @@ Course.MAX_GATE_SPACING = 400
 
 export type V3 = { x: number, y: number, z: number }
 export type Pad = { id: string, role: string, pos: V3, size: V3, yaw: number }
+-- What the footprint helpers read: a pad, an arena piece, any yawed box.
+export type Footprint = { pos: V3, size: V3, yaw: number }
+-- A free cell beside a lane path that may become a build slot (Course.lanes).
+type SlotCandidate = { x: number, y: number, order: number, cover: number }
+-- A cover or hazard piece of a micro arena (Course.microArena).
+type ArenaPiece = { role: string, sector: number, pos: V3, size: V3, yaw: number }
 export type Course = { [string]: any }
 
 local function r3(value: number): number
@@ -174,7 +180,7 @@ function Course.exitDistance(pad: Pad, ux: number, uz: number): number
 end
 
 -- Footprint corners in (x, z), counter-clockwise, grown by `grow` studs on every side.
-function Course.corners(pad: Pad, grow: number?): { { number } }
+function Course.corners(pad: Footprint, grow: number?): { { number } }
 	local g = grow or 0
 	local ax, az, bx, bz = axes(pad.yaw)
 	local a, b = pad.size.x / 2 + g, pad.size.z / 2 + g
@@ -214,7 +220,7 @@ local function overlapDepth(ca: { { number } }, cb: { { number } }): number
 end
 
 -- Separating-axis test on two footprints (grown by `grow`): true when they overlap by more than 1e-6.
-function Course.footprintsOverlap(a: Pad, b: Pad, grow: number?): boolean
+function Course.footprintsOverlap(a: Footprint, b: Footprint, grow: number?): boolean
 	return overlapDepth(Course.corners(a, grow), Course.corners(b, grow)) > 1e-6
 end
 
@@ -257,7 +263,7 @@ function Course.onPad(pad: Pad, x: number, z: number, grow: number?): boolean
 end
 
 -- Horizontal distance from a point (x, z) to a pad's footprint (0 on it).
-function Course.footprintDistance(pad: Pad, x: number, z: number): number
+function Course.footprintDistance(pad: Footprint, x: number, z: number): number
 	local ax, az, bx, bz = axes(pad.yaw)
 	local dx, dz = x - pad.pos.x, z - pad.pos.z
 	local ox = math.max(math.abs(dx * ax + dz * az) - pad.size.x / 2, 0)
@@ -558,11 +564,11 @@ function Course.linear(params: any): Course
 		-- the pads before the checkpoint. The first candidate that overlaps nothing and keeps the
 		-- checkpoint unskippable wins.
 		local options = {}
-		local yaws = if pendingTurn
+		local yaws: { number } = if pendingTurn
 			then { (yaw + 90 * turnSign) % 360, (yaw - 90 * turnSign) % 360, yaw }
 			else { yaw }
 		for _, candidateYaw in yaws do
-			local laterals = if lateral ~= 0 then { lateral, -lateral } else { 0 }
+			local laterals: { number } = if lateral ~= 0 then { lateral, -lateral } else { 0 }
 			if candidateYaw ~= yaw then
 				local ox, oz = axes(yaw)
 				local nx, nz = axes(candidateYaw)
@@ -1030,7 +1036,7 @@ function Course.raceLoop(params: any): Course
 	local previous = 1
 	for g = 1, gates do
 		local last = checkpoints[g].sample
-		local tight, steep, length = math.huge, 0, 0
+		local tight, steep, segmentLength = math.huge, 0, 0
 		local i = previous
 		while true do
 			local point = track[i]
@@ -1038,7 +1044,7 @@ function Course.raceLoop(params: any): Course
 				tight = math.min(tight, math.abs(point.radius))
 			end
 			steep = math.max(steep, math.abs(point.grade))
-			length += total / n
+			segmentLength += total / n
 			if i == last then
 				break
 			end
@@ -1056,7 +1062,7 @@ function Course.raceLoop(params: any): Course
 			kind = kind,
 			from = previous,
 			to = last,
-			length = r3(length),
+			length = r3(segmentLength),
 			minRadius = if tight == math.huge then 0 else r3(tight),
 		})
 		previous = last % n + 1
@@ -1331,7 +1337,7 @@ function Course.lanes(params: any): Course
 	local perLane = {}
 	for _, lane in lanes do
 		local cells = laneCells[lane.lane]
-		local candidates, seen = {}, {}
+		local candidates: { SlotCandidate }, seen = {}, {}
 		for order, c in cells do
 			for _, o in { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
 				local nx, ny = c[1] + o[1], c[2] + o[2]
@@ -1361,7 +1367,7 @@ function Course.lanes(params: any): Course
 			end
 			return a.x < b.x
 		end)
-		local picked = {}
+		local picked: { SlotCandidate } = {}
 		for _, c in candidates do
 			if #picked >= slotTarget then
 				break
@@ -1479,7 +1485,7 @@ function Course.microArena(params: any): Course
 		local yaw = math.deg(math.atan2(x, z))
 		table.insert(spawns, { index = i, pos = v3(x, 0, z), yaw = r3(yaw % 360) })
 	end
-	local pieces = {}
+	local pieces: { ArenaPiece } = {}
 	local dropped = {}
 	local sector = 360 / players
 	local clear = Course.ARENA.spawnClear * scale + 0.5
@@ -1487,7 +1493,7 @@ function Course.microArena(params: any): Course
 	-- stud between pieces (its own and earlier rings'). Radii are tried across the band where
 	-- neighbours cannot touch (preferred first), then with smaller pieces; a ring that never fits
 	-- is dropped and reported in `dropped`.
-	local function fits(piece: any, candidate: { any }): boolean
+	local function fits(piece: ArenaPiece, candidate: { ArenaPiece }): boolean
 		for _, spawn in spawns do
 			if Course.footprintDistance(piece, spawn.pos.x, spawn.pos.z) < clear then
 				return false

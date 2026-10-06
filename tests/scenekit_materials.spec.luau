@@ -181,6 +181,20 @@ test("kit/1 material references resolve against the library", function(t)
 	t.ok(string.find(needsLibrary :: string, "needs a material library", 1, true))
 end)
 
+test("malformed kit/1 material references are unknown, not partial matches", function(t)
+	local lib = library()
+	-- No "<kind>:<rest>" shape (no colon, empty rest, non-letter kind) and unknown kinds all
+	-- report the reference itself.
+	for _, bad in { "concrete_a", "library:", ":concrete_a", "lib2:concrete_a", "vertex_colors", "paint:red" } do
+		local value, problem = Materials.resolve(bad, lib)
+		t.eq(value, nil, bad)
+		t.eq(problem, "unknown material reference " .. bad, bad)
+	end
+	local value, problem = Materials.resolve(42 :: any, lib)
+	t.eq(value, nil)
+	t.eq(problem, "reference must be a string")
+end)
+
 test("Materials.ENUM matches the engine's Enum.Material names", function(t)
 	local engine = {}
 	for _, item in roblox.Enum.Material:GetEnumItems() do
