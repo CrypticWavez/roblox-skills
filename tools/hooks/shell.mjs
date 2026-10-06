@@ -21,6 +21,7 @@ const REDIRECTS = ["&>>", "&>", ">>", ">|", ">&", "<<<", "<<-", "<<", "<>", "<&"
 // mode "ps" (PowerShell / cmd strings): backslash is literal and a backtick escapes the next char.
 function lex(src, start, nested, mode = "sh") {
 	const items = [];
+	const pending = []; // heredoc redirections whose body starts after the next newline
 	let word = null;
 	let depth = 0;
 	let i = start;
@@ -143,6 +144,7 @@ function lex(src, start, nested, mode = "sh") {
 				word = null;
 			} else flush();
 			items.push({ type: "redir", op: redirect, fd });
+			if (redirect.startsWith("<<") && redirect !== "<<<") pending.push(items.length - 1);
 			i += redirect.length;
 			continue;
 		}
@@ -157,7 +159,7 @@ function lex(src, start, nested, mode = "sh") {
 			}
 			items.push({ type: "op", value: op });
 			i += op.length;
-			if (op === "\n") i = readHeredocs(src, i, items);
+			if (op === "\n" && pending.length) i = readHeredocs(src, i, items, pending.splice(0));
 			continue;
 		}
 		ensure();
@@ -168,11 +170,10 @@ function lex(src, start, nested, mode = "sh") {
 	return { items, end: src.length };
 }
 
-// After a newline, consume the bodies of any pending <<DELIM heredocs.
-function readHeredocs(src, i, items) {
-	for (let k = 0; k < items.length; k++) {
+// After a newline, consume the bodies of the pending <<DELIM heredocs (indexes into items), in order.
+function readHeredocs(src, i, items, pending) {
+	for (const k of pending) {
 		const r = items[k];
-		if (r.type !== "redir" || !r.op.startsWith("<<") || r.op === "<<<" || r.body !== undefined) continue;
 		const delim = items[k + 1]?.type === "word" ? items[k + 1].value : "";
 		const lines = [];
 		while (i < src.length) {
@@ -216,6 +217,8 @@ const WRAPPERS = {
 	watch: ["-n", "-d", "--interval"],
 	unbuffer: [],
 	chronic: [],
+	setsid: [],
+	flock: ["-w", "-E", "--timeout", "--conflict-exit-code"], // then a lock file, then the command (or -c script)
 };
 // Wrapper options that change the directory the wrapped command runs in.
 const CHDIR_OPTS = { env: ["-C", "--chdir"], sudo: ["-D", "--chdir"] };
@@ -237,6 +240,7 @@ function stripWrappers(argv) {
 		const argOpts = WRAPPERS[name];
 		if (!argOpts || i >= argv.length - 1) break;
 		if (name === "xargs" || name === "parallel") viaXargs = true;
+		const flock = name === "flock";
 		i++;
 		while (i < argv.length) {
 			const a = argv[i];
@@ -250,6 +254,10 @@ function stripWrappers(argv) {
 				i++;
 			} else if ((name === "timeout" || name === "nice") && /^[\d.]+[smhd]?$/.test(a)) i++;
 			else break;
+		}
+		if (flock && i < argv.length) {
+			i++; // the lock file
+			if (argv[i] === "-c" || argv[i] === "--command") return { argv: ["sh", "-c", ...argv.slice(i + 1)], viaXargs, assigns, chdir };
 		}
 	}
 	return { argv: argv.slice(i), viaXargs, assigns, chdir };
@@ -308,6 +316,33 @@ function nestedScripts(argv, redirs, pipedFrom) {
 	if (name === "cmd") {
 		const k = rest.findIndex((a) => /^\/[ck]$/i.test(a));
 		return k >= 0 ? [[rest.slice(k + 1).join(" "), "ps"]] : [];
+	}
+	if (name === "script") {
+		// util-linux script -c 'cmd' (also -qc, --command=cmd)
+		for (let k = 0; k < rest.length; k++) {
+			if (rest[k].startsWith("--command=")) return [[rest[k].slice(10), "sh"]];
+			if (rest[k] === "--command" || /^-[a-zA-Z]*c$/.test(rest[k])) return rest[k + 1] === undefined ? [] : [[rest[k + 1], "sh"]];
+		}
+		return [];
+	}
+	if (name === "start" || name === "start-process" || name === "saps") {
+		// cmd: start [/b /wait /d dir ...] ["title"] program args; PowerShell: Start-Process [-FilePath] program
+		// [-ArgumentList] 'args' (start is its alias). Rebuilt as one command line.
+		const words = [];
+		let file = null;
+		const list = [];
+		for (let k = 0; k < rest.length; k++) {
+			const a = rest[k];
+			const ps = /^-([A-Za-z]+)(?::(.*))?$/.exec(a);
+			if (/^\/d$/i.test(a)) k++;
+			else if (/^\//.test(a) || (a === "" && !words.length && file === null)) continue;
+			else if (ps && "filepath".startsWith(ps[1].toLowerCase())) file = ps[2] ?? rest[++k] ?? "";
+			else if (ps && ("argumentlist".startsWith(ps[1].toLowerCase()) || /^args?$/i.test(ps[1]))) list.push(ps[2] ?? rest[++k] ?? "");
+			else if (ps && /^(workingdirectory|verb|windowstyle|redirectstandard\w*|credential|environment)$/i.test(ps[1])) k++;
+			else if (!ps) words.push(a);
+		}
+		const command = [file ?? words.shift(), ...words, ...list.map((l) => l.replace(/,/g, " "))].filter(Boolean);
+		return command.length ? [[command.join(" "), "sh"]] : [];
 	}
 	if (name === "wsl") {
 		const k = rest.findIndex((a) => a === "-e" || a === "--exec" || a === "--");

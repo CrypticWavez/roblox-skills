@@ -1,0 +1,60 @@
+# Project-scoped Codex config for the factory (Codex 0.160+). Codex reads .codex/ only after this
+# project is trusted, and runs the hooks in .codex/hooks.json only after each is reviewed and trusted
+# with /hooks. Keep in step with .mcp.json and .claude/settings.json: `node tools/hooks/selftest.mjs`
+# checks the servers, the prompted tools and the hook wiring. Details: docs/mcp.md.
+
+# Least access for shell commands in this repo, whatever the user-level defaults: writes only inside
+# the workspace, no network without an approval (an Open Cloud request needs one), ask on escalation.
+# CLI flags such as --sandbox or --dangerously-bypass-approvals-and-sandbox still override this.
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false
+
+# Same MCP servers as .mcp.json: local stdio processes, no URL servers, no listening ports.
+[mcp_servers.Roblox_Studio]
+command = "cmd.exe"
+args = ["/c", "%LOCALAPPDATA%\\Roblox\\mcp.bat"]
+startup_timeout_sec = 30
+
+[mcp_servers.blender]
+command = "uvx"
+args = ["mcp-for-blender==2.1.8"]
+env = { DISABLE_TELEMETRY = "true" }
+startup_timeout_sec = 60
+
+# Tools .claude/settings.json and tools/hooks/guard_mcp.mjs ask for. Codex hooks cannot ask, so the
+# guard denies these in Codex; the native prompt below is the fallback while the hooks are untrusted.
+[mcp_servers.Roblox_Studio.tools.insert_asset]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.upload_image]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.store_image]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.generate_mesh]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.generate_material]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.generate_procedural_model]
+approval_mode = "prompt"
+
+[mcp_servers.Roblox_Studio.tools.http_get]
+approval_mode = "prompt"
+
+[mcp_servers.blender.tools.generate_3d]
+approval_mode = "prompt"
+
+[mcp_servers.blender.tools.import_asset]
+approval_mode = "prompt"
+
+[mcp_servers.blender.tools.search_assets]
+approval_mode = "prompt"
+
+[mcp_servers.blender.tools.record_trajectory_feedback]
+approval_mode = "prompt"

@@ -1,0 +1,214 @@
+# Codex execution-policy rules for this repository (project layer: Codex reads them only after the
+# project is trusted). They mirror the argv-shaped classes of tools/hooks/guard_bash.mjs so a Codex
+# session refuses them even before the guard hooks in .codex/hooks.json are reviewed with /hooks.
+# Prefix rules cannot see URLs, variables, nested scripts, options in any position or the current
+# branch, so Open Cloud write requests, inline scripts and anything not a plain command are covered
+# by the hook only (docs/mcp.md, "Codex"). `node tools/hooks/selftest.mjs` evaluates this file
+# against the guard's deny and allow samples; `codex execpolicy check --rules .codex/rules/factory.rules -- <cmd>` checks one command.
+
+# ---- publishing and uploads -------------------------------------------------------------------
+prefix_rule(
+    pattern = [["rojo", "rojo.exe"], "upload"],
+    decision = "forbidden",
+    justification = "rojo upload publishes a place. SETUP_ONLY: never publish.",
+    match = ["rojo upload --asset_id 1 default.project.json", "rojo.exe upload --asset_id 1"],
+    not_match = ["rojo build fixtures/creator.project.json -o build/x.rbxl", "rojo serve"],
+)
+
+prefix_rule(
+    pattern = [["rojo", "rojo.exe"], ["-v", "-vv", "-vvv", "--verbose"], "upload"],
+    decision = "forbidden",
+    justification = "rojo upload publishes a place. SETUP_ONLY: never publish.",
+    match = ["rojo -v upload --asset_id 1", "rojo --verbose upload --asset_id 1"],
+)
+
+prefix_rule(
+    pattern = [["npx", "bunx", "pnpx"], ["rojo", "mantle", "tarmac", "asphalt"], ["upload", "upload-image", "deploy", "destroy"]],
+    decision = "forbidden",
+    justification = "Package-runner launch of a publishing tool. SETUP_ONLY: never publish or upload.",
+    match = ["npx rojo upload --asset_id 1", "bunx mantle deploy"],
+    not_match = ["npx rojo build -o x.rbxl"],
+)
+
+# Toolchain runners and wrappers in front of a publishing tool (the hook also follows options).
+prefix_rule(
+    pattern = [["rokit", "aftman", "foreman", "uv", "pixi", "poetry", "pdm", "hatch", "mise"], ["run", "exec"], ["rojo", "mantle", "tarmac", "asphalt"], ["upload", "upload-image", "deploy", "destroy"]],
+    decision = "forbidden",
+    justification = "Runner launch of a publishing tool. SETUP_ONLY: never publish or upload.",
+    match = ["uv run rojo upload --asset_id 1", "rokit run mantle deploy"],
+    not_match = ["uv run pytest", "rokit run rojo build -o x.rbxl"],
+)
+
+prefix_rule(
+    pattern = [["setsid", "nohup", "chronic", "unbuffer", "uvx"], ["rojo", "mantle", "tarmac", "asphalt"], ["upload", "upload-image", "deploy", "destroy"]],
+    decision = "forbidden",
+    justification = "Wrapper launch of a publishing tool. SETUP_ONLY: never publish or upload.",
+    match = ["setsid rojo upload --asset_id 1", "nohup mantle deploy"],
+)
+
+prefix_rule(
+    pattern = ["mantle", ["deploy", "destroy"]],
+    decision = "forbidden",
+    justification = "mantle deploy/destroy changes a live experience. SETUP_ONLY: never publish.",
+    match = ["mantle deploy --environment prod", "mantle destroy"],
+    not_match = ["mantle outputs"],
+)
+
+prefix_rule(
+    pattern = ["tarmac", "upload-image"],
+    decision = "forbidden",
+    justification = "tarmac upload-image uploads an asset to Roblox. SETUP_ONLY: never upload.",
+)
+
+prefix_rule(
+    pattern = ["tarmac", "sync", ["--target=roblox", "--target=Roblox"]],
+    decision = "forbidden",
+    justification = "tarmac sync --target roblox uploads assets to Roblox. SETUP_ONLY: never upload.",
+    match = ["tarmac sync --target=roblox"],
+)
+
+prefix_rule(
+    pattern = ["tarmac", "sync", "--target", ["roblox", "Roblox"]],
+    decision = "forbidden",
+    justification = "tarmac sync --target roblox uploads assets to Roblox. SETUP_ONLY: never upload.",
+    match = ["tarmac sync --target roblox"],
+    not_match = ["tarmac sync --target local"],
+)
+
+prefix_rule(
+    pattern = ["tarmac", "sync"],
+    decision = "prompt",
+    justification = "tarmac sync uploads unless the target is local; confirm the target is not Roblox.",
+)
+
+# Global options before the subcommand hide it from a prefix (tarmac --auth X upload-image).
+prefix_rule(
+    pattern = ["tarmac", ["--auth", "--api-key"]],
+    decision = "prompt",
+    justification = "tarmac with Roblox credentials can upload; confirm the subcommand is not upload-image or sync --target roblox.",
+    match = ["tarmac --auth abc upload-image icon.png"],
+    not_match = ["tarmac create-cache-map"],
+)
+
+prefix_rule(
+    pattern = ["asphalt", "upload"],
+    decision = "forbidden",
+    justification = "asphalt upload uploads an asset to Roblox. SETUP_ONLY: never upload.",
+)
+
+prefix_rule(
+    pattern = ["asphalt", "sync"],
+    decision = "prompt",
+    justification = "asphalt sync uploads unless --dry-run or --target studio/debug; confirm it does not upload.",
+    match = ["asphalt sync", "asphalt sync --dry-run"],
+)
+
+# rbxcloud: every write subcommand of every group; get*/list*/help stay unmatched (as in the guard).
+prefix_rule(
+    pattern = [
+        "rbxcloud",
+        ["assets", "experience", "place", "universe", "datastore", "ordered-datastore", "messaging", "group", "notification", "luau", "user", "subscription", "inventory", "user-restriction"],
+        ["publish", "create", "update", "set", "delete", "remove", "increment", "archive", "restore", "send", "execute", "restart", "shout", "ban", "unban", "upload"],
+    ],
+    decision = "forbidden",
+    justification = "rbxcloud write to Roblox (assets, places, DataStores, messaging). SETUP_ONLY: only get*/list*/help.",
+    match = [
+        "rbxcloud experience publish -f place.rbxl -p 1 -u 2 -t published",
+        "rbxcloud assets create --asset-type model-fbx --filepath prop.fbx",
+        "rbxcloud datastore set --datastore-name PlayerData --key 1 --data x --universe-id 1",
+        "rbxcloud messaging publish --topic t --message hi --universe-id 1",
+    ],
+    not_match = [
+        "rbxcloud datastore get --datastore-name PlayerData --key 1 --universe-id 1",
+        "rbxcloud datastore list-stores --universe-id 1",
+        "rbxcloud help",
+    ],
+)
+
+# ---- force pushes and deletions of main/master ----------------------------------------------------
+# git accepts any unique prefix of a long option, so --force-w, --mirr and --dele are listed too.
+prefix_rule(
+    pattern = [
+        "git", "push",
+        ["--force", "-f", "-fu", "-uf", "--fo", "--for", "--forc", "--force-", "--force-w", "--force-wi", "--force-wit", "--force-with", "--force-with-", "--force-with-l", "--force-with-le", "--force-with-lea", "--force-with-leas", "--force-with-lease"],
+        ["origin", "upstream"],
+        ["main", "master", "HEAD:main", "HEAD:master", "refs/heads/main", "refs/heads/master", "HEAD:refs/heads/main", "HEAD:refs/heads/master", ":"],
+    ],
+    decision = "forbidden",
+    justification = "Force push to a protected branch (main/master); ':' pushes every matching branch.",
+    match = ["git push --force origin main", "git push -fu origin refs/heads/master", "git push --force-with-lease origin main", "git push --force-w origin main", "git push -f origin :"],
+    not_match = ["git push --force origin claude/fix-mainline", "git push -u origin main"],
+)
+
+prefix_rule(
+    pattern = [
+        "git", "push",
+        ["origin", "upstream"],
+        ["main", "master", "HEAD:main", "HEAD:master", "refs/heads/main", "refs/heads/master", ":"],
+        ["--force", "-f", "--fo", "--for", "--forc", "--force-", "--force-w", "--force-wi", "--force-wit", "--force-with", "--force-with-", "--force-with-l", "--force-with-le", "--force-with-lea", "--force-with-leas", "--force-with-lease"],
+    ],
+    decision = "forbidden",
+    justification = "Force push to a protected branch (main/master).",
+    match = ["git push origin main --force", "git push origin HEAD:main --force", "git push origin main -f", "git push origin main --force-with-l"],
+    not_match = ["git push origin main"],
+)
+
+prefix_rule(
+    pattern = [
+        "git", "push",
+        ["origin", "upstream"],
+        ["+main", "+master", "+HEAD:main", "+HEAD:master", "+refs/heads/main", "+refs/heads/master", ":main", ":master", ":refs/heads/main", ":refs/heads/master", "+:"],
+    ],
+    decision = "forbidden",
+    justification = "Forced update or deletion of a protected branch (main/master); '+:' force-pushes every matching branch.",
+    match = ["git push origin +main", "git push origin :main", "git push origin +:"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["origin", "upstream"], ["--delete", "-d", "--de", "--del", "--dele", "--delet"], ["main", "master"]],
+    decision = "forbidden",
+    justification = "Deletion of a protected branch (main/master).",
+    match = ["git push origin --delete master"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--delete", "-d", "--de", "--del", "--dele", "--delet"], ["origin", "upstream"], ["main", "master"]],
+    decision = "forbidden",
+    justification = "Deletion of a protected branch (main/master).",
+    match = ["git push --dele origin main"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", ["--mirror", "--m", "--mi", "--mir", "--mirr", "--mirro"]],
+    decision = "forbidden",
+    justification = "git push --mirror force-updates every branch, main included.",
+    match = ["git push --mirr origin"],
+)
+
+prefix_rule(
+    pattern = ["git", "-c", ["remote.origin.mirror=true", "remote.upstream.mirror=true", "push.default=matching"], "push"],
+    decision = "forbidden",
+    justification = "A mirror or matching push can force-update main/master.",
+    match = ["git -c remote.origin.mirror=true push origin"],
+)
+
+# A forced push or deletion whose destination a prefix cannot see (bare, or the refspec later on) asks.
+prefix_rule(
+    pattern = [
+        "git", "push",
+        ["--force", "-f", "-fu", "-uf", "--fo", "--for", "--forc", "--force-", "--force-w", "--force-wi", "--force-wit", "--force-with", "--force-with-", "--force-with-l", "--force-with-le", "--force-with-lea", "--force-with-leas", "--force-with-lease", "--pru", "--prun", "--prune"],
+    ],
+    decision = "prompt",
+    justification = "Forced push or prune: confirm the destination is your own work branch, never main/master.",
+    match = ["git push --force", "git push -f origin HEAD", "git push --prune origin"],
+    not_match = ["git push origin main", "git push -u origin claude/x"],
+)
+
+# Push configuration that turns a later plain push into a mirror or matching push asks.
+prefix_rule(
+    pattern = ["git", "config", ["remote.origin.mirror", "remote.upstream.mirror", "remote.origin.push", "remote.upstream.push", "push.default"]],
+    decision = "prompt",
+    justification = "This push setting can make a later push force-update main/master; confirm it.",
+    match = ["git config remote.origin.mirror true"],
+    not_match = ["git config --get push.default"],
+)

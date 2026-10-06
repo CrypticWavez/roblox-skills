@@ -27,4 +27,4 @@
 | Verification | qa-reviewer (read-only) | — |
 
 ## Claude vs Codex
-Both read `AGENTS.md`. Codex discovers `.agents/skills`; Claude discovers `.claude/skills` (mirrored copy, checked in CI). Hooks and subagents are Claude-only conveniences; every gate they run is also a plain command (`tools/check.py`) Codex can run. Codex's MCP config lives in the workbench `.codex/config.toml` (see `docs/mcp.md`).
+Both read `AGENTS.md`. Codex discovers `.agents/skills`; Claude discovers `.claude/skills` (mirrored copy, checked in CI). Subagents are Claude-only; every gate is also a plain command (`tools/check.py`) Codex can run. The publish/spend/force-push/protected-folder guards run in both: Claude through `.claude/settings.json`, Codex through `.codex/hooks.json` (same `tools/hooks` scripts) plus `.codex/rules/factory.rules` and `.codex/config.toml` (sandbox, MCP servers, prompted tools). Parity is partial: Codex hooks cannot ask, so asks become denies there; they run only after the project and each hook are trusted (`/hooks`); a failing or timed-out hook lets the call run in either client. Details and checks: `docs/mcp.md` ("Codex").

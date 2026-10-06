@@ -18,7 +18,7 @@ This repo builds reusable tools, neutral fixtures and research. It does not star
 | Blender assets, QA, Roblox import round trip | skills `blender-asset-factory`, `blender-asset-qa`, `blender-roblox-roundtrip`, `tools/blender/` |
 | Studio control and testing modes | skill `roblox-studio-testing`, `docs/mcp.md` |
 | Seeing results | skill `visual-qa` |
-| Gates and hooks | skill `luau-quality`, `tools/check.py` |
+| Gates and hooks (Claude and Codex) | skill `luau-quality`, `tools/check.py`, `tools/hooks/`, `.codex/`, `docs/mcp.md` |
 | Capability status and open gaps | `reports/gap-matrix.json` (canonical: edit this, then `python3 tools/gap_matrix.py`); `docs/gap-matrix.md` is generated, never hand-edited |
 | Inherited first-pass runtime/creator/diagnostic modules | `packages/Runtime`, `packages/Creator`, `packages/Diagnostics`, `fixtures/` |
 | Research | `docs/research/`, `knowledge/records/` |
@@ -33,7 +33,7 @@ Skills live in `.agents/skills/` (Codex) and are mirrored to `.claude/skills/` (
 - Before committing: `python3 tools/check.py` (pre-commit tier). Before a PR is ready: `--tier pre-release`.
 - New Luau logic gets a Lune spec in `tests/`. Never skip or weaken a test or validation rule to get green.
 - One writer per Studio session and per Blender session. One agent owns a file set at a time (see `docs/architecture.md`).
-- No secrets in files, logs or records. Hooks block publishing/upload commands; do not work around them.
+- No secrets in files, logs or records. The `tools/hooks` guards block publishing, uploads, spending, force-pushes to main and protected-folder writes, in Claude Code (`.claude/settings.json`) and in Codex (`.codex/`, once the project and its hooks are trusted; Codex denies what Claude asks). Do not work around them; residual gaps are in `docs/mcp.md`.
 
 ## Verification language
 VERIFIED_STRONG, VERIFIED_ACCEPTABLE, WEAK, PARTIAL, BROKEN, MISSING, OUTDATED, REDUNDANT, BLOCKED_EXTERNAL, INTENTIONALLY_EXCLUDED. Verified means a representative execution produced observed output in this session or CI. Files, docs, configs, listed MCP servers or screenshots alone are not verification. Fixture passes do not prove fun, commercial success or device coverage.

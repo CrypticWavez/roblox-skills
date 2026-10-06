@@ -1,16 +1,98 @@
 // Feeds known-good and known-bad events to the guards so hook regressions fail the gate, in both
 // directions: every deny/ask class has a case, and so do the reads that must stay allowed.
+// Codex parity: reruns the cases through the .codex/hooks.json commands, evaluates
+// .codex/rules/factory.rules against the Bash cases, and checks .codex/config.toml against
+// .mcp.json and the MCP guard.
 // Also checks that tools/check.py and the edit hook flag the same secrets from secret-patterns.json.
 // Dangerous command strings and fake credentials are assembled at runtime so this file never trips
 // the guard or the secret scan itself.
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { findSecrets, secretPatterns } from "./lib.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(here, "..", "..");
+const python = process.env.FACTORY_PYTHON || (process.platform === "win32" ? "python" : "python3");
+// The tools mcp-for-blender 2.1.8 registers (FastMCP list_tools(); the last five are MCP-Apps UI tools).
+const BLENDER_TOOLS = ["get_addon_status", "disable_telemetry", "get_scene_info", "execute_blender_code", "record_trajectory_feedback", "look", "generate_3d", "search_assets", "import_asset", "search_mentions", "open_viewport", "viewport_latest", "viewport_capture", "viewport_pick"];
+
+// Starlark subset used by .codex/rules: prefix_rule(name = "str" | [ ... ], ...) calls and comments.
+function parseRules(text) {
+	const tokens = [];
+	const lexer = /\s+|#[^\n]*|"((?:[^"\\\n]|\\.)*)"|([A-Za-z_]\w*)|([()[\],=])|(.)/gy;
+	for (let m; (m = lexer.exec(text)); ) {
+		if (m[4] !== undefined) throw new Error(`.codex/rules: unexpected "${m[4]}"`);
+		if (m[1] !== undefined) tokens.push({ str: JSON.parse(`"${m[1]}"`) });
+		else if (m[2] ?? m[3]) tokens.push({ tok: m[2] ?? m[3] });
+	}
+	let i = 0;
+	const expect = (tok) => {
+		if (tokens[i]?.tok !== tok) throw new Error(`.codex/rules: expected "${tok}" at token ${i}`);
+		i++;
+	};
+	const value = () => {
+		if (tokens[i]?.str !== undefined) return tokens[i++].str;
+		expect("[");
+		const list = [];
+		while (tokens[i]?.tok !== "]") {
+			list.push(value());
+			if (tokens[i]?.tok === ",") i++;
+		}
+		i++;
+		return list;
+	};
+	const out = [];
+	while (i < tokens.length) {
+		if (tokens[i].tok !== "prefix_rule") throw new Error(`.codex/rules: only prefix_rule(...) is supported, got ${JSON.stringify(tokens[i])}`);
+		i++;
+		expect("(");
+		const rule = { decision: "allow", match: [], not_match: [] };
+		while (tokens[i]?.tok !== ")") {
+			const key = tokens[i++].tok;
+			expect("=");
+			rule[key] = value();
+			if (tokens[i]?.tok === ",") i++;
+		}
+		i++;
+		if (!Array.isArray(rule.pattern) || !rule.pattern.length || !RANK_NAMES.includes(rule.decision)) throw new Error(`.codex/rules: bad rule ${JSON.stringify(rule)}`);
+		rule.pattern = rule.pattern.map((p) => (Array.isArray(p) ? p : [p]));
+		out.push(rule);
+	}
+	return out;
+}
+const RANK_NAMES = ["allow", "prompt", "forbidden"];
+
+// Words of a plain command line (quotes removed), as for a rule example.
+function shellWords(line) {
+	return [...line.matchAll(/'([^']*)'|"([^"]*)"|(\S+)/g)].map((m) => m[1] ?? m[2] ?? m[3]);
+}
+
+// The commands Codex matches rules against: a plain command line (unquoted words, '...', and "..."
+// without $ ` \) joined by && || ; | is split into its commands; anything else (variables,
+// substitutions, redirections, globs, control flow, newlines) stays one opaque command (null).
+function codexCommands(line) {
+	const commands = [[]];
+	const lexer = /[ \t]+|(&&|\|\||;|\|)|'([^']*)'|"([^"$`\\]*)"|([^\s'"$`\\<>|&;(){}[\]*?~!#\n]+)|(.)/gy;
+	let word = null;
+	const flush = () => {
+		if (word !== null) commands[commands.length - 1].push(word);
+		word = null;
+	};
+	for (let m; (m = lexer.exec(line)); ) {
+		if (m[5] !== undefined) return null;
+		if (m[1] !== undefined) {
+			flush();
+			commands.push([]);
+		} else if (m[2] ?? m[3] ?? m[4]) word = (word ?? "") + (m[2] ?? m[3] ?? m[4]);
+		else flush();
+	}
+	flush();
+	if (commands.some((c) => !c.length || /^\w+=/.test(c[0]))) return null;
+	return commands;
+}
 const R = ["ro", "jo"].join("");
 const UP = ["up", "load"].join("");
 const API = `https://${["apis", "roblox", "com"].join(".")}`;
@@ -26,10 +108,18 @@ const repo = (branch) => {
 };
 const onMain = repo("main");
 const onFeature = repo("claude/feature-x");
+// Work branches whose repository config makes a push matching or mirrored.
+const matchingRepo = repo("claude/matching");
+spawnSync("git", ["-C", matchingRepo, "config", "push.default", "matching"]);
+const mirrorRepo = repo("claude/mirror");
+spawnSync("git", ["-C", mirrorRepo, "config", "remote.origin.mirror", "true"]);
 
 const bash = (command, expected, cwd) => ["guard_bash.mjs", { tool_name: "Bash", tool_input: { command }, cwd }, expected];
 const luau = (code, expected) => ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__execute_luau", tool_input: { code } }, expected];
 const tool = (name, expected) => ["guard_mcp.mjs", { tool_name: name, tool_input: {} }, expected];
+const blenderPy = (code, expected) => ["guard_mcp.mjs", { tool_name: "mcp__blender__execute_blender_code", tool_input: { code } }, expected];
+// A case with a name (element 4), printed when it fails.
+const named = (name, c) => Object.assign(c, { 4: name });
 
 const cases = [
 	// publishing tools
@@ -211,6 +301,142 @@ const cases = [
 	luau("print(workspace:GetChildren())", "allow"),
 	luau("print(MarketplaceService:GetProductInfo(1), MarketplaceService:UserOwnsGamePassAsync(1, 2))", "allow"),
 	luau("print(store:GetAsync('k'))", "allow"),
+	// Blender MCP: third-party libraries, paid generators and vendor uploads ask (2.1.8 and 1.x names)
+	...["generate_3d", "import_asset", "search_assets", "record_trajectory_feedback"].map((t) => tool(`mcp__blender__${t}`, "ask")),
+	...["download_sketchfab_model", "search_polyhaven_assets", "get_sketchfab_model_preview", "generate_hyper3d_model_via_text", "generate_hunyuan3d_model", "poll_rodin_job_status", "import_generated_asset"].map((t) => tool(`mcp__blender__${t}`, "ask")),
+	tool("mcp__blender_workbench__generate_3d", "ask"),
+	...["get_scene_info", "look", "get_addon_status", "disable_telemetry", "get_sketchfab_status", "viewport_latest"].map((t) => tool(`mcp__blender__${t}`, "allow")),
+	// execute_blender_code that reaches the network or a shell asks; ordinary bpy work passes
+	blenderPy("import urllib.request\nurllib.request.urlretrieve('https://example.com/a.fbx', '/tmp/a.fbx')", "ask"),
+	blenderPy("import bpy, requests\nrequests.post('https://example.com', data=b'x')", "ask"),
+	blenderPy("from http import client\nc = client.HTTPSConnection('example.com')", "ask"),
+	blenderPy("import socket\nsocket.create_connection(('example.com', 80))", "ask"),
+	blenderPy("import subprocess\nsubprocess.run(['blender', '--version'])", "ask"),
+	blenderPy("import os\nos.system('echo hi')", "ask"),
+	blenderPy("from os import popen as p\np('ls')", "ask"),
+	blenderPy("m = __import__('sock' + 'et')", "ask"),
+	blenderPy("import importlib\nimportlib.import_module('subprocess')", "ask"),
+	blenderPy("exec(open('/tmp/x.py').read())", "ask"),
+	blenderPy("import bpy\nbpy.ops.wm.url_open(url='https://example.com')", "ask"),
+	blenderPy("import bpy\nbpy.ops.extensions.package_install(repo_index=0, pkg_id='x')", "ask"),
+	blenderPy("import bpy, bmesh, math\nbpy.ops.mesh.primitive_cube_add(size=2)\nprint(len(bpy.data.objects))", "allow"),
+	blenderPy("import json, re\npat = re.compile(r'^SM_')\ndata = json.load(open('build/blender/qa.json'))", "allow"),
+	blenderPy("import sys\nsys.path.insert(0, 'tools/blender')\nfrom bkit import ops\nops.apply_transforms(bpy.context.object)", "allow"),
+	blenderPy("import bpy\nbpy.ops.export_scene.fbx(filepath='build/blender/prop.fbx')\nprint(bpy.context.preferences.system.memory_cache_limit)", "allow"),
+	// Codex mode (lib.mjs): an ask becomes a deny whether Codex is named by flag or by its turn_id
+	["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__insert_asset", tool_input: {} }, "deny", ["--client=codex"]],
+	["guard_mcp.mjs", { tool_name: "mcp__blender__generate_3d", tool_input: {}, turn_id: "t1" }, "deny"],
+	["guard_mcp.mjs", { tool_name: "mcp__blender__look", tool_input: {}, turn_id: "t1" }, "allow"],
+	// ---- regressions from the guards audit (HOOK-1 .. HOOK-8), named so a failure says which bypass is back
+	// HOOK-1: curl and wget accept any unique prefix of a long option
+	named("HOOK-1 curl --upload (prefix of --upload-file)", bash(`curl --upload place.rbxl '${API}/universes/v1/1/places/2/versions?versionType=Published'`, "deny")),
+	named("HOOK-1 curl --js (prefix of --json)", bash(`curl --js '{"value":1}' ${API}/cloud/v2/universes/1/data-stores/D/entries`, "deny")),
+	named("HOOK-1 curl --form-str (prefix of --form-string)", bash(`curl --form-str 'request={}' ${API}/assets/v1/assets`, "deny")),
+	named("HOOK-1 curl --conf (prefix of --config, URL hidden)", bash("curl --conf req.cfg", "deny")),
+	named("HOOK-1 curl --requ (ambiguous prefix judged as --request)", bash(`curl --requ POST ${API}/assets/v1/assets`, "deny")),
+	named("HOOK-1 curl --expand-data", bash(`curl --variable %BODY --expand-data '{{BODY}}' ${API}/assets/v1/assets`, "deny")),
+	named("HOOK-1 curl unknown option to a Roblox URL counts as a write", bash(`curl --frobnicate x ${API}/assets/v1/assets`, "deny")),
+	named("HOOK-1 wget --post-d (prefix of --post-data)", bash(`wget --post-d='{}' ${API}/cloud/v2/universes/1/data-stores/D/entries`, "deny")),
+	named("HOOK-1 wget --post-f (prefix of --post-file)", bash(`wget --post-f=place.rbxl ${API}/universes/v1/1/places/2/versions`, "deny")),
+	named("HOOK-1 wget --meth/--body-f prefixes", bash(`wget --meth=PUT --body-f=place.rbxl ${API}/universes/v1/1/places/2/versions`, "deny")),
+	named("HOOK-1 curl read-option prefixes stay allowed", bash(`curl --sil --fail-w --max-t 10 ${API}/cloud/v2/universes/1`, "allow")),
+	named("HOOK-1 curl --no-<flag> stays allowed", bash(`curl --no-silent --no-progress-meter ${API}/cloud/v2/universes/1`, "allow")),
+	named("HOOK-1 wget read-option prefixes stay allowed", bash(`wget --quie --output-d=/tmp/u.json ${API}/cloud/v2/universes/1`, "allow")),
+	// HOOK-2: git push option prefixes, matching refspecs, push configuration, refspecs from $(...)
+	named("HOOK-2 git push --force-w (prefix)", bash("git push --force-w origin main", "deny")),
+	named("HOOK-2 git push ... --force-with-l (prefix, after the refspec)", bash("git push origin main --force-with-l", "deny")),
+	named("HOOK-2 git push --mirr (prefix)", bash("git push --mirr origin", "deny")),
+	named("HOOK-2 git push --dele (prefix)", bash("git push --dele origin main", "deny")),
+	named("HOOK-2 git push --prune with a wildcard refspec", bash("git push --prune origin 'refs/heads/*:refs/heads/*'", "deny")),
+	named("HOOK-2 forced matching refspec ':'", bash("git push -f origin :", "deny", onFeature)),
+	named("HOOK-2 matching refspec '+:'", bash("git push origin +:", "deny", onFeature)),
+	named("HOOK-2 git -c remote.origin.mirror=true", bash("git -c remote.origin.mirror=true push origin", "deny", onFeature)),
+	named("HOOK-2 git -c push.default=matching", bash("git -c push.default=matching push -f origin", "deny", onFeature)),
+	named("HOOK-2 git -c remote.origin.push=+main", bash("git -c remote.origin.push=+refs/heads/main:refs/heads/main push origin", "deny", onFeature)),
+	named("HOOK-2 GIT_CONFIG_COUNT mirror", bash("GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=remote.origin.mirror GIT_CONFIG_VALUE_0=true git push origin", "deny", onFeature)),
+	named("HOOK-2 git -c alias for a forced push", bash("git -c alias.p='push --force' p origin main", "deny")),
+	named("HOOK-2 push config changed earlier in the line", bash("git config remote.origin.mirror true && git push origin", "deny", onFeature)),
+	named("HOOK-2 repo push.default=matching", bash("git push -f origin", "deny", matchingRepo)),
+	named("HOOK-2 repo remote.origin.mirror", bash("git push origin", "deny", mirrorRepo)),
+	named("HOOK-2 $(git branch --show-current) on main", bash('git push -f origin "$(git branch --show-current)"', "deny", onMain)),
+	named("HOOK-2 $(git rev-parse --abbrev-ref HEAD) on main", bash("git push --force origin $(git rev-parse --abbrev-ref HEAD)", "deny", onMain)),
+	named("HOOK-2 forced refspec from an unknown variable", bash('git push -f origin "$BRANCH"', "deny", onFeature)),
+	named("HOOK-2 $(git branch --show-current) on a work branch stays allowed", bash('git push -f origin "$(git branch --show-current)"', "allow", onFeature)),
+	named("HOOK-2 unforced matching push stays allowed", bash("git push origin :", "allow", onFeature)),
+	named("HOOK-2 git -c push.default=current stays allowed", bash("git -c push.default=current push -f origin", "allow", onFeature)),
+	named("HOOK-2 --follow (prefix of --follow-tags) stays allowed", bash("git push --follow origin claude/x", "allow")),
+	// HOOK-3: writes into the protected folder through flag clusters, old-style tar, prefixes, pipes
+	named("HOOK-3 cp -rt", bash(`cp -rt ../${W} src.txt`, "deny")),
+	named("HOOK-3 install -Dt", bash(`install -Dt ../${W} x.txt`, "deny")),
+	named("HOOK-3 cp --t (prefix of --target-directory)", bash(`cp --t ../${W} src.txt`, "deny")),
+	named("HOOK-3 install -d", bash(`install -d ../${W}/new`, "deny")),
+	named("HOOK-3 tar old-style xCf", bash(`tar xCf ../${W} /tmp/x.tgz`, "deny")),
+	named("HOOK-3 tar old-style xfC", bash(`tar xfC /tmp/x.tgz ../${W}`, "deny")),
+	named("HOOK-3 tar --dir (prefix of --directory)", bash(`tar -xf /tmp/x.tgz --dir ../${W}`, "deny")),
+	named("HOOK-3 sort -uo", bash(`sort -uo ../${W}/list.txt ../${W}/list.txt`, "deny")),
+	named("HOOK-3 sort --out= (prefix of --output)", bash(`sort --out=../${W}/list.txt in.txt`, "deny")),
+	named("HOOK-3 sed --in (prefix of --in-place)", bash(`sed --in 's/a/b/' ../${W}/config.json`, "deny")),
+	named("HOOK-3 diff | patch", bash(`diff -u ${W}/config.json /tmp/new.json | patch -p0`, "deny")),
+	named("HOOK-3 git diff | git apply", bash(`git diff --no-index ${W}/config.json /tmp/new.json | git apply`, "deny")),
+	named("HOOK-3 git -c core.fsmonitor under a read-only subcommand", bash(`git -c core.fsmonitor='touch x' -C ../${W} status`, "deny")),
+	named("HOOK-3 rename fed file names by a pipe", bash(`find ../${W} -name '*.bak' | rename 's/\\.bak$//'`, "deny")),
+	named("HOOK-3 patch reading a diff from a file", bash(`patch -p0 < /tmp/fix.diff && git -C ../${W} status`, "deny")),
+	named("HOOK-3 tar old-style create elsewhere stays allowed", bash(`tar czf /tmp/w.tgz ../${W}`, "allow")),
+	named("HOOK-3 sort -uo elsewhere stays allowed", bash(`sort -uo /tmp/list.txt ../${W}/list.txt`, "allow")),
+	named("HOOK-3 cp -rt elsewhere stays allowed", bash(`cp -rt /tmp/out ../${W}/src`, "allow")),
+	// HOOK-4: every string in a Studio tool's input is checked, whatever the field is called
+	named("HOOK-4 execute_luau with an unknown field name", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__execute_luau", tool_input: { command: 'game:GetService("AssetService"):SavePlaceAsync()' } }, "deny"]),
+	named("HOOK-4 multi_edit DataStore write", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__multi_edit", tool_input: { file_path: "game.ServerScriptService.Test", edits: [{ old_string: "", new_string: 'game:GetService("DataStoreService"):GetDataStore("D"):SetAsync("k", 1)' }] } }, "ask"]),
+	named("HOOK-4 multi_edit purchase prompt", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__multi_edit", tool_input: { edits: [{ new_string: "MarketplaceService:PromptProductPurchase(p, 1)" }] } }, "ask"]),
+	named("HOOK-4 multi_edit publish", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__multi_edit", tool_input: { edits: [{ new_string: 'game:GetService("AssetService"):SavePlaceAsync()' }] } }, "deny"]),
+	named("HOOK-4 multi_edit that removes a write stays allowed", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__multi_edit", tool_input: { edits: [{ old_string: 'store:SetAsync("k", 1)', new_string: 'print("removed")' }] } }, "allow"]),
+	named("HOOK-4 script_search for an API name stays allowed", ["guard_mcp.mjs", { tool_name: "mcp__Roblox_Studio__script_search", tool_input: { query: "SetAsync" } }, "allow"]),
+	// HOOK-5: global options before the subcommand, xargs/parallel input, computed subcommands, asphalt
+	named("HOOK-5 tarmac --auth before sync", bash('tarmac --auth "$COOKIE" sync --target roblox', "deny")),
+	named("HOOK-5 tarmac --auth before upload-image", bash("tarmac --auth abc upload-image icon.png", "deny")),
+	named("HOOK-5 subcommand from xargs input", bash(`echo ${UP} --asset_id 1 | xargs ${R}`, "deny")),
+	named("HOOK-5 subcommand from parallel input", bash(`parallel ${R} ::: ${UP}`, "deny")),
+	named("HOOK-5 rbxcloud verb from xargs input", bash("echo create | xargs rbxcloud assets", "deny")),
+	named("HOOK-5 computed subcommand", bash(`${R} "$(echo ${UP})" --asset_id 1`, "deny")),
+	named("HOOK-5 asphalt sync", bash("asphalt sync", "deny")),
+	named("HOOK-5 asphalt upload", bash("asphalt upload icon.png --type image", "deny")),
+	named("HOOK-5 asphalt sync --dry-run stays allowed", bash("asphalt sync --dry-run", "allow")),
+	named("HOOK-5 xargs with a read-only subcommand stays allowed", bash(`ls fixtures/*.project.json | xargs -n1 ${R} build -o /tmp/x.rbxl`, "allow")),
+	named("HOOK-5 tarmac --auth with a local target stays allowed", bash("tarmac --auth abc sync --target debug", "allow")),
+	// HOOK-6: wrappers, runners, inline interpreter code, httpie spellings, Blender and Luau writes
+	named("HOOK-6 setsid", bash(`setsid ${R} ${UP} --asset_id 1`, "deny")),
+	named("HOOK-6 flock", bash(`flock /tmp/l ${R} ${UP} --asset_id 1`, "deny")),
+	named("HOOK-6 flock -c", bash(`flock /tmp/l -c '${R} ${UP} --asset_id 1'`, "deny")),
+	named("HOOK-6 uv run", bash(`uv run ${R} ${UP} --asset_id 1`, "deny")),
+	named("HOOK-6 script -qc", bash(`script -qc "${R} ${UP} --asset_id 1" /dev/null`, "deny")),
+	named("HOOK-6 cmd /c start", bash(`cmd /c start ${R} ${UP} --asset_id 1`, "deny")),
+	named("HOOK-6 Start-Process", bash(`powershell -Command "Start-Process ${R} -ArgumentList '${UP} --asset_id 1'"`, "deny")),
+	named("HOOK-6 python os.system starts a publishing tool", bash(`python3 -c "import os; os.system('${R} ${UP} --asset_id 1')"`, "deny")),
+	named("HOOK-6 node execSync starts mantle deploy", bash(`node -e "require('child_process').execSync('mantle deploy')"`, "deny")),
+	named("HOOK-6 python subprocess curl -XPOST", bash(`python3 -c "import subprocess; subprocess.run(['curl','-XPOST','${API}/assets/v1/assets'])"`, "deny")),
+	named("HOOK-6 python -m httpie", bash(`python3 -m httpie POST ${API}/cloud/v2/universes/1/data-stores/D/entries value:=1`, "deny")),
+	named("HOOK-6 uvx --from httpie http", bash(`uvx --from httpie http POST ${API}/cloud/v2/universes/1/data-stores/D/entries value:=1`, "deny")),
+	named("HOOK-6 httpie --ssl takes a value", bash(`http --ssl tls1.2 POST ${API}/cloud/v2/universes/1/data-stores/D/entries value:=1`, "deny")),
+	named("HOOK-6 httpie --ssl then a data item", bash(`http --ssl tls1.2 ${API}/cloud/v2/universes/1/data-stores/D/entries value:=1`, "deny")),
+	named("HOOK-6 git -c core.pager starts a publishing tool", bash(`git -c core.pager='${R} ${UP} --asset_id 1' log`, "deny")),
+	named("HOOK-6 Blender subprocess starts a publishing tool", blenderPy(`import subprocess; subprocess.run(['${R}','${UP}','--asset_id','1'])`, "deny")),
+	named("HOOK-6 Blender requests.post to a Roblox web API", blenderPy(`import requests; requests.post('${API}/assets/v1/assets', files={'f': open('a.fbx', 'rb')})`, "deny")),
+	named("HOOK-6 Blender curl -X POST to a Roblox web API", blenderPy(`import os; os.system('curl -X POST ${API}/assets/v1/assets -F f=@a.fbx')`, "deny")),
+	named("HOOK-6 Luau HttpService RequestAsync POST to Open Cloud", luau(`game:GetService("HttpService"):RequestAsync({Url="${API}/cloud/v2/universes/1/data-stores/D/entries", Method="POST", Body="{}"})`, "deny")),
+	named("HOOK-6 Luau HttpService PostAsync to Open Cloud", luau(`HttpService:PostAsync("${API}/messaging-service/v1/universes/1/topics/t", "{}")`, "deny")),
+	named("HOOK-6 Luau HttpService GetAsync stays allowed", luau(`print(game:GetService("HttpService"):GetAsync("${API}/cloud/v2/universes/1"))`, "allow")),
+	named("HOOK-6 code piped into python", bash(`echo "import os; os.system('${R} ${UP} --asset_id 1')" | python3`, "deny")),
+	named("HOOK-6 event data piped into a node script stays allowed", bash(`echo '{"tool_input":{"command":"curl -X POST ${API}/assets/v1/assets"}}' | node tools/hooks/guard_bash.mjs`, "allow")),
+	named("HOOK-6 uv run of a test stays allowed", bash("uv run pytest -q tools", "allow")),
+	named("HOOK-6 python -m http.server stays allowed", bash("python3 -m http.server 8000 --bind 127.0.0.1", "allow")),
+	// HOOK-7: size cap (a hook that times out lets the command run); near-cap timing is checked below
+	named("HOOK-7 command over 64 KiB is denied", bash("echo ok\n".repeat(10000), "deny")),
+	named("HOOK-7 too many pushes to resolve in time", bash("git push -f\n".repeat(40), "deny", onFeature)),
+	// HOOK-8: routine commands that were false positives
+	named("HOOK-8 git commit -am naming the folder", bash(`git commit -am "${W}/ stays read-only"`, "allow")),
+	named("HOOK-8 git commit --mess= naming the folder", bash(`git commit --mess="${W}/ stays read-only"`, "allow")),
+	named("HOOK-8 urlopen(url, None, timeout) is a GET", bash(`python3 -c "import urllib.request as u, json; print(json.load(u.urlopen('${API}/cloud/v2/universes/1', None, 10)))"`, "allow")),
+	named("HOOK-8 git add of a path in the folder is still denied", bash(`git add ../${W}/x.json`, "deny")),
 ];
 
 let failed = 0;
@@ -222,33 +448,180 @@ const fail = (msg) => {
 };
 // Cases rely on these being unset (a URL in an unset variable is treated as a Roblox URL).
 const hookEnv = { ...process.env };
-for (const k of ["ROBLOX_ASSETS_URL", "X", "D", "P", "GIT_DIR", "GIT_WORK_TREE"]) delete hookEnv[k];
-const runHook = (script, event) =>
+for (const k of ["ROBLOX_ASSETS_URL", "X", "D", "P", "BRANCH", "COOKIE", "BODY", "GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_COUNT", "GIT_CONFIG_PARAMETERS"]) delete hookEnv[k];
+const run = (file, args, event, options = {}) =>
 	new Promise((done) => {
-		const child = spawn(process.execPath, [join(here, script)], { env: hookEnv });
+		const child = spawn(file, args, { env: hookEnv, ...options });
 		let stdout = "";
 		let stderr = "";
 		child.stdout.on("data", (d) => (stdout += d));
 		child.stderr.on("data", (d) => (stderr += d));
+		child.on("error", (err) => (stderr += err.message));
 		child.on("close", (status) => done({ status, stdout, stderr }));
 		child.stdin.end(JSON.stringify(event));
 	});
-const results = [];
-let next = 0;
-await Promise.all(
-	Array.from({ length: 8 }, async () => {
-		while (next < cases.length) {
-			const k = next++;
-			results[k] = await runHook(cases[k][0], cases[k][1]);
-		}
-	}),
-);
-for (const [k, [script, event, expected]] of cases.entries()) {
-	const r = results[k];
-	const got = r.status !== 0 ? `error ${r.status}: ${(r.stderr || "").split("\n")[0]}` : r.stdout ? JSON.parse(r.stdout).hookSpecificOutput.permissionDecision : "allow";
-	if (got !== expected) fail(`${script} ${JSON.stringify(event.tool_input).slice(0, 100)}${event.cwd ? " (cwd " + event.cwd + ")" : ""}: expected ${expected}, got ${got}`);
+const runAll = async (jobs) => {
+	const out = [];
+	let next = 0;
+	await Promise.all(
+		Array.from({ length: 8 }, async () => {
+			while (next < jobs.length) {
+				const k = next++;
+				out[k] = await jobs[k]();
+			}
+		}),
+	);
+	return out;
+};
+const verdict = (r) => (r.status !== 0 ? `error ${r.status}: ${(r.stderr || "").split("\n")[0]}` : r.stdout ? JSON.parse(r.stdout).hookSpecificOutput.permissionDecision : "allow");
+const label = (script, event, name) => `${name ? `[${name}] ` : ""}${script} ${event.tool_name.startsWith("mcp__") ? event.tool_name + " " : ""}${JSON.stringify(event.tool_input).slice(0, 100)}${event.cwd ? " (cwd " + event.cwd + ")" : ""}`;
+
+const results = await runAll(cases.map(([script, event, , args = []]) => () => run(process.execPath, [join(here, script), ...args], event)));
+for (const [k, [script, event, expected, , name]] of cases.entries()) {
+	const got = verdict(results[k]);
+	if (got !== expected) fail(`${label(script, event, name)}: expected ${expected}, got ${got}`);
 }
-console.log(`${cases.length - failed}/${cases.length} hook cases`);
+console.log(`${cases.length - failed}/${cases.length} hook cases (${cases.filter((c) => /^HOOK-/.test(c[4] ?? "")).length} named audit regressions)`);
+
+// HOOK-7: the largest commands the guard accepts (just under its 64 KiB cap) are decided well inside
+// the hook timeout (5 s in .claude/settings.json, 10 s in .codex/hooks.json); a timed-out hook lets
+// the command run. Each shape ends in a publish command, so the whole text must be parsed.
+const nearCap = {
+	lines: (n) => "echo line\n".repeat(n),
+	heredocs: (n) => Array.from({ length: n }, (_, i) => `cat <<E${i}\nbody\nE${i}\n`).join(""),
+	pipes: (n) => "cat a | grep x && ".repeat(n),
+	nested: (n) => `bash -c "${"echo x; ".repeat(n)}${R} ${UP}"; `,
+};
+let slowest = 0;
+for (const [shape, make] of Object.entries(nearCap)) {
+	let n = 1;
+	while (make(n * 2).length + 40 < 64 * 1024) n *= 2;
+	while (make(n + 16).length + 40 < 64 * 1024) n += 16;
+	const command = `${make(n)}${R} ${UP} --asset_id 1`;
+	const t0 = Date.now();
+	const r = spawnSync(process.execPath, [join(here, "guard_bash.mjs")], { input: JSON.stringify({ tool_name: "Bash", tool_input: { command } }), encoding: "utf8", env: hookEnv });
+	const ms = Date.now() - t0;
+	slowest = Math.max(slowest, ms);
+	if (verdict(r) !== "deny" || ms > 2500) fail(`[HOOK-7 near-cap ${shape}] ${command.length} chars: expected deny within 2500 ms, got ${verdict(r)} in ${ms} ms`);
+}
+console.log(`near-cap commands (${Object.keys(nearCap).length} shapes, just under 64 KiB) denied in at most ${slowest} ms`);
+
+// ---- Codex parity --------------------------------------------------------------------------------
+// The same cases through the hook commands .codex/hooks.json configures: the matcher must route each
+// tool to the same guard, the command must start it from the repository root as Codex's shell would
+// (sh -c; cmd /c with commandWindows on Windows), and the verdict must match, except that an ask is
+// a deny in Codex.
+const codexHooks = JSON.parse(readFileSync(join(repoRoot, ".codex", "hooks.json"), "utf8")).hooks.PreToolUse;
+const codexRun = (event) => {
+	const entries = codexHooks.filter((e) => new RegExp(e.matcher).test(event.tool_name));
+	if (entries.length !== 1 || entries[0].hooks.length !== 1) return null;
+	const h = entries[0].hooks[0];
+	const codexEvent = { session_id: "selftest", turn_id: "selftest-turn", hook_event_name: "PreToolUse", tool_use_id: "call_selftest", model: "selftest", permission_mode: "default", cwd: repoRoot, ...event };
+	if (process.platform === "win32") return () => run("cmd.exe", ["/d", "/s", "/c", h.commandWindows ?? h.command], codexEvent, { cwd: repoRoot, windowsVerbatimArguments: true });
+	return () => run("sh", ["-c", h.command], codexEvent, { cwd: repoRoot });
+};
+const codexCases = cases.filter(([, , , args]) => !args);
+const codexResults = await runAll(codexCases.map(([, event]) => codexRun(event) ?? (async () => ({ status: -1, stdout: "", stderr: "no single .codex/hooks.json PreToolUse entry matches this tool" }))));
+let codexOk = 0;
+for (const [k, [script, event, expected]] of codexCases.entries()) {
+	const h = codexHooks.find((e) => new RegExp(e.matcher).test(event.tool_name))?.hooks[0] ?? {};
+	const want = expected === "ask" ? "deny" : expected;
+	const got = verdict(codexResults[k]);
+	const routed = [h.command, h.commandWindows].every((c) => c?.includes(`tools/hooks/${script}`) && c.includes("--client=codex"));
+	if (!routed) fail(`.codex/hooks.json sends ${event.tool_name} to "${h.command}" / "${h.commandWindows}", not tools/hooks/${script} --client=codex`);
+	else if (got !== want) fail(`codex ${label(script, event, codexCases[k][4])}: expected ${want}, got ${got}`);
+	else codexOk++;
+}
+console.log(`${codexOk}/${codexCases.length} hook cases through .codex/hooks.json (asks become denies)`);
+
+// Codex execution-policy rules (.codex/rules/factory.rules). Codex splits a plain command line
+// (words and quotes joined by && || ; |) and matches each command against the prefix rules; a line
+// with variables, substitutions, redirections, globs or control flow is one opaque command that no
+// prefix rule matches, so only the hook covers it. Every plain deny case headed by a publishing tool
+// or `git push` must be forbidden or prompted by the rules, and no allow case may be forbidden.
+// With the Codex CLI on PATH (or CODEX_BIN), each decision is also compared with
+// `codex execpolicy check`, which validates the rules file the same way Codex does at startup.
+const rulesFile = join(repoRoot, ".codex", "rules", "factory.rules");
+let rules = [];
+try {
+	rules = parseRules(readFileSync(rulesFile, "utf8"));
+} catch (err) {
+	fail(err.message);
+}
+const RANK = { allow: 1, prompt: 2, forbidden: 3 };
+const matches = (rule, argv) => rule.pattern.length <= argv.length && rule.pattern.every((alts, i) => alts.includes(argv[i]));
+const strictest = (decisions) => decisions.filter(Boolean).sort((a, b) => RANK[b] - RANK[a])[0] ?? null;
+const ruleDecision = (argv) => strictest(rules.filter((r) => matches(r, argv)).map((r) => r.decision));
+for (const r of rules) {
+	for (const ex of r.match) if (!matches(r, shellWords(ex))) fail(`${rulesFile}: match example "${ex}" does not match its rule ${JSON.stringify(r.pattern)}`);
+	for (const ex of r.not_match) if (matches(r, shellWords(ex))) fail(`${rulesFile}: not_match example "${ex}" matches its rule ${JSON.stringify(r.pattern)}`);
+}
+const RULE_HEADS = /^(rojo|rojo\.exe|mantle|tarmac|rbxcloud|asphalt|npx|bunx|pnpx)$/;
+const checked = new Map(); // argv JSON -> our decision, for the codex cross-check
+let ruleCovered = 0;
+let ruleShaped = 0;
+let hookOnly = 0;
+let prompted = 0;
+for (const [script, event, expected] of cases) {
+	if (script !== "guard_bash.mjs") continue;
+	const argvs = codexCommands(event.tool_input.command) ?? [];
+	for (const argv of argvs) checked.set(JSON.stringify(argv), ruleDecision(argv));
+	const worst = strictest(argvs.map(ruleDecision));
+	if (expected === "allow") {
+		if (worst === "forbidden") fail(`.codex/rules forbids an allowed command: ${event.tool_input.command}`);
+		if (worst === "prompt") prompted++;
+	} else if (!argvs.some((a) => RULE_HEADS.test(a[0]) || (a[0] === "git" && a[1] === "push"))) hookOnly++;
+	// A plain `git push` denied only because of the repository's own config (a mirror remote) cannot be
+	// told apart by a prefix rule; only the hook reads that config.
+	else if (worst === null && event.cwd === mirrorRepo) hookOnly++;
+	else {
+		ruleShaped++;
+		if (worst === "forbidden" || worst === "prompt") ruleCovered++;
+		else fail(`.codex/rules lets a denied publishing command through: ${event.tool_input.command}`);
+	}
+}
+console.log(`${ruleCovered}/${ruleShaped} plain publish/upload/force-push deny cases forbidden or prompted by .codex/rules (${hookOnly} more are hook-only: URLs, variables, nested scripts); ${prompted} allow cases prompted, none forbidden`);
+const codexBin = process.env.CODEX_BIN || "codex";
+const codexVersion = spawnSync(codexBin, ["--version"], { encoding: "utf8" });
+if (codexVersion.status === 0) {
+	let same = 0;
+	for (const [key, ours] of checked) {
+		const r = spawnSync(codexBin, ["execpolicy", "check", "--rules", rulesFile, "--", ...JSON.parse(key)], { encoding: "utf8" });
+		const theirs = r.status === 0 ? (JSON.parse(r.stdout).decision ?? null) : `error: ${(r.stderr || "").split("\n")[0]}`;
+		if (theirs === ours) same++;
+		else fail(`codex execpolicy check -- ${JSON.parse(key).join(" ")}: codex says ${theirs}, self-test parser says ${ours}`);
+	}
+	console.log(`${same}/${checked.size} rule decisions identical to \`codex execpolicy check\` (${codexVersion.stdout.trim()})`);
+} else console.log(`codex CLI not found: rules evaluated by the self-test parser only (set CODEX_BIN to cross-check)`);
+
+// .codex/config.toml mirrors .mcp.json (same servers, commands, args, env) and prompts natively for
+// exactly the tools the MCP guard asks for, so a session whose hooks are not yet trusted still asks.
+const tomlRead = spawnSync(python, ["-c", "import json, sys, tomllib; print(json.dumps(tomllib.load(open(sys.argv[1], 'rb'))))", join(repoRoot, ".codex", "config.toml")], { encoding: "utf8" });
+const codexConfig = tomlRead.status === 0 ? JSON.parse(tomlRead.stdout) : null;
+if (!codexConfig) fail(`.codex/config.toml could not be read with ${python} (tomllib): ${tomlRead.error?.message || tomlRead.stderr}`);
+else {
+	const sandbox = { approval_policy: codexConfig.approval_policy, sandbox_mode: codexConfig.sandbox_mode, network_access: codexConfig.sandbox_workspace_write?.network_access };
+	if (JSON.stringify(sandbox) !== JSON.stringify({ approval_policy: "on-request", sandbox_mode: "workspace-write", network_access: false })) fail(`.codex/config.toml must keep on-request approvals, workspace-write and no network, got ${JSON.stringify(sandbox)}`);
+	const claudeServers = JSON.parse(readFileSync(join(repoRoot, ".mcp.json"), "utf8")).mcpServers;
+	const codexServers = codexConfig.mcp_servers ?? {};
+	const pick = (s) => JSON.stringify({ command: s.command, args: s.args ?? [], env: s.env ?? {} });
+	for (const name of new Set([...Object.keys(claudeServers), ...Object.keys(codexServers)]))
+		if (!claudeServers[name] || !codexServers[name] || pick(claudeServers[name]) !== pick(codexServers[name])) fail(`MCP server "${name}" differs between .mcp.json and .codex/config.toml`);
+	const prompts = new Set(Object.entries(codexServers).flatMap(([s, c]) => Object.entries(c.tools ?? {}).filter(([, t]) => t.approval_mode === "prompt").map(([t]) => `mcp__${s}__${t}`)));
+	const settings = JSON.parse(readFileSync(join(repoRoot, ".claude", "settings.json"), "utf8")).permissions;
+	const known = new Set([...settings.allow, ...settings.ask].filter((p) => p.startsWith("mcp__")));
+	for (const t of BLENDER_TOOLS) known.add(`mcp__blender__${t}`);
+	for (const t of prompts) known.add(t);
+	const names = [...known].sort();
+	const asked = await runAll(names.map((name) => () => run(process.execPath, [join(here, "guard_mcp.mjs")], { tool_name: name, tool_input: {} })));
+	let agree = 0;
+	names.forEach((name, i) => {
+		const asks = verdict(asked[i]) === "ask";
+		if (asks !== prompts.has(name)) fail(`${name}: guard_mcp ${asks ? "asks" : "allows"} but .codex/config.toml ${prompts.has(name) ? "prompts" : "does not prompt"}`);
+		else agree++;
+	});
+	console.log(`.codex/config.toml: ${Object.keys(codexServers).length} MCP servers identical to .mcp.json; ${agree}/${names.length} tools prompt in Codex exactly when guard_mcp asks`);
+}
 
 // Secret patterns: one sample per label, flagged identically by this hook library and tools/check.py.
 const rep = (c, n) => c.repeat(n);
@@ -273,7 +646,6 @@ const samples = [
 ];
 const labels = new Set(secretPatterns().map(([, label]) => label));
 for (const label of labels) if (!samples.some(([l]) => l === label)) fail(`secret-patterns.json label "${label}" has no self-test sample`);
-const python = process.env.FACTORY_PYTHON || (process.platform === "win32" ? "python" : "python3");
 const pyScript = [
 	"import json, sys",
 	"sys.path.insert(0, sys.argv[1])",
