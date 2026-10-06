@@ -258,7 +258,9 @@ test("studio smoke scenes match the committed golden hashes", function(t)
 	local fs = require("@lune/fs")
 	local serde = require("@lune/serde")
 	local FactorySmoke = require("../packages/Pipeline/FactorySmoke")
-	local golden = serde.decode("json", fs.readFile("tests/golden/studio-smoke.json"))
+	-- Repo root from this spec's own path, so the spec runs from any working directory.
+	local root = string.match(debug.info(1, "s"), "^(.*)[/\\]tests[/\\][^/\\]*$") or "."
+	local golden = serde.decode("json", fs.readFile(root .. "/tests/golden/studio-smoke.json"))
 	local game = roblox.Instance.new("DataModel")
 	local result = FactorySmoke.run(game:GetService("Workspace"), roblox)
 	for key, entry in result do
