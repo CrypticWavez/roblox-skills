@@ -4,11 +4,14 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import shutil
+import stat
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -119,6 +122,35 @@ class BaselineFlowTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("FAIL analyzer error", text)
 
+    def test_unrecognised_output_fails(self):
+        # Before: a crash message parsed as zero diagnostics, every baseline file counted as lower, exit 0.
+        self.run_tool(CANNED, "--update-baseline")
+        self.report.unlink()
+        crash = "terminate called after throwing an instance of 'std::runtime_error'\n  what():  failed to load definitions file\n"
+        code, text = self.run_tool(crash)
+        self.assertEqual(code, 1, text)
+        self.assertIn("FAIL the output has no diagnostic and no luau-lsp log line", text)
+        self.assertIn("what():  failed to load definitions file", text, "the output's tail is shown")
+        self.assertNotIn("under", text, "nothing was compared with the baseline")
+        self.assertFalse(self.report.exists())
+        self.assertEqual(self.run_tool("usage: luau-lsp analyze [options]\n")[0], 1)
+
+    def test_log_lines_only_are_a_finished_clean_run(self):
+        self.run_tool(CANNED, "--update-baseline")
+        code, text = self.run_tool("[INFO] Loaded definitions file\n")
+        self.assertEqual(code, 0, text)
+        self.assertIn("0 diagnostics in 0 files", text)
+
+    def test_exit_problem_keeps_the_analyzer_exit_code(self):
+        diagnostics, _ = luau_analyze.parse(CANNED)
+        self.assertIsNone(luau_analyze.exit_problem(0, []))
+        self.assertIsNone(luau_analyze.exit_problem(0, diagnostics))
+        self.assertIsNone(luau_analyze.exit_problem(1, diagnostics), "luau-lsp exits 1 when it reports diagnostics")
+        self.assertIn("killed by signal 6", luau_analyze.exit_problem(-6, diagnostics))
+        self.assertIn("exited 2", luau_analyze.exit_problem(2, diagnostics))
+        self.assertIn("exited 139", luau_analyze.exit_problem(139, []))
+        self.assertIn("without a diagnostic", luau_analyze.exit_problem(1, []))
+
     def test_missing_binary_is_skipped_not_passed(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
@@ -133,6 +165,85 @@ class BaselineFlowTest(unittest.TestCase):
         self.assertEqual(doc["luau_lsp"], luau_analyze.pinned_version())
         self.assertEqual(doc["definitions_sha256"], next(f["sha256"] for f in lock["files"] if f["role"] == "definitions"))
         self.assertEqual(doc["total"], sum(entry["total"] for entry in doc["files"].values()))
+
+
+FAKE_LSP = """#!/bin/sh
+if [ "$1" = "--version" ]; then echo "$FAKE_LSP_VERSION"; exit 0; fi
+if [ "$1" = "sourcemap" ]; then exit 0; fi
+cat "$FAKE_LSP_OUTPUT" >&2
+if [ "$FAKE_LSP_EXIT" = "abort" ]; then kill -ABRT $$; fi
+exit "$FAKE_LSP_EXIT"
+"""
+
+
+@unittest.skipIf(os.name == "nt", "the fake analyzer is a POSIX shell script")
+class AnalyzerExitCodeTest(unittest.TestCase):
+    """The live route with a fake luau-lsp and rojo on PATH: the analyzer's exit code decides too."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="luau-analyze-exit-"))
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.baseline = self.tmp / "baseline.json"
+        self.report = self.tmp / "report.json"
+        self.output = self.tmp / "analyzer-output.txt"
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir()
+        for name in ("luau-lsp", "rojo"):
+            path = bin_dir / name
+            path.write_text(FAKE_LSP)
+            path.chmod(path.stat().st_mode | stat.S_IXUSR)
+        self.binary = bin_dir / "luau-lsp"
+        env = {"PATH": f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}", "FAKE_LSP_VERSION": luau_analyze.pinned_version(),
+               "FAKE_LSP_OUTPUT": str(self.output)}
+        for patcher in (
+            mock.patch.dict(os.environ, env),
+            mock.patch.object(luau_analyze, "CACHE", self.tmp / "cache"),
+            mock.patch.object(luau_analyze.luau_defs, "cached_state", return_value=[]),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.assertEqual(self.analyze(CANNED, "1", "--update-baseline")[0], 0)
+
+    def analyze(self, text, exit_code, *args):
+        self.output.write_text(text)
+        out = io.StringIO()
+        with mock.patch.dict(os.environ, {"FAKE_LSP_EXIT": exit_code}), contextlib.redirect_stdout(out):
+            code = luau_analyze.main(["--luau-lsp", str(self.binary), "--baseline", str(self.baseline), "--report", str(self.report), *args])
+        return code, out.getvalue()
+
+    def test_run_analyzer_returns_the_exit_code(self):
+        self.output.write_text("x")
+        with mock.patch.dict(os.environ, {"FAKE_LSP_EXIT": "abort"}):
+            code, text = luau_analyze.run_analyzer(str(self.binary), self.tmp / "defs", self.tmp / "sourcemap.json")
+        self.assertLess(code, 0, "killed by a signal")
+        self.assertEqual(text, "x")
+
+    def test_finished_runs_pass(self):
+        self.assertEqual(self.analyze(CANNED, "1")[0], 0, "exit 1 with diagnostics is how luau-lsp reports them")
+        code, text = self.analyze("", "0")
+        self.assertEqual(code, 0, text)
+        self.assertIn("0 diagnostics in 0 files", text)
+
+    def test_crashes_and_rejected_arguments_fail(self):
+        # Before: the exit code was discarded, so each of these passed with every file "under" the baseline.
+        partial = CANNED.split("caused by:")[0] + "terminate called after throwing an instance of 'std::bad_alloc'\n"
+        for text, exit_code, needle in (
+            (partial, "abort", "luau-lsp was killed by signal 6"),
+            ("", "abort", "luau-lsp was killed by signal 6"),
+            ("Unknown option: --definitions:@roblox\n", "2", "luau-lsp exited 2"),
+            (CANNED, "139", "luau-lsp exited 139"),
+            ("failed to read sourcemap\n", "1", "luau-lsp exited 1 without a diagnostic"),
+        ):
+            with self.subTest(exit_code=exit_code, text=text[:30]):
+                if self.report.exists():
+                    self.report.unlink()
+                code, out = self.analyze(text, exit_code)
+                self.assertEqual(code, 1, out)
+                self.assertIn(f"FAIL {needle}", out)
+                self.assertNotIn("under", out, "nothing was compared with the baseline")
+                self.assertFalse(self.report.exists())
+                if text:
+                    self.assertIn(text.strip().splitlines()[-1], out, "the output's tail is shown")
 
 
 class DefinitionsLockTest(unittest.TestCase):

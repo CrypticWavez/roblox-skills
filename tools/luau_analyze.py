@@ -13,6 +13,9 @@ clean slate: the first one recorded the existing diagnostics as they were.
 
 Exit codes: 0 no regression, 1 regression or broken setup, 2 usage, 3 luau-lsp not installed
 (SKIPPED: CI installs it with rokit; this container has no release binary unless one is built).
+luau-lsp's own exit code is kept: 0, or 1 with diagnostics, is a finished analysis; a signal, any other
+code, or 1 with nothing parsed is a crash or a rejected argument and fails with the output's tail.
+--from-output has no exit code, so non-empty output with neither a diagnostic nor a log line fails.
 Writes build/luau-lsp/report.json (every diagnostic) and never touches the network.
 """
 import argparse
@@ -38,6 +41,7 @@ EXIT_SKIPPED = 3
 # gnu formatter: <path>[ [<DataModel path>]]:<line>.<col>-<line>.<col>: <Type>: <message>
 DIAGNOSTIC = re.compile(r"^(?P<path>.+?)(?: \[[^\]]*\])?:(?P<line>\d+)\.(?P<col>\d+)-(?P<end_line>\d+)\.(?P<end_col>\d+): (?P<type>[A-Za-z][\w]*): (?P<message>.*)$")
 LOG_LINE = re.compile(r"^\[(INFO|WARN|WARNING|ERROR|DEBUG)\] ")
+TAIL_LINES = 20
 
 
 def pinned_version(rokit=ROOT / "rokit.toml"):
@@ -95,6 +99,30 @@ def parse(text, root=ROOT):
             keys.add(key)
             unique.append(item)
     return unique, errors
+
+
+def exit_problem(code, diagnostics):
+    """Why luau-lsp's exit code says the analysis did not finish, or None. It exits 1 when it reports
+    diagnostics, so only 0 and 1-with-diagnostics are a finished run."""
+    if code < 0:
+        return f"luau-lsp was killed by signal {-code}"
+    if code not in (0, 1):
+        return f"luau-lsp exited {code}"
+    if code != 0 and not diagnostics:
+        return f"luau-lsp exited {code} without a diagnostic it could be counted from"
+    return None
+
+
+def unrecognised(text, diagnostics):
+    """True when non-empty output holds neither a diagnostic nor a luau-lsp log line (a crash message,
+    an unprefixed error, the wrong file)."""
+    lines = [line for line in text.splitlines() if line.strip()]
+    return bool(lines) and not diagnostics and not any(LOG_LINE.match(line) for line in lines)
+
+
+def tail(text, count=TAIL_LINES):
+    lines = [line.rstrip("\r") for line in text.splitlines() if line.strip()]
+    return lines[-count:] or ["(no output)"]
 
 
 def summarise(diagnostics):
@@ -163,6 +191,7 @@ def main(argv=None):
     definitions_entry = next(entry for entry in lock["files"] if entry["role"] == "definitions")
     version = pinned_version()
 
+    code = None  # --from-output: no exit code to check
     if args.from_output:
         text = Path(args.from_output).read_text(encoding="utf-8", errors="replace")
     else:
@@ -187,9 +216,16 @@ def main(argv=None):
         if made.returncode != 0:
             print(f"FAIL rojo sourcemap {PROJECT}: {(made.stderr or made.stdout).strip()[-400:]}")
             return 1
-        _, text = run_analyzer(binary, CACHE / definitions_entry["name"], sourcemap)
+        code, text = run_analyzer(binary, CACHE / definitions_entry["name"], sourcemap)
 
     diagnostics, errors = parse(text)
+    broken = exit_problem(code, diagnostics) if code is not None else (
+        "the output has no diagnostic and no luau-lsp log line" if unrecognised(text, diagnostics) else None)
+    if broken:
+        print(f"FAIL {broken}; nothing was compared with the baseline. Last lines of the output:")
+        for line in tail(text):
+            print(f"     {line}")
+        return 1
     if errors:
         for line in errors:
             print(f"FAIL analyzer error: {line}")
