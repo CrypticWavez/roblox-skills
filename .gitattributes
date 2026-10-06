@@ -1,4 +1,19 @@
-# Skills are checked for LF line endings (tools/sync_skills.py); keep them LF on every platform,
-# including Windows checkouts with core.autocrlf=true.
+# LF everywhere, also on Windows checkouts with core.autocrlf=true: StyLua (line_endings = "Unix"),
+# the skills check (tools/sync_skills.py) and byte-compared goldens expect Unix line endings.
+* text=auto eol=lf
 .agents/skills/** text eol=lf
 .claude/skills/** text eol=lf
+# Legacy fixtures and records committed with CRLF: tests hash or compare their bytes, so keep them as stored.
+fixtures/analytics/excluded_by_default.json -text
+fixtures/analytics/expected_report.json -text
+fixtures/analytics/neutral_events.jsonl -text
+knowledge/records/failures.json -text
+knowledge/records/production-tools.json -text
+knowledge/records/tools-options.json -text
+*.rbxl binary
+*.rbxm binary
+*.fbx binary
+*.glb binary
+*.blend binary
+*.png binary
+*.jpg binary

@@ -27,6 +27,8 @@ In this document `<home>` means your user folder (`%USERPROFILE%` on Windows, `~
 
 ## The nine approved items
 
+No admin rights on the PC? ImageMagick, Krita and Audacity (and Inkscape, under optional extras) also publish official portable or archive builds. Unpack one into the tools folder (item 6), add the folder that holds its executable to the user PATH and open a new terminal. The doctor finds each tool by its check command, so the tool needs a launcher on PATH under that name (for example `audacity`).
+
 ### 1. ImageMagick
 
 Image conversions and checks on the PC (resize, alpha and format checks before an upload is even considered). Install ImageMagick 7 with the official installer from imagemagick.org. Keep its default security policy. Scripts must never pass untrusted file names to it unquoted. No gate or skill depends on it: the research rejected it as a repository dependency. Check: `imagemagick` (`magick -version`).
@@ -61,6 +63,8 @@ Repositories keep their own `rokit.toml`, and Rokit uses the nearest one, so thi
 If Aftman was installed before Rokit, its shim folder can come first on PATH. A bare `rojo` then runs Aftman's shim and fails (gap matrix T09). Fix it in one of two ways:
 - On Windows, open Settings > System > About > Advanced system settings > Environment Variables > Path (user variables) and move `%USERPROFILE%\.rokit\bin` above `%USERPROFILE%\.aftman\bin`.
 - Uninstall Aftman. Rokit reads `aftman.toml`.
+
+Windows searches the system Path before every user entry. If `.aftman\bin` is listed under System variables, reordering the user variables cannot fix it: remove it from the system Path (this needs admin rights) or uninstall Aftman. Until then, renaming Aftman's `rojo.exe` shim (for example to `rojo.exe.aftman-disabled`) lets a bare `rojo` reach Rokit and can be undone, but `path-order` keeps failing, because Aftman's other shims, or a reinstalled `rojo` shim, would come first again.
 
 Open a new terminal, then run `rojo --version`. It should print 7.7.0. Checks: `path-order` and `toolchain:rojo`.
 

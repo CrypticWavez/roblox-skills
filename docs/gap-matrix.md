@@ -9,10 +9,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | Status | Count |
 |---|---|
 | VERIFIED_STRONG | 12 |
-| VERIFIED_ACCEPTABLE | 25 |
-| WEAK | 4 |
-| PARTIAL | 40 |
-| BROKEN | 1 |
+| VERIFIED_ACCEPTABLE | 26 |
+| WEAK | 3 |
+| PARTIAL | 41 |
 | MISSING | 2 |
 | OUTDATED | 1 |
 | REDUNDANT | 1 |
@@ -31,7 +30,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [T06](#t06) | Agent tooling | Specialist subagents with explicit ownership | VERIFIED_STRONG | P3 | Real parallel tasks completed and merged (5 workers, then 10 groups). |
 | [T07](#t07) | Agent tooling | Repo gate (fast / pre-commit / pre-release) | VERIFIED_STRONG | P2 | Both tiers in strict CI on the integrated head (run 37456628604 on 096658b, nothing skipped) and in the container on bpy 5.0.1, 5.1.2 and 5.2.2; planted broken inputs each failed the gate. |
 | [T08](#t08) | Agent tooling | Continuous integration | VERIFIED_STRONG | P2 | Green strict CI on 367cd72 and on the integrated head (run 37456628604 on 096658b). |
-| [T09](#t09) | Agent tooling | Pinned Luau toolchain | WEAK | P2 | `python3 tools/pc_doctor.py` on the PC shows PASS for path-order and toolchain:rojo (7.7.0). |
+| [T09](#t09) | Agent tooling | Pinned Luau toolchain | PARTIAL | P3 | `python3 tools/pc_doctor.py` on the PC shows PASS for path-order and toolchain:rojo (7.7.0). |
 | [T10](#t10) | Agent tooling | Selene lint with the Roblox standard library | VERIFIED_STRONG | P3 | Selene step green in strict CI on the integrated head (run 37456628604 on 096658b); container run. |
 | [T11](#t11) | Agent tooling | Rojo projects build from a clean clone | VERIFIED_STRONG | P2 | Rojo builds of all five projects in the container and in strict CI (run 37456628604 on 096658b). |
 | [T12](#t12) | Agent tooling | Reusable project starter | VERIFIED_ACCEPTABLE | P1 | `starter-smoke` in the pre-commit gate and CI; `starter-smoke-full` in the pre-release gate and CI; `tools/starter_smoke.py`; Python unit tests. |
@@ -41,7 +40,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [T16](#t16) | Agent tooling | Owner-record write protection (release/owner-*.json) | PARTIAL | P2 | Self-test cases in the gate; Claude file-tool protection pending the settings change. |
 | [T17](#t17) | Agent tooling | Starter boot skeleton and kit layout | PARTIAL | P2 | Lune specs in the scaffold (T0/T2); S07 owner record pending (T3). |
 | [T18](#t18) | Agent tooling | Pinned optional dependencies with licence notices (starter bundles) | PARTIAL | P3 | Unit tests and starter smoke; CI in a game repo. |
-| [L01](#l01) | Local workbench (PC) | Local workbench gate | BROKEN | P1 | `./.venv/Scripts/python.exe tools/check.py` passes on a quiet tree. |
+| [L01](#l01) | Local workbench (PC) | Local workbench gate | VERIFIED_ACCEPTABLE | P3 | `./.venv/Scripts/python.exe tools/check.py` passed 72/72 on a quiet tree. |
 | [L02](#l02) | Local workbench (PC) | Version control and rollback for the workbench | MISSING | P1 | `git log` shows a commit. |
 | [L03](#l03) | Local workbench (PC) | Owner PC setup checks (pc_doctor, pinned PC tools, user-level skills copy) | PARTIAL | P2 | `python3 tools/pc_doctor.py` (with `--blender <exe>`) on the PC reports no FAIL. |
 | [M01](#m01) | MCP and Studio | Built-in Roblox Studio MCP connection | VERIFIED_ACCEPTABLE | P1 | Live tool calls returned the expected results in Studio for the three recorded tools. |
@@ -136,9 +135,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 1. Open Claude Code in the repo once and accept the trust prompt and the project MCP servers.
 2. Optional: delete the `Write(weppy-project-sync/**)` line from `.claude/settings.json` (item 3 of the `docs/mcp.md` change set).
 
-**T09 Pinned Luau toolchain** (WEAK)
+**T09 Pinned Luau toolchain** (PARTIAL)
 
-1. Windows Settings > Environment Variables > Path: move `%USERPROFILE%\.rokit\bin` above `%USERPROFILE%\.aftman\bin` (or remove the Aftman entry); see `docs/pc-setup.md` item 7.
+1. Remove `%USERPROFILE%\.aftman\bin` from the system Path (needs admin rights; on a PC where it is only in the user Path, move `%USERPROFILE%\.rokit\bin` above it instead), or uninstall Aftman (Rokit reads aftman.toml); see `docs/pc-setup.md` item 7.
 2. Open a new terminal, run `python3 tools/pc_doctor.py`, and expect path-order PASS and toolchain:rojo 7.7.0.
 
 **T13 Publish/spend guards and MCP settings for Codex** (PARTIAL)
@@ -162,10 +161,6 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **T17 Starter boot skeleton and kit layout** (PARTIAL)
 
 1. Scaffold a scratch repo outside the factory (`python3 tools/new_project.py <folder> --name BootCheck`), build its place with Rojo, open it unpublished, run Play Solo and then Server & Clients with 2 players, and check one `BOOT_REPORT` line per side with every phase ok.
-
-**L01 Local workbench gate** (BROKEN)
-
-1. When the Codex run finishes, run `./.venv/Scripts/python.exe tools/check.py` in the workbench folder.
 
 **L02 Version control and rollback for the workbench** (MISSING)
 
@@ -429,7 +424,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** Workbench `tools/check.py` 43 checks passed at 19:43Z.
 - **ACTUAL STATE:** `tools/check.py` runs StyLua, JSON, the shared-pattern secret scan over every committable file, skills sync, gap matrix, doc links (relative links, heading anchors, well-formed URLs), the knowledge index and record paths, the fixtures README, asset provenance, Rojo sourcemaps of every project (orphan `.luau` files fail), a self-test that feeds each content check a broken input, hook self-test, Selene, Lune specs, the inherited suites, fixture builds with golden hashes (added, removed and changed fixtures fail; a missing golden fails) and the project-starter smoke; pre-release adds Blender templates, round trip, QA self-test and previews. Without `--strict`, Selene and (pre-release only) `luau-lsp-analyze` may skip; any other skipped step fails, in the installed git hook too; `--strict` (CI) allows none. `--update-golden` rewrites every golden, `--update-golden=NAME[,NAME]` only the named ones (fixture-hashes, studio-smoke or a spec golden), and a `golden-update` step lists what changed. For the runtime kits, pre-commit also runs `python-unit` (every `tests/test_*.py`), `playbook-lint`, `asset-sources`, `luau-defs-lock`, `kit-tiers` and `capture-staleness` (non-fatal), and pre-release runs `material-library`, `blender-kit`, `gltf-validate-templates`, previews of the five course fixtures, `luau-lsp-analyze` and `starter-smoke-full`.
-- **EVIDENCE:** Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. On the integrated head (fd29fd6) in the cloud container, with a locally generated Roblox std and a source-built luau-lsp 1.70.1: pre-commit PASS with nothing skipped (Selene 0 errors, 183 Python tests, kit-tiers, 1214 Lune cases) and pre-release PASS with nothing skipped on bpy 5.0.1, 5.1.2 and 5.2.2 (Blender templates, round trip, QA self-test, material library, kit bake, glTF validation, 9 previews, luau-lsp 0 files over, full starter smoke). Strict CI on the integrated head (run 37456628604 on 096658b) passed pre-commit and pre-release on bpy 5.1.2 and 5.2.2 with `failed=[] skipped=[]`, including `luau-lsp-analyze`, `blender-kit`, `gltf-validate-templates` and `starter-smoke-full`.
+- **EVIDENCE:** Both tiers passed in GitHub Actions in strict mode with nothing skipped (run 37393231152 on 367cd72). Planted broken inputs (bad link and anchor, malformed URL, unregistered asset id, orphan `.luau`, undocumented fixture, a workbench record claiming 'verified', stale index, missing golden, missing core tools) each failed the gate in a scratch copy; an intended SceneKit change went green with one `--update-golden`. On the integrated head (fd29fd6) in the cloud container, with a locally generated Roblox std and a source-built luau-lsp 1.70.1: pre-commit PASS with nothing skipped (Selene 0 errors, 183 Python tests, kit-tiers, 1214 Lune cases) and pre-release PASS with nothing skipped on bpy 5.0.1, 5.1.2 and 5.2.2 (Blender templates, round trip, QA self-test, material library, kit bake, glTF validation, 9 previews, luau-lsp 0 files over, full starter smoke). Strict CI on the integrated head (run 37456628604 on 096658b) passed pre-commit and pre-release on bpy 5.1.2 and 5.2.2 with `failed=[] skipped=[]`, including `luau-lsp-analyze`, `blender-kit`, `gltf-validate-templates` and `starter-smoke-full`. A simulated Windows checkout (`core.autocrlf=true`) of 499d1f5 wrote 424 `.luau` files with CRLF and `stylua --check packages` failed; `.gitattributes` now forces LF (keeping six legacy CRLF fixtures and records byte-exact), and the same simulation gives 0 CRLF `.luau` files and a clean StyLua check.
 - **DEFECT:** The gate has run only on Linux (the cloud container and Ubuntu CI); a run on the owner's Windows PC has not been observed.
 - **ROOT CAUSE:** CI runners and the cloud container are Linux.
 - **IMPACT:** A Windows-only path or tool problem would show only on the PC.
@@ -451,15 +446,15 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### T09
 
-**Pinned Luau toolchain** · Agent tooling · WEAK · P2
+**Pinned Luau toolchain** · Agent tooling · PARTIAL · P3
 
 - **PREVIOUS CLAIM:** Bootstrap and toolchain partially verified; explicit Rokit binaries. Earlier in this pass: luau-lsp pinned at 1.68.1 and never run.
-- **ACTUAL STATE:** `rokit.toml` pins rojo 7.7.0, lune 0.10.5, stylua 2.5.2, selene 0.31.0 and luau-lsp 1.70.1, matching the PC except luau-lsp. `templates/pc-tools/rokit.toml` pins the same set plus darklua 0.19.0 (MIT) and Wally 0.3.2 (MPL-2.0) for an owner tools folder. `tools/pc_doctor.py` (read-only) checks every pin, the Rokit-before-Aftman PATH order and the tools folder; `docs/pc-setup.md` item 7 gives the fix. On the PC, Aftman's shim directory precedes Rokit's on PATH, so a bare `rojo` resolves to Aftman and fails.
-- **EVIDENCE:** Local audit (`where rojo`, PATH order). `tests/test_pc_doctor.py` (9, fake PATH; passes on the integrated branch): Aftman first gives FAIL for path-order and toolchain:rojo, and a wrong version is reported. CI installs the pinned set with `rokit install`; the cloud container built lune, stylua and selene at the pinned versions (rojo 7.7.1 from crates) and luau-lsp 1.70.1 from source at the pinned tag (the release download was refused).
-- **DEFECT:** PATH order on the PC is still unfixed and unverified.
-- **ROOT CAUSE:** Aftman installed before Rokit; both add shims.
-- **IMPACT:** Agents and humans running bare `rojo` on the PC get an error.
-- **FIX:** Put `%USERPROFILE%\.rokit\bin` before `%USERPROFILE%\.aftman\bin`, or uninstall Aftman (Rokit reads aftman.toml).
+- **ACTUAL STATE:** `rokit.toml` pins rojo 7.7.0, lune 0.10.5, stylua 2.5.2, selene 0.31.0 and luau-lsp 1.70.1, matching the PC except luau-lsp. `templates/pc-tools/rokit.toml` pins the same set plus darklua 0.19.0 (MIT) and Wally 0.3.2 (MPL-2.0) for an owner tools folder. `tools/pc_doctor.py` (read-only) checks every pin, the Rokit-before-Aftman PATH order and the tools folder; `docs/pc-setup.md` item 7 gives the fix. On the PC, Aftman's shim directory precedes Rokit's in the system Path; its `rojo` shim is disabled, so a bare `rojo` runs Rokit's 7.7.0.
+- **EVIDENCE:** Local audit (`where rojo`, PATH order). `tests/test_pc_doctor.py` (9, fake PATH; passes on the integrated branch): Aftman first gives FAIL for path-order and toolchain:rojo, and a wrong version is reported. CI installs the pinned set with `rokit install`; the cloud container built lune, stylua and selene at the pinned versions (rojo 7.7.1 from crates) and luau-lsp 1.70.1 from source at the pinned tag (the release download was refused). On the owner's PC on 2026-10-06 the pinned tools folder was installed and the doctor's toolchain and pc-tools pins passed. Aftman's folder is in the system Path, which Windows searches before user entries, so reordering user entries could not fix it; Aftman's `rojo` shim was renamed (reversible) and a bare `rojo` now runs Rokit's 7.7.0, while path-order still FAILs as designed.
+- **DEFECT:** Aftman's folder still precedes Rokit's in the system Path, so another Aftman shim, or a reinstalled `rojo` shim, would win again.
+- **ROOT CAUSE:** Aftman was on the system Path before Rokit was installed; Windows searches system entries before user entries.
+- **IMPACT:** Low while the shim stays disabled; path-order keeps the doctor at FAIL.
+- **FIX:** Remove Aftman's folder from the system Path (admin) or uninstall Aftman (Rokit reads aftman.toml); `docs/pc-setup.md` item 7 now covers the system-Path case and the doctor's hint names it.
 - **VERIFICATION:** `python3 tools/pc_doctor.py` on the PC shows PASS for path-order and toolchain:rojo (7.7.0).
 
 ### T10
@@ -533,7 +528,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** None (luau-lsp was pinned but never run).
 - **ACTUAL STATE:** `luau-defs.lock.json` pins the Roblox definitions and API docs by commit (0382dc76) and sha256; `tools/luau_defs.py` fetches and verifies them into `build/luau-lsp/`. `tools/luau_analyze.py` runs `luau-lsp analyze` over `packages/` and `fixtures/` with a Rojo sourcemap and fails on any per-file increase over `tests/golden/luau-lsp-baseline.json` (exit 3, SKIPPED, without a binary); it fails when luau-lsp crashes, exits with a code other than 0 or 1, or prints output it cannot parse, so a broken analyzer can never pass the step. The repo-local Claude Code plugin `luau-lsp@roblox-factory` runs the same server and definitions; it is an LSP server, not MCP (`docs/pc-setup.md`).
-- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under. Typing passes fixed every kit file (GameKit, UIKit, Cinematics, Feel, AVKit, authoring kits and kit fixtures to 0) and the baseline was re-recorded: 278 diagnostics in 38 files, 0 over (fd29fd6 names each file that fell and why; none rose). Strict CI on the integrated head (run 37456628604 on 096658b): `rokit install` fetched luau-lsp 1.70.1 from its release and `luau-lsp-analyze` passed in both Blender jobs; strict mode fails a skipped step, so the binary ran.
+- **EVIDENCE:** G9b, on its own branch, with luau-lsp 1.70.1 built from source at the pinned tag: 338 diagnostics in 43 files, 0 over; a planted error gave 1 file over and exit 1; `claude plugin validate --strict` passed for the marketplace and the plugin; a live LSP round trip got publishDiagnostics. On the integrated branch in this pass: `luau_defs.py` fetched both pinned files and `--verify` matched; `tests/test_luau_analyze.py` (16, the live round trip skipped without luau-lsp on PATH) passes; the same source-built binary reported 611 diagnostics in 127 files against the 338 baseline: 86 files over (+314: GameKit 43 files, UIKit 15, AVKit 7, ProcGen 3, Feel 3, kit fixtures 8, SceneKit, Cinematics, Pipeline and Runtime 7) and 3 under. Typing passes brought UIKit, Cinematics, Feel, AVKit and the kit fixtures to 0 and GameKit to 6 diagnostics in 4 files (EnvRoblox, Probe, Retry, Settings); the rest sit in SceneKit, ProcGen and the inherited Creator, Runtime and Pipeline packages and fixtures. The baseline was re-recorded: 278 diagnostics in 38 files, 0 over (fd29fd6 names each file that fell and why; none rose). Strict CI on the integrated head (run 37456628604 on 096658b): `rokit install` fetched luau-lsp 1.70.1 from its release and `luau-lsp-analyze` passed in both Blender jobs; strict mode fails a skipped step, so the binary ran.
 - **DEFECT:** The plugin has not run inside a Claude Code session.
 - **ROOT CAUSE:** Groups wrote modules without a shared analyzer run; cloud sessions start no language server, so the plugin needs a desktop Claude Code session.
 - **IMPACT:** Type regressions are gated in strict CI; a local pre-release run without the binary may skip the step; editor diagnostics on the PC are unconfirmed.
@@ -581,16 +576,16 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### L01
 
-**Local workbench gate** · Local workbench (PC) · BROKEN · P1
+**Local workbench gate** · Local workbench (PC) · VERIFIED_ACCEPTABLE · P3
 
 - **PREVIOUS CLAIM:** `reports/verification.json` pass at 19:43Z.
-- **ACTUAL STATE:** Re-run during the audit: FAIL 42/43 (`authored-inputs-unchanged`). A Codex process running since 13:09 was editing `tools/profiles.py` and had added 8 files the last pass never covered. `wb.ps1 validate` passes (427 records, 0 errors).
-- **EVIDENCE:** Remote Control session on the PC, read-only.
-- **DEFECT:** The recorded pass does not cover the current files.
-- **ROOT CAUSE:** Concurrent writer and no version control.
-- **IMPACT:** No trustworthy green state for the workbench right now.
-- **FIX:** The owner chose to keep Codex running, so Claude stayed read-only. Re-run the gate once the Codex run ends.
-- **VERIFICATION:** `./.venv/Scripts/python.exe tools/check.py` passes on a quiet tree.
+- **ACTUAL STATE:** On 2026-10-06 the gate passed 72/72 on the owner's PC with the tree quiet; `reports/verification.json` was restored byte-identical afterwards. During the 2026-10-05 audit it failed 42/43 (`authored-inputs-unchanged`) because a running Codex process was editing files and had added 8 the last pass never covered. `wb.ps1 validate` passes (427 records, 0 errors).
+- **EVIDENCE:** Remote Control session on the PC, read-only: a first run on 2026-10-06 failed while Codex was still editing files; the re-run passed 72/72 in 136 s.
+- **DEFECT:** Claude has not edited the workbench (read-only by the owner's choice), so its findings stay unfixed there.
+- **ROOT CAUSE:** The owner chose to keep Codex as the workbench's only writer.
+- **IMPACT:** Workbench changes depend on Codex runs.
+- **FIX:** n/a
+- **VERIFICATION:** `./.venv/Scripts/python.exe tools/check.py` passed 72/72 on a quiet tree.
 
 ### L02
 
@@ -611,11 +606,11 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 - **PREVIOUS CLAIM:** None.
 - **ACTUAL STATE:** `docs/pc-setup.md` lists the nine approved items (ImageMagick, Krita, Audacity, glTF Transform, Material Maker, a tools folder pinned by `templates/pc-tools/rokit.toml`, Rokit before Aftman on PATH, the Blender MCP telemetry check, the user-skills copy), optional extras and the luau-lsp plugin, each with its doctor check and no machine paths. `tools/pc_doctor.py` is read-only and shows the home folder as `~`; `tools/user_skills.py` copies skills to the user level as a dry run by default, stamps the copies and refuses this repo and any git repo.
-- **EVIDENCE:** On the integrated branch `tests/test_pc_doctor.py` (9) and `tests/test_user_skills.py` (7) pass. G9b ran the doctor in the cloud container: 2 FAIL, as expected there (rojo 7.7.1 from crates, no luau-lsp on PATH).
-- **DEFECT:** Never run on the owner's PC; none of the nine items is confirmed installed.
-- **ROOT CAUSE:** The PC is outside this container.
-- **IMPACT:** Agents on the PC cannot rely on the extra tools or a correct PATH.
-- **FIX:** The owner installs the items and runs the doctor.
+- **EVIDENCE:** On the integrated branch `tests/test_pc_doctor.py` (9) and `tests/test_user_skills.py` (7) pass. G9b ran the doctor in the cloud container: 2 FAIL, as expected there (rojo 7.7.1 from crates, no luau-lsp on PATH). On the owner's PC on 2026-10-06, after the approved installs (official portable builds of ImageMagick, Krita, Audacity and Inkscape in the tools folder, glTF Transform, Material Maker, the pinned tools folder and the skills copy), the doctor reported 19 PASS, 2 FAIL and 1 OPTIONAL (the Blender Lab MCP trial, not installed); both FAILs are owner settings, recorded in the owner's private notes, not here. `user_skills.py` reported all 17 copied skills current for Claude and Codex.
+- **DEFECT:** Two owner settings still FAIL on the PC; the Blender Lab MCP trial is not installed.
+- **ROOT CAUSE:** Both are settings only the owner can change; the trial's download was not approved on the PC.
+- **IMPACT:** Until the owner changes them, the doctor exits 1 on the PC.
+- **FIX:** The owner changes the two settings named in the doctor's report and reruns it; the trial stays optional.
 - **VERIFICATION:** `python3 tools/pc_doctor.py` (with `--blender <exe>`) on the PC reports no FAIL.
 
 ### M01
@@ -662,10 +657,10 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 **Blender MCP add-on telemetry off** · MCP and Studio · WEAK · P1
 
 - **PREVIOUS CLAIM:** Workbench Codex config sets telemetry off for its vendored server.
-- **ACTUAL STATE:** The add-on installed in Blender (`blender_mcp.py` v1.2) defaults telemetry to on; whether it was turned off is unverified. The server side is off via `DISABLE_TELEMETRY` in `.mcp.json` and `.codex/config.toml`. `tools/pc_doctor.py` checks that server flag (telemetry:server) and, with `--blender <exe>`, reads the add-on preference through Blender in background mode without saving preferences (telemetry:addon); `docs/pc-setup.md` item 8 gives the manual check.
-- **EVIDENCE:** Local audit read the add-on source default. `tests/test_pc_doctor.py` (passes on the integrated branch): a server flag set to false gives FAIL; a fake Blender reporting consent true gives FAIL, false gives PASS and a crash gives FAIL. G9b ran the doctor's Blender script on bpy 5.0.1 in the container (no add-on installed, so TODO).
-- **DEFECT:** The add-on preference on the PC is unread, so prompt, code or screenshot telemetry from the add-on is possible.
-- **ROOT CAUSE:** Upstream default; the PC is outside this container.
+- **ACTUAL STATE:** The add-on installed in Blender (`blender_mcp.py` v1.2) defaults telemetry to on; the owner's PC was read on 2026-10-06 (result in the owner's private notes). The server side is off via `DISABLE_TELEMETRY` in `.mcp.json` and `.codex/config.toml`. `tools/pc_doctor.py` checks that server flag (telemetry:server) and, with `--blender <exe>`, reads the add-on preference through Blender in background mode without saving preferences (telemetry:addon); `docs/pc-setup.md` item 8 gives the manual check.
+- **EVIDENCE:** Local audit read the add-on source default. `tests/test_pc_doctor.py` (passes on the integrated branch): a server flag set to false gives FAIL; a fake Blender reporting consent true gives FAIL, false gives PASS and a crash gives FAIL. G9b ran the doctor's Blender script on bpy 5.0.1 in the container (no add-on installed, so TODO). On 2026-10-06 the doctor read the add-on preference on the owner's PC with `--blender`; the result is kept in the owner's private notes.
+- **DEFECT:** Until the doctor shows telemetry:addon PASS on the PC, add-on telemetry (prompt, code or screenshot data) cannot be ruled out.
+- **ROOT CAUSE:** Upstream default; the preference is the owner's to change.
 - **IMPACT:** Private material could leave the machine.
 - **FIX:** Turn it off in the add-on preferences.
 - **VERIFICATION:** `python3 tools/pc_doctor.py --blender <exe>` shows telemetry:addon PASS on the PC.
@@ -1067,7 +1062,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 - **PREVIOUS CLAIM:** Not claimed.
 - **ACTUAL STATE:** `tools/gltf_validate.py` (pure Python, gltf-validate/1) checks the GLB container, buffers and views, accessor bounds and alignment, attributes, at most 4 influences, normalised weights, the node graph, skins, morph targets, animation samplers, image headers (size, power of two) and TEXCOORD_0; `gltf-transform inspect` runs only when npx exists and the owner opts in.
 - **EVIDENCE:** On the integrated branch `tests/test_gltf_validate.py` 22 OK; G6: every template GLB passes. Gate step `gltf-validate-templates` (pre-release, added in c70ff63) validates them on every pre-release run; it passed on the three bpy versions in the container and on 5.1.2 and 5.2.2 in strict CI (run 37456628604 on 096658b).
-- **DEFECT:** Not the Khronos validator (no extension semantics); the gltf-transform path was not exercised.
+- **DEFECT:** Not the Khronos validator (no extension semantics); the gltf-transform path has not run against a real install. It now launches npx by its resolved path, which Windows' `npx.cmd` needs (unit test).
 - **ROOT CAUSE:** Pure Python by choice (no network, no Node dependency).
 - **IMPACT:** Extension-level problems would pass.
 - **FIX:** n/a

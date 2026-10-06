@@ -87,6 +87,15 @@ class PcDoctorTest(unittest.TestCase):
         doctor.tool_versions("toolchain", pc_doctor.TOOLCHAIN)
         self.assertIn("7.6.0", next(r["detail"] for r in doctor.results if r["check"] == "toolchain:rojo"))
 
+    def test_aftman_first_with_its_rojo_shim_disabled(self):
+        (self.aftman / "rojo").rename(self.aftman / "rojo.aftman-disabled")
+        doctor = self.doctor(self.aftman, self.rokit, self.other)
+        doctor.path_order()
+        result = next(r for r in doctor.results if r["check"] == "path-order")
+        self.assertEqual(result["status"], "FAIL", "another Aftman shim could still come first")
+        self.assertIn("rojo resolves to Rokit for now", result["detail"])
+        self.assertNotIn("runs Aftman's shim", result["detail"])
+
     def test_missing_tools_and_old_node(self):
         self.tool(self.other, "node", "v18.19.0")
         doctor = self.doctor(self.other)

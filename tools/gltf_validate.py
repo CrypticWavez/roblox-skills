@@ -686,10 +686,12 @@ def gltf_transform(path, opted_in):
     """`gltf-transform inspect` output when the owner opted in and npx exists; else why not."""
     if not opted_in:
         return {"ran": False, "reason": f"not opted in (--gltf-transform or {OPT_IN_ENV}=1)"}
-    if shutil.which("npx") is None:
+    npx = shutil.which("npx")
+    if npx is None:
         return {"ran": False, "reason": "npx not on PATH"}
     try:
-        proc = subprocess.run(GLTF_TRANSFORM + [str(path)], capture_output=True, text=True, timeout=300)
+        # Launch the resolved path: on Windows npx is npx.cmd, which a bare "npx" cannot start.
+        proc = subprocess.run([npx, *GLTF_TRANSFORM[1:], str(path)], capture_output=True, text=True, timeout=300)
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {"ran": False, "reason": str(exc)}
     return {"ran": True, "returncode": proc.returncode, "output": (proc.stdout + proc.stderr)[-20000:]}

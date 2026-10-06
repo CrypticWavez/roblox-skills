@@ -141,9 +141,10 @@ class Doctor:
         rojo = self.which("rojo")
         if rokit is None:
             return self.add("path-order", "TODO", "no .rokit/bin folder on PATH", "install Rokit (docs/pc-setup.md)")
-        if aftman is not None and aftman < rokit:
-            return self.add("path-order", "FAIL", "Aftman's bin folder comes before Rokit's on PATH, so bare `rojo` runs Aftman's shim", "move the .rokit/bin entry above .aftman/bin (or remove Aftman), then open a new terminal")
         parts = [p.lower() for p in re.split(r"[\\/]+", rojo or "")]
+        if aftman is not None and aftman < rokit:
+            why = "; rojo resolves to Rokit for now, but any other Aftman shim would win" if ".rokit" in parts else ", so bare `rojo` runs Aftman's shim"
+            return self.add("path-order", "FAIL", "Aftman's bin folder comes before Rokit's on PATH" + why, "move the .rokit/bin entry above .aftman/bin, or remove .aftman/bin from the system Path (Windows searches it before user entries) or uninstall Aftman, then open a new terminal")
         if rojo and ".rokit" not in parts:
             return self.add("path-order", "FAIL", f"rojo resolves to {self.show(rojo)}, not Rokit's shim", "put .rokit/bin first on PATH")
         return self.add("path-order", "PASS", "Rokit's bin folder is on PATH" + (" before Aftman's" if aftman is not None else "") + (", and rojo resolves to it" if rojo else ""))

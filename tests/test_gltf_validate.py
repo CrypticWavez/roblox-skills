@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 import zlib
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
@@ -311,6 +312,19 @@ class CliTests(unittest.TestCase):
             self.assertTrue(data["pass"])
             self.assertFalse(data["files"][0]["gltf_transform"]["ran"])  # opt-in only
             self.assertIn("FILE_MISSING", codes(gv.validate_file(Path(tmp) / "absent.glb")))
+
+    def test_gltf_transform_launches_the_resolved_npx(self):
+        # On Windows shutil.which finds npx.cmd, and only that full path can be started.
+        resolved = str(Path("node") / "npx.cmd")
+        done = mock.Mock(returncode=0, stdout="ok", stderr="")
+        with mock.patch.object(gv.shutil, "which", return_value=resolved), mock.patch.object(gv.subprocess, "run", return_value=done) as run:
+            result = gv.gltf_transform(Path("a.glb"), opted_in=True)
+        self.assertTrue(result["ran"])
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[0], resolved)
+        self.assertEqual(argv[1:], gv.GLTF_TRANSFORM[1:] + ["a.glb"])
+        with mock.patch.object(gv.shutil, "which", return_value=None):
+            self.assertEqual(gv.gltf_transform(Path("a.glb"), opted_in=True)["reason"], "npx not on PATH")
 
     def test_gltf_json_with_external_buffer(self):
         b = Builder()
