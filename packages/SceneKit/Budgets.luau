@@ -252,10 +252,7 @@ function Budgets.check(stats: any, class: string): ({ Violation }, { string })
 	if #problems > 0 then
 		error("Budgets.check: " .. table.concat(problems, "; "), 2)
 	end
-	local measured: { [string]: number } = {}
-	for key, value in stats.counts or {} do
-		measured[key] = value
-	end
+	local measured: { [string]: number } = table.clone(stats.counts or {})
 	if type(stats.frame_ms) == "table" and stats.frame_ms.p95 ~= nil then
 		measured.frame_ms_p95 = stats.frame_ms.p95
 	end

@@ -80,4 +80,4 @@ Clips that load, play at the right priority and length, fire their markers once 
 - A blend tree or state machine is needed: Animation Graphs are REVISIT, because graphs must be published as assets (`docs/blender.md`). Custom rigs needing R15 clips: Adaptive Animation is also REVISIT.
 
 ## Related
-blender-asset-factory, blender-asset-qa, blender-roblox-roundtrip, roblox-studio-testing, roblox-multiplayer-integrity.
+roblox-gameplay-kit (AnimSet plays clips/1 slots), blender-asset-factory, blender-asset-qa, blender-roblox-roundtrip, roblox-studio-testing, roblox-multiplayer-integrity.

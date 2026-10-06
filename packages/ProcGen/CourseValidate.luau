@@ -133,7 +133,7 @@ function CourseValidate.difficulty(link: Link, landing: any, profile: any, margi
 end
 
 local function reachable(
-	course: any,
+	_course: any,
 	edges: { { number } },
 	from: number,
 	skip: number?
@@ -285,13 +285,11 @@ local function jumpChecks(course: any, rules: any?, checks: { Check })
 	local tolerance = rule(rules, "difficultyTolerance")
 	local peak, peakIndex = -math.huge, 0
 	local drops = {}
-	local measured = {}
 	for _, segment in course.segments do
 		local link = links[segment.index]
 		if link then
 			local s = CourseValidate.difficulty(link, pads[segment.to], profile, margin)
 			if s then
-				table.insert(measured, round2(s))
 				if s < peak - tolerance then
 					table.insert(
 						drops,

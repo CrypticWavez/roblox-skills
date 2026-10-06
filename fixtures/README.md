@@ -4,7 +4,7 @@ What each entry in `fixtures/` is and what consumes it. Every place here is an u
 
 | Entry | What it is | Consumed by |
 |---|---|---|
-| [analytics/](analytics/) | Synthetic session events (`neutral_events.jsonl`) with the expected report and default exclusions | Nothing in this repo. Inherited inputs for workbench analytics tools that are not here (`tools/analytics_report.py`, `tests/test_analytics.py` on the owner's PC; record `analytics-offline-session-foundation`). Planning validation only, not game decisions. |
+| [analytics/](analytics/) | Synthetic kit-event/1 lines (`kit_events.jsonl`) with the expected report (`expected_kit_report.json`); inherited synthetic session events (`neutral_events.jsonl`, `expected_report.json`, `excluded_by_default.json`) | `tools/analytics_report.py` and `tests/test_analytics_report.py` read the kit-event files (record `kit-event-offline-report`). The session files are inherited inputs for the owner's workbench tools (record `analytics-offline-session-foundation`). Planning validation only, not game decisions. |
 | [briefs/](briefs/) | Two hypothetical dry-run planning briefs | Nothing in this repo. Inherited inputs for workbench planning validators that are not here. Planning validation only: their genre and aesthetic fields are test inputs, not game decisions (gap matrix X02). |
 | [content/](content/) | `neutral-graph.json`, a metadata-only content graph | Nothing in this repo. Inherited input for workbench content-graph tooling that is not here. |
 | [creator/](creator/) | Five Creator diagnostic client scripts (UI, Effects, AudioMovement, MediaPlayback, World) | `creator.project.json`; gate steps `stylua`, `rojo-sourcemap`. |

@@ -1,8 +1,10 @@
 """Factory gate. Tiers:
   fast        format check + JSON validity + secret scan                      (seconds)
   pre-commit  fast + skills sync + gap matrix + content checks + hook self-test + selene + Lune specs
-              + fixture hashes (~17 s, ~13 s of it Lune specs; the content checks take < 1 s)
-  pre-release pre-commit + Blender templates/QA + round trip + QA self-test + previews (minutes)
+              + fixture hashes + Python unit tests + playbook lint + asset sources + luau-defs lock
+              + kit tiers + capture staleness + starter smoke (about a minute)
+  pre-release pre-commit + Blender templates/QA + round trip + QA self-test + material library
+              + kit/1 bake + glTF validation + previews + luau-lsp analysis + full starter smoke (minutes)
 
   python3 tools/check.py [--tier fast|pre-commit|pre-release] [--strict] [--update-golden[=NAME,...]]
                          [--install-git-hook] [--live-links] [--allow-skip STEP]
@@ -25,7 +27,8 @@ packages/ and fixtures/ is reachable from one), and gate-selftest (each of them 
 tier or CI job runs it by default.
 Missing tools (stylua, node, selene, lune, rojo, bpy) are reported as SKIPPED, never as passes, and a
 SKIPPED step fails the run (default tier and the installed git hook included) unless it is selene, which
-needs network to generate its Roblox std, or named with --allow-skip. --strict allows no skips at all;
+needs network to generate its Roblox std, luau-lsp-analyze (needs the pinned luau-lsp; exit 3 of
+tools/luau_analyze.py), or named with --allow-skip. --strict allows no skips at all;
 CI runs with it, so a missing tool cannot keep CI green.
 The secret scan uses tools/hooks/secret-patterns.json, the same list as the Claude edit hook, over every
 file git would commit (tracked plus untracked, not ignored), dotfiles and scripts included.
@@ -62,7 +65,9 @@ INHERITED_SPECS = [
     "tests/creator/world.luau",
     "tests/diagnostics/network.luau",
 ]
-ALLOWED_SKIPS = {"selene"}  # needs network to generate its Roblox std; --strict (CI) allows no skips
+# selene needs network to generate its Roblox std; luau-lsp-analyze needs the pinned luau-lsp (rokit
+# installs it in CI). --strict (CI) allows no skips.
+ALLOWED_SKIPS = {"selene", "luau-lsp-analyze"}
 SECRET_PATTERNS_FILE = ROOT / "tools" / "hooks" / "secret-patterns.json"
 SECRET_SCAN_MAX_BYTES = 5_000_000
 
@@ -118,12 +123,12 @@ class Gate:
         why = headline(detail) if status != "PASS" else ""
         print(f"[{mark}] {name} ({seconds}s){': ' + why if why else ''}")
 
-    def cmd(self, name, cmd, needs=None, timeout=600, env=None):
+    def cmd(self, name, cmd, needs=None, timeout=600, env=None, skip_codes=()):
         if needs and shutil.which(needs) is None:
             self.add(name, "SKIPPED", f"{needs} not installed")
             return False
         code, tail, secs = run(cmd, timeout, env)
-        self.add(name, "PASS" if code == 0 else "FAIL", tail, secs)
+        self.add(name, "PASS" if code == 0 else "SKIPPED" if code in skip_codes else "FAIL", tail, secs)
         return code == 0
 
 
@@ -896,6 +901,13 @@ def main():
         for script in INHERITED_SPECS:  # the first pass's own Lune suites, re-run here
             gate.cmd(f"inherited-{Path(script).parent.name}-{Path(script).stem}", ["lune", "run", script], needs="lune")
         check_fixtures(gate, golden_updates(scope, "fixture-hashes"))
+        # Python tools' unit tests, then the data checks the kits and playbooks rely on.
+        gate.cmd("python-unit", [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "test_*.py"], timeout=900)
+        gate.cmd("playbook-lint", [sys.executable, "tools/playbook_lint.py"])
+        gate.cmd("asset-sources", [sys.executable, "tools/asset_sources.py", "--check"])
+        gate.cmd("luau-defs-lock", [sys.executable, "tools/luau_defs.py", "--check-lock"])
+        gate.cmd("kit-tiers", [sys.executable, "tools/kit_tiers.py", "--check"])
+        gate.cmd("capture-staleness", [sys.executable, "tools/capture_staleness.py"])  # lists STALE records; fails only on INVALID
         if scope is not None:
             problems, note = golden_report(scope, before, golden_snapshot())
             gate.add("golden-update", "FAIL" if problems else "PASS", "\n".join([note] + problems))  # headline: a problem
@@ -910,9 +922,18 @@ def main():
             gate.cmd("blender-templates", blender + ["templates", "build/blender"], timeout=3000)
             gate.cmd("blender-roundtrip", blender + ["roundtrip", "build/roundtrip"], timeout=900)
             gate.cmd("blender-qa-selftest", blender + ["qa-selftest", "build/qa-selftest"], timeout=900)
-            for fixture in ("modular_building", "dungeon", "settlement", "forest"):
+            gate.cmd("material-library", blender + ["textures", "assets/material-library.json", "--out", "build/material-library-check.json"], timeout=300)
+            kit = ["kit", "--templates", "pickup,checkpoint_gate,obby_platform_set", "--out", "build/kit/kit.json", "--library", "assets/material-library.json"]
+            gate.cmd("blender-kit", blender + kit, timeout=900)
+            glbs = sorted(str(p.relative_to(ROOT)) for p in (ROOT / "build/blender").glob("*/*.glb"))
+            gate.cmd("gltf-validate-templates", [sys.executable, "tools/gltf_validate.py", *glbs])
+            courses = ("course_linear", "course_tower", "course_race_loop", "course_lanes", "course_micro_arena")
+            for fixture in ("modular_building", "dungeon", "settlement", "forest", *courses):
                 manifest = f"build/fixtures/{fixture}.manifest.json"
                 gate.cmd(f"preview-{fixture}", blender + ["render-manifest", manifest, "build/previews"], timeout=900)
+        # Luau type analysis against the pinned Roblox definitions; exit 3 means luau-lsp or rojo is absent.
+        gate.cmd("luau-lsp-analyze", [sys.executable, "tools/luau_analyze.py"], timeout=900, skip_codes=(3,))
+        gate.cmd("starter-smoke-full", [sys.executable, "tools/starter_smoke.py", *(["--strict"] if args.strict else [])], timeout=900)
 
     failed = [r["name"] for r in gate.results if r["status"] == "FAIL"]
     skipped = [r["name"] for r in gate.results if r["status"] == "SKIPPED"]

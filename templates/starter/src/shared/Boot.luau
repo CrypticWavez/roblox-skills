@@ -157,9 +157,12 @@ function Boot.run(spec: Spec, env: Env): Report
 		cleanups = 0,
 	}
 	local problems = Boot.validate(spec)
-	if type(env) ~= "table" or type(env.clock) ~= "function" or type(env.spawn) ~= "function" then
-		table.insert(problems, "env needs clock, spawn and wait functions")
-	elseif type(env.wait) ~= "function" then
+	if
+		type(env) ~= "table"
+		or type(env.clock) ~= "function"
+		or type(env.spawn) ~= "function"
+		or type(env.wait) ~= "function"
+	then
 		table.insert(problems, "env needs clock, spawn and wait functions")
 	end
 	if #problems > 0 then

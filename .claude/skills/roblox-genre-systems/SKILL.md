@@ -57,4 +57,4 @@ Turn a genre's systems, risks and checks into a plan or audit for a game whose g
 - A cited module does not exist yet (its group has not merged): plan against the name in runtime-kits section 11 and mark the item pending.
 
 ## Related
-roblox-level-design-review, roblox-procedural-generation, roblox-scene-authoring, roblox-persistence-and-commerce, roblox-multiplayer-integrity, roblox-ui-ux-pass, roblox-performance-pass.
+roblox-gameplay-kit, roblox-presentation-pass, roblox-level-design-review, roblox-procedural-generation, roblox-scene-authoring, roblox-persistence-and-commerce, roblox-multiplayer-integrity, roblox-ui-ux-pass, roblox-performance-pass.

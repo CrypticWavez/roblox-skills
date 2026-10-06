@@ -45,4 +45,4 @@ Every remote is declared in a guard and its spec has a failure case. No client-t
 - Teleports, MemoryStore queues and the live Party API cannot run in Studio: keep their logic in the cores and leave the adapters T4, owner-run in a published game.
 
 ## Related
-roblox-persistence-and-commerce, roblox-release-pass, roblox-studio-testing, roblox-luau-testing.
+roblox-gameplay-kit (server-side hit, projectile and movement validation), roblox-persistence-and-commerce, roblox-release-pass, roblox-studio-testing, roblox-luau-testing.

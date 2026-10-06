@@ -14,9 +14,9 @@ cd <dest> && git init && rokit install && python3 tools/check.py                
 |---|---|---|---|
 | authoring | SceneKit, ProcGen, Pipeline (the default) | `ServerStorage.Authoring` | plans, generators and import checks run on the server or in Studio; never replicated to clients |
 | kits | GameKit, UIKit, Feel, Cinematics, AVKit (`--packages`) | `ReplicatedStorage.Kits`, plus the leaf copies `Kits/ProcGen/{Rng,Grid,Graph}` and `Kits/SceneKit/{Vec,Lighting}` | both sides require kits; the leaves are the same files mapped a second time so `require("../ProcGen/Rng")` resolves ([runtime-kits.md](runtime-kits.md) section 8) |
-| legacy | Runtime, Creator, Diagnostics (opt-in) | `ReplicatedStorage.Legacy` | first-pass modules with instance requires between siblings |
+| legacy | Runtime, Creator, Diagnostics (opt-in) | `ReplicatedStorage.Kits`, beside the kits | first-pass modules that require kits (`../GameKit/Env`, the AVKit and UIKit shims) and each other; one folder keeps every relative require resolving and each module single. `--update` removes a `ReplicatedStorage.Legacy` folder left by an older starter/2 repo |
 
-Packages a chosen package requires are added. The rest of `default.project.json`: `ReplicatedFirst.Loading` (`src/first`), `ReplicatedStorage.Shared` (`src/shared`) and optional `Packages`, `ServerScriptService.Server` (`src/server`), `ServerStorage.Assets` (`src/assets`) and optional `ServerPackages`, `StarterPlayerScripts.Client` (`src/client`), `StarterGui` (`src/gui`), `LocalizationService.GameStrings` (`src/localization/strings.csv`). No FilteringEnabled property. `DEFAULT_PACKAGES` stays authoring-only until the kits are merged and verified (coordinator decision).
+Packages a chosen package requires are added. The rest of `default.project.json`: `ReplicatedFirst.Loading` (`src/first`), `ReplicatedStorage.Shared` (`src/shared`) and optional `Packages`, `ServerScriptService.Server` (`src/server`), `ServerStorage.Assets` (`src/assets`) and optional `ServerPackages`, `StarterPlayerScripts.Client` (`src/client`), `StarterGui` (`src/gui`), `LocalizationService.GameStrings` (`src/localization/strings.csv`). No FilteringEnabled property. `DEFAULT_PACKAGES` is the authoring packages plus all five kits (GameKit, UIKit, Feel, Cinematics, AVKit); pass `--packages` to take fewer.
 
 ## Boot skeleton
 
@@ -33,7 +33,7 @@ Packages a chosen package requires are added. The rest of `default.project.json`
 | `AGENTS.md` (game-decision and engine-setting tables with a Brief key column, all TBD), `CLAUDE.md`, `docs/decisions.md`, `README.md`, `.gitignore`, `.gitattributes`, CI (`--strict`; a dispatchable pre-release tier) | `templates/starter/` (`{{NAME}}`, `{{CREATED}}` filled; `.tmpl` keeps the game's instruction files from loading inside the factory) |
 | `rokit.toml` (factory pins plus bundle tools), `stylua.toml`, `selene.toml`, `tests/run.luau`, `tools/sync_skills.py`, `tools/hooks/*`, `.codex/hooks.json`, `.codex/rules/factory.rules` | factory, verbatim |
 | `.claude/settings.json`, `.mcp.json` (`Roblox_Studio` only), `.codex/config.toml` | generated from the factory's files |
-| 15 game-facing skills (`SKILLS`, including roblox-production-pipeline and roblox-release-pass), mirrored to `.claude/skills` | factory `.agents/skills/` |
+| 17 game-facing skills (`SKILLS`, including roblox-gameplay-kit, roblox-presentation-pass, roblox-production-pipeline and roblox-release-pass), mirrored to `.claude/skills` | factory `.agents/skills/` |
 | `starter.json` (starter/2): factory repository and commit, packages with class and sha256, every module's tier, Lune flag and probe, the pending Studio probes, skills and managed files with sha256, dependency bundles, smoke hashes | generated |
 
 ## Release readiness (owner-only publishing)

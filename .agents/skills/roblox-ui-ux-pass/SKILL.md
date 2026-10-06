@@ -39,7 +39,7 @@ The screens and their states (open, closed, loading, empty, error, disabled), ta
 9. **Capture** before/after per device size (visual-qa) and record what was not checked on physical devices.
 
 ## Outputs
-Screen/state inventory with issues; the fixes as UIKit/InputMap/Cinematics code and data; a Lune spec for new logic (at least one failure case); `ui-audit/1` reports (Lune and, when run, Studio) with zero errors; before/after captures per device size; probe output when engine behaviour was claimed.
+Screen/state inventory with issues; the fixes as UIKit, InputMap and Cinematics code and data; a Lune spec for new logic (at least one failure case); `ui-audit/1` reports (Lune and, when run, Studio) with zero errors; before/after captures per device size; probe output when engine behaviour was claimed.
 
 ## Acceptance
 - `lune run tests/run.luau` green, including any new component or screen spec.

@@ -11,7 +11,7 @@ It copies infrastructure, never game content:
   never replicated), kits (GameKit, UIKit, Feel, Cinematics, AVKit; ReplicatedStorage.Kits, plus the
   leaf copies Kits/ProcGen/{Rng,Grid,Graph} and Kits/SceneKit/{Vec,Lighting}, the same files mapped
   a second time so the kits' "../ProcGen/Rng" requires resolve) and legacy opt-in (Runtime, Creator,
-  Diagnostics; ReplicatedStorage.Legacy). Default: DEFAULT_PACKAGES; packages they require are added;
+  Diagnostics; ReplicatedStorage.Kits beside the kits, whose modules they require). Default: DEFAULT_PACKAGES; packages they require are added;
 - a phased boot skeleton (src/shared/Boot.luau runs config, kits, data, remotes, telemetry, ui, input
   with a timeout per phase), a loading screen, every Config field TBD, and specs for boot, layout and
   packages;
@@ -61,8 +61,9 @@ READABLE_SCHEMAS = {"starter/1", SCHEMA}
 
 # Package classes and where each class lives in the game's Rojo tree. Authoring code (plans as data,
 # generators, import checks) runs on the server or in Studio only, so it sits in ServerStorage, which
-# does not replicate. Runtime kits replicate (both sides require them). Legacy first-pass modules use
-# instance requires between Runtime and Creator, so they stay siblings in one folder.
+# does not replicate. Runtime kits replicate (both sides require them). Legacy first-pass modules
+# require kits ("../GameKit/Env", the AVKit and UIKit shims) and each other, so they sit beside the
+# kits in one folder: every relative require resolves and each module exists once.
 PACKAGE_CLASSES = {
     "authoring": ["SceneKit", "ProcGen", "Pipeline"],
     "kits": ["GameKit", "UIKit", "Feel", "Cinematics", "AVKit"],
@@ -72,29 +73,32 @@ CLASS_OF = {pkg: cls for cls, pkgs in PACKAGE_CLASSES.items() for pkg in pkgs}
 ROJO_HOME = {
     "authoring": ("ServerStorage", "Authoring"),
     "kits": ("ReplicatedStorage", "Kits"),
-    "legacy": ("ReplicatedStorage", "Legacy"),
+    "legacy": ("ReplicatedStorage", "Kits"),
 }
+# starter/2 repos made before the legacy packages moved next to the kits; --update removes the folder.
+OLD_LEGACY_HOME = ("ReplicatedStorage", "Legacy")
 # Require-free leaf modules the kits may require (docs/runtime-kits.md section 8); mapped a second
 # time under ReplicatedStorage.Kits when a kit is installed.
 LEAVES = {"ProcGen": ["Rng", "Grid", "Graph"], "SceneKit": ["Vec", "Lighting"]}
-# Default packages. The runtime kits join the default once they are merged and verified
-# (coordinator decision); until then they are opt-in with --packages.
-DEFAULT_PACKAGES = ["SceneKit", "ProcGen", "Pipeline"]
+# Default packages: authoring plus the five runtime kits; legacy packages are opt-in with --packages.
+DEFAULT_PACKAGES = ["SceneKit", "ProcGen", "Pipeline", "GameKit", "UIKit", "Feel", "Cinematics", "AVKit"]
 # Legacy modules that use `script`, `game` or Roblox datatypes while loading (no @tier header); the
 # game's tests/packages.spec.luau loads every other module except *Roblox adapters.
-LEGACY_ROBLOX_ONLY = {"Creator/Effects", "Creator/Observation", "Runtime/NativeUI"}
+LEGACY_ROBLOX_ONLY = {"Creator/Effects", "Creator/Observation"}  # Runtime/NativeUI loads in Lune since UIKit (env injection)
 # Skills for working on a game. Not copied: luau-quality (describes the factory gate; the game gate
 # is in its AGENTS.md), blender-* (Blender tooling stays in the factory), roblox-research (the
 # research records stay in the factory), project-bootstrap (factory only).
 SKILLS = [
     "roblox-animation-integration",
     "roblox-asset-intake",
+    "roblox-gameplay-kit",
     "roblox-genre-systems",
     "roblox-level-design-review",
     "roblox-luau-testing",
     "roblox-multiplayer-integrity",
     "roblox-performance-pass",
     "roblox-persistence-and-commerce",
+    "roblox-presentation-pass",
     "roblox-procedural-generation",
     "roblox-production-pipeline",
     "roblox-release-pass",
@@ -299,7 +303,7 @@ def package_nodes(packages, root):
     nodes = {cls: {} for cls in PACKAGE_CLASSES}
     for pkg in sorted(packages):
         nodes[CLASS_OF[pkg]][pkg] = {"$path": f"packages/{pkg}"}
-    if nodes["kits"]:
+    if nodes["kits"] or nodes["legacy"]:
         for leaf_pkg, modules in LEAVES.items():
             present = [m for m in modules if (root / "packages" / leaf_pkg / f"{m}.luau").is_file()]
             if leaf_pkg in packages and present:
@@ -319,8 +323,16 @@ def apply_package_nodes(project, packages, root):
     if isinstance(workbench, dict) and workbench.get("$path") == "packages":
         del replicated["Workbench"]  # starter/1 layout: every package replicated to clients
         notes.append("removed ReplicatedStorage.Workbench (starter/1); packages now map by class")
+    old_service, old_folder = OLD_LEGACY_HOME
+    old = tree.get(old_service, {}).get(old_folder) if isinstance(tree.get(old_service), dict) else None
+    if isinstance(old, dict) and all(isinstance(v, dict) and str(v.get("$path", "")).startswith("packages/")
+                                     for k, v in old.items() if not k.startswith("$")):
+        del tree[old_service][old_folder]
+        notes.append("removed ReplicatedStorage.Legacy; legacy packages now sit beside the kits in ReplicatedStorage.Kits")
+    homes = {}
     for cls, children in package_nodes(packages, root).items():
-        service, folder = ROJO_HOME[cls]
+        homes.setdefault(ROJO_HOME[cls], {}).update(children)
+    for (service, folder), children in homes.items():
         node = tree.setdefault(service, {})
         if children:
             node[folder] = {"$className": "Folder", **children}

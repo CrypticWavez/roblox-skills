@@ -78,7 +78,7 @@ def render(data):
         )
     steps = [r for r in rows if r.get("owner_steps")]
     if steps:
-        out += ["", "## Steps that need Ethan's machine or decision", ""]
+        out += ["", "## Steps that need the owner's machine or decision", ""]
         for r in steps:
             out.append(f"**{r['id']} {r['capability']}** ({r['status']})")
             out.append("")

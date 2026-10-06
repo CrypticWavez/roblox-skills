@@ -8,10 +8,13 @@
 --   SceneKit.Model.inspect(SceneKit.Model.selection()) -- existing instances (Studio selection)
 return {
 	Apply = require("./Apply"),
+	Budgets = require("./Budgets"),
 	Building = require("./Building"),
 	Camera = require("./Camera"),
+	Kit = require("./Kit"),
 	Layout = require("./Layout"),
 	Lighting = require("./Lighting"),
+	Materials = require("./Materials"),
 	Measure = require("./Measure"),
 	Model = require("./Model"),
 	Paths = require("./Paths"),

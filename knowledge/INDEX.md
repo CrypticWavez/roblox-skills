@@ -36,6 +36,8 @@ Record scope `repo`: every path the record cites exists in this repository. Scop
 | `failure-observation-status-overflow` | [failures.json](records/failures.json) | failure | verified_on_workbench | workbench | Native observation status text overflowed |
 | `failure-gate-optional-evidence` | [failures.json](records/failures.json) | failure | verified_on_workbench | workbench | Missing native receipts could leave a passing local gate |
 | `failure-network-cold-start-deadline` | [failures.json](records/failures.json) | failure | partially_verified_on_workbench | workbench | Two Studio clients joined but sent no input before watchdog |
+| `kit-event-offline-report` | [kits-build-2026-10.json](records/kits-build-2026-10.json) | workflow | verified | repo | Offline kit-event/1 analytics report |
+| `lune-engine-gaps-2026-10` | [kits-build-2026-10.json](records/kits-build-2026-10.json) | failure | verified | repo | Lune 0.10.5 differs from the engine in ways that break kit specs |
 | `workflow-blender-studio-import` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Blender-to-Studio import workflow: local preview and unverified native transfer |
 | `workflow-motion-contact-review` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Responsive melee anticipation and recovery: curves, markers and contact diagnostics |
 | `workflow-native-ui-state-review` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Readable mobile shop layouts and responsive native item cards |

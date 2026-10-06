@@ -281,12 +281,10 @@ function BehaviorTree.new(
 			local n = #node.children
 			local succeeded = if node.success == "all" then successes == n else successes >= 1
 			local failed = if node.failure == "one" then failures >= 1 else failures == n
-			if failed then
-				status = "failure"
-			elseif succeeded then
+			if succeeded and not failed then
 				status = "success"
-			elseif successes + failures == n then
-				status = "failure" -- every child finished without meeting the success policy
+			elseif failed or successes + failures == n then
+				status = "failure" -- the failure policy was met, or every child finished without meeting the success policy
 			else
 				status = "running"
 			end

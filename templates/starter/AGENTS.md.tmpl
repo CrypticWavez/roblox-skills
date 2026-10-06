@@ -55,7 +55,7 @@ Decided with the brief (stage greybox), then set in `default.project.json` `$pro
 |---|---|
 | Game code | `src/server` (ServerScriptService.Server), `src/client` (StarterPlayerScripts.Client), `src/shared` (ReplicatedStorage.Shared), `src/first` (ReplicatedFirst.Loading), `src/gui` (StarterGui), `src/assets` (ServerStorage.Assets), `src/localization` (LocalizationService) |
 | Boot | `src/shared/Boot.luau` runs the phases config, kits, data, remotes, telemetry, ui, input with a timeout each; wire them in `src/server/Phases.luau` and `src/client/Phases.luau`; settings in `src/shared/Config.luau` (all TBD) |
-| Factory packages | `packages/`: authoring in `ServerStorage.Authoring` (never replicated), kits in `ReplicatedStorage.Kits`, legacy in `ReplicatedStorage.Legacy`; tiers and pending Studio probes in `starter.json` |
+| Factory packages | `packages/`: authoring in `ServerStorage.Authoring` (never replicated), kits in `ReplicatedStorage.Kits` (opt-in legacy packages sit beside them); tiers and pending Studio probes in `starter.json` |
 | Production | `production/brief.json`, `production/pipeline.json`, `docs/production-plan.md`, `docs/design/`; `python3 tools/production.py status`; `python3 tools/plan_issues.py` |
 | Release | `python3 tools/release_check.py` (writes `release/report.json`), `release/release.json`, `docs/release-runbook.md` |
 | Specs | `tests/*.spec.luau`, run by `lune run tests/run.luau` |

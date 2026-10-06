@@ -66,7 +66,7 @@ class PackageClasses(Scaffold):
             self.assertIn(pkg, np.CLASS_OF, f"packages/{pkg} has no class")
         self.assertEqual(np.ROJO_HOME["authoring"], ("ServerStorage", "Authoring"))
         self.assertEqual(np.ROJO_HOME["kits"], ("ReplicatedStorage", "Kits"))
-        self.assertEqual(np.DEFAULT_PACKAGES, ["SceneKit", "ProcGen", "Pipeline"])
+        self.assertEqual(np.DEFAULT_PACKAGES, np.PACKAGE_CLASSES["authoring"] + np.PACKAGE_CLASSES["kits"])
 
     def test_default_tree_layout(self):
         dest, out = self.scaffold()
@@ -79,7 +79,12 @@ class PackageClasses(Scaffold):
             self.assertIsInstance(tree_node(project, *path), dict, ".".join(path))
         authoring = tree_node(project, "ServerStorage", "Authoring")
         self.assertEqual(sorted(k for k in authoring if not k.startswith("$")), ["Pipeline", "ProcGen", "SceneKit"])
-        self.assertIsNone(tree_node(project, "ReplicatedStorage", "Kits"))
+        kits = tree_node(project, "ReplicatedStorage", "Kits")
+        self.assertEqual(sorted(k for k in kits if not k.startswith("$") and k not in ("ProcGen", "SceneKit")),
+                         ["AVKit", "Cinematics", "Feel", "GameKit", "UIKit"])
+        self.assertEqual(sorted(k for k in kits["ProcGen"] if not k.startswith("$")), ["Graph", "Grid", "Rng"])
+        self.assertEqual(sorted(k for k in kits["SceneKit"] if not k.startswith("$")), ["Lighting", "Vec"])
+        self.assertIsNone(tree_node(project, "ReplicatedStorage", "Legacy"))
         self.assertIsNone(tree_node(project, "ReplicatedStorage", "Workbench"))
         self.assertEqual(tree_node(project, "ServerStorage", "ServerPackages", "$path"), {"optional": "ServerPackages"})
         for rel in ["src/shared/Boot.luau", "src/shared/Config.luau", "src/shared/KitLoader.luau", "src/server/init.server.luau",
@@ -271,6 +276,24 @@ class Update(Scaffold):
         starter = self.read_json(dest / "starter.json")
         self.assertEqual(starter["deps"]["bundles"], ["persistence"])
         self.assertIn("GameKit/Check", starter["modules"])
+
+    def test_update_moves_legacy_packages_next_to_the_kits(self):
+        dest, _ = self.scaffold()
+        packages = np.DEFAULT_PACKAGES + ["Runtime"]
+        code, out = self.update(dest, packages=packages)
+        self.assertEqual(code, 0, out)
+        project = self.read_json(dest / "default.project.json")
+        self.assertIn("Runtime", tree_node(project, "ReplicatedStorage", "Kits"))
+        # A starter/2 repo made before the move kept legacy packages in ReplicatedStorage.Legacy.
+        del project["tree"]["ReplicatedStorage"]["Kits"]["Runtime"]
+        project["tree"]["ReplicatedStorage"]["Legacy"] = {"$className": "Folder", "Runtime": {"$path": "packages/Runtime"}}
+        (dest / "default.project.json").write_text(json.dumps(project, indent=2) + "\n", encoding="utf-8")
+        code, out = self.update(dest, packages=packages)
+        self.assertEqual(code, 0, out)
+        self.assertIn("removed ReplicatedStorage.Legacy", out)
+        project = self.read_json(dest / "default.project.json")
+        self.assertIsNone(tree_node(project, "ReplicatedStorage", "Legacy"))
+        self.assertIn("Runtime", tree_node(project, "ReplicatedStorage", "Kits"))
 
     def test_update_migrates_a_starter1_layout(self):
         dest, _ = self.scaffold()

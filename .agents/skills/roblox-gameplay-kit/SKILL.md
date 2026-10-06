@@ -16,6 +16,7 @@ The game's systems list (which modules), its data (ability, zone, effect, vehicl
 
 ## Required context
 - `docs/gamekit-action.md`: the API reference for every action module, the exploit coverage table and the UNVERIFIED list.
+- `docs/gamekit-economy.md`: the economy and progression modules (wallet, inventory, odds, trade, plots, crafting, seasons, dialogue, onboarding) and their save formats.
 - `docs/runtime-kits.md`: the frozen contract (sections 2 core plus adapter, 3 Env, 5 tiers, 6 Server Authority rules, 7 probes, 11 module list).
 - `fixtures/kits/shared/authority_Arena.luau`: a worked composition (RoundLoop, Movement, Vitals, Cooldowns, Hitbox validator, Zones) with its server and client scripts in `fixtures/kits/server/authority_Sim.server.luau` and `fixtures/kits/client/authority_Input.client.luau`.
 - `tests/gamekit_slices_action.spec.luau`: seeded slices (round_arena, time_trial) showing bots, exploits and digests.
@@ -74,4 +75,4 @@ Module data and wiring, Lune specs (including refusal cases), a slice digest und
 - An adapter behaves differently in Studio than in the Lune fake: the fake proves wiring only; trust the probe and fix the adapter, not the fake.
 
 ## Related
-roblox-multiplayer-integrity, roblox-luau-testing, roblox-animation-integration, roblox-genre-systems, roblox-studio-testing, luau-quality.
+roblox-multiplayer-integrity, roblox-persistence-and-commerce, roblox-presentation-pass, roblox-ui-ux-pass, roblox-luau-testing, roblox-animation-integration, roblox-genre-systems, roblox-studio-testing, luau-quality.

@@ -607,7 +607,7 @@ function Course.linear(params: any): Course
 				)
 			)
 		end
-		assert(pad)
+		assert(pad, "Course.linear: pad is set above")
 		if chosen.yaw ~= yaw then
 			turnSign = if (chosen.yaw - yaw) % 360 == 90 then -1 else 1
 		end

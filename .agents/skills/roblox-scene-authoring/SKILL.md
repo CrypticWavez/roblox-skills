@@ -15,7 +15,7 @@ Building, room, street, settlement, interior, prop dressing, light placement, si
 Footprints/regions in studs, storeys, style profile (`greybox`, `neutral-stone`, `neutral-timber`), seed, gameplay requirements (door sizes, corridor widths, cover). For a swap: a kit/1 manifest decoded from JSON (G6 `factory.py kit` writes them; [runtime-kits.md](../../../docs/runtime-kits.md) section 9.5) and a loader that returns each piece's template Instance.
 
 ## Required context
-`packages/SceneKit/SceneKit.luau` (facade and usage) and `docs/scene-authoring.md` (concept-to-call map). Read a module only when you need its option names; `tests/scenekit.spec.luau` shows each API in use, `tests/scenekit_dressing.spec.luau` lights/signs/decorate, `tests/scenekit_model.spec.luau` the `Model.*` ops, `tests/scenekit_kit.spec.luau` kit/1 validation, resolve, placeholders and `Apply.swap`. `SceneKit/Kit` is not in the facade yet: require `SceneKit/Kit` directly.
+`packages/SceneKit/SceneKit.luau` (facade and usage) and `docs/scene-authoring.md` (concept-to-call map). Read a module only when you need its option names; `tests/scenekit.spec.luau` shows each API in use, `tests/scenekit_dressing.spec.luau` lights/signs/decorate, `tests/scenekit_model.spec.luau` the `Model.*` ops, `tests/scenekit_kit.spec.luau` kit/1 validation, resolve, placeholders and `Apply.swap`.
 
 ## Tools
 - Lune: `lune run <script>`; `tools/lune/build_fixtures.luau` is the pattern for offline builds.

@@ -4,10 +4,14 @@
 | Layer | What | Runs in | Verified by |
 |---|---|---|---|
 | Plans (pure Luau) | `packages/SceneKit`, `packages/ProcGen`, `packages/Pipeline` | Lune, Studio, CI | `lune run tests/run.luau`, fixture hashes |
+| Runtime kits | `packages/GameKit`, `UIKit`, `Cinematics`, `AVKit`, `Feel`: pure cores plus thin `*Roblox` adapters ([runtime-kits](runtime-kits.md)) | Lune (cores, T0/T1), Studio (adapters, T3 probes), live game (T4) | kit specs and seeded slices; `fixtures/kits.project.json` probes on the owner's PC |
 | Apply (Roblox side) | `SceneKit.Apply` (Instances, ChangeHistory undo), `Apply.terrain` | Studio (and Lune DataModel for .rbxlx) | Lune DataModel tests; Studio smoke (`fixtures/factory`) |
-| Assets | `tools/blender/bkit` (ops, templates, qa, render, roundtrip) | bpy wheel or Blender | `factory.py templates`, `roundtrip` |
+| Assets | `tools/blender/bkit` (ops, templates, bakes, clips, kit/1, qa, render, roundtrip, intake), `tools/gltf_validate.py`, `tools/fetch_assets.py` (CC0, pinned) | bpy wheel or Blender | `factory.py templates`, `roundtrip`, `kit`, `qa-selftest` |
+| Game repo starter | `tools/new_project.py`, `templates/starter` (boot skeleton, release checker, production pipeline) | a separate game repository | `starter-smoke`, `starter-smoke-full`, `tests/test_new_project.py`, `tests/test_release_check.py` |
 | Observation | Blender renders of manifests/assets, Studio `screen_capture`, manifest diffs | Cycles CPU / Studio | images reviewed per change |
 | Inherited first pass | `packages/Runtime`, `Creator`, `Diagnostics`, `fixtures/*.project.json` | Studio | first-pass receipts (see gap matrix) |
+
+Dependencies point one way: kits require only kits and the leaves `ProcGen/{Rng,Grid,Graph}`, `SceneKit/{Vec,Lighting}`; the inherited packages may require kits (for example `Runtime/CommerceCatalog` uses `GameKit/Catalog`, and the moved audio and UI modules are shims over AVKit and UIKit), never the reverse. `tests/kits_load.spec.luau` enforces the kit side.
 | Agent layer | `AGENTS.md`, `CLAUDE.md`, `.agents/skills` -> `.claude/skills`, `.claude/agents`, hooks, `.mcp.json` | Claude Code + Codex | `tools/check.py` (skills-sync, hooks-selftest) |
 
 ## Context budget
@@ -19,7 +23,7 @@
 ## Ownership (parallel agents)
 | Area | Owner | Others |
 |---|---|---|
-| `packages/**`, `tests/**`, `tools/lune/**` | roblox-engineer | read |
+| `packages/**` (kits included), `tests/**`, `tools/lune/**`, `fixtures/kits/**` | roblox-engineer | read |
 | `tools/blender/**`, Blender session | technical-artist | read; never connect a second Blender client |
 | `.agents/skills/**`, `AGENTS.md`, `CLAUDE.md`, `docs/**` | coordinator (main session) | propose via the coordinator |
 | `docs/research/**` | researcher | read |

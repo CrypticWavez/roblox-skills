@@ -3,7 +3,7 @@
 -- deserialises it with @lune/roblox and checks that
 --   * every package sits in its class's home (starter.json): authoring in ServerStorage.Authoring
 --     (never replicated), kits in ReplicatedStorage.Kits with the leaf copies Kits/ProcGen/{Rng,Grid,Graph}
---     and Kits/SceneKit/{Vec,Lighting}, legacy in ReplicatedStorage.Legacy;
+--     and Kits/SceneKit/{Vec,Lighting}, legacy beside the kits in ReplicatedStorage.Kits;
 --   * the boot skeleton is where the entry scripts look for it;
 --   * every require in every script resolves statically to a ModuleScript in the built place: string
 --     requires ("./X", "../X", "@self/X", "@game/Service/X") and script chains (script.Parent.X,
@@ -19,7 +19,7 @@ local WALLY = { Packages = true, ServerPackages = true, DevPackages = true }
 local HOMES = {
 	authoring = { "ServerStorage", "Authoring" },
 	kits = { "ReplicatedStorage", "Kits" },
-	legacy = { "ReplicatedStorage", "Legacy" },
+	legacy = { "ReplicatedStorage", "Kits" },
 }
 local LEAVES = { ProcGen = { "Rng", "Grid", "Graph" }, SceneKit = { "Vec", "Lighting" } }
 

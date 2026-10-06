@@ -46,4 +46,4 @@ Migration tests from every historic version. A duplicate-receipt test grants onc
 - A hook asked about or denied a DataStore write or purchase prompt: it is gated on purpose. Proceed only on the unpublished diagnostic place in a Studio test session, and never work around a deny.
 
 ## Related
-roblox-multiplayer-integrity, roblox-release-pass, roblox-luau-testing.
+roblox-gameplay-kit (economy modules: `docs/gamekit-economy.md`, sections on persistence and paid random items), roblox-multiplayer-integrity, roblox-release-pass, roblox-luau-testing.

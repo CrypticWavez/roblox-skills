@@ -1,0 +1,38 @@
+[
+  {
+    "id": "kit-event-offline-report",
+    "scope": "repo",
+    "scope_note": "Built and tested in this repository on 2026-10-06 (G1 platform kit); every cited path exists here.",
+    "type": "workflow",
+    "title": "Offline kit-event/1 analytics report",
+    "summary": "GameKit/Telemetry maps kit events to kit-event/1 lines; tools/analytics_report.py turns a JSONL file of them into funnel, session and economy summaries with test traffic excluded. Live AnalyticsService delivery is T4 and owner-verified only.",
+    "status": "verified",
+    "tags": ["analytics", "telemetry", "kit-event", "setup-only"],
+    "artifacts": [
+      "tools/analytics_report.py",
+      "tests/test_analytics_report.py",
+      "fixtures/analytics/kit_events.jsonl",
+      "fixtures/analytics/expected_kit_report.json",
+      "packages/GameKit/Telemetry.luau",
+      "docs/gamekit-platform.md"
+    ],
+    "verification_command": "python3 -m unittest tests/test_analytics_report.py",
+    "limitations": [
+      "Synthetic events only.",
+      "AnalyticsService ingestion and dashboards need a published game (T4)."
+    ]
+  },
+  {
+    "id": "lune-engine-gaps-2026-10",
+    "scope": "repo",
+    "scope_note": "Observed while building the runtime kits in this repository on 2026-10-06 with Lune 0.10.5; the specs that pin each workaround exist here.",
+    "type": "failure",
+    "title": "Lune 0.10.5 differs from the engine in ways that break kit specs",
+    "claim_type": "observation",
+    "status": "verified",
+    "summary": "A module's first require yields in Lune, so a FakeEnv-spawned thread that loads a kit parks forever; CFrame.lookAt mirrors the Z component; reading TextLabel.Font or AbsoluteSize raises; UIScale.Scale is stored as float32; there is no StyleRule:SetProperties, RaycastParams, Workspace:Raycast or BindToSimulation. Specs preload kits at top level, build camera frames with CFrame.fromMatrix, and pass stand-ins; the engine half stays a T3 probe.",
+    "verification_command": "lune run tests/run.luau uikit_probes",
+    "evidence_path": "tests/uikit_probes.spec.luau",
+    "lesson": "Never treat a Lune pass of an engine-facing module as engine evidence; keep the probe pending until Studio prints ENGINE_DONE."
+  }
+]

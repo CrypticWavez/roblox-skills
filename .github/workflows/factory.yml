@@ -37,7 +37,7 @@ jobs:
         # network.project.json reads build/network/SourceManifest.luau, generated from its sources.
         run: |
           python3 tools/network_manifest.py
-          for p in creator diagnostic factory network; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
+          for p in creator diagnostic factory network kits; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
       - name: Pre-commit gate (strict)
         run: python3 tools/check.py --tier pre-commit --strict
       - uses: actions/upload-artifact@v4
@@ -50,9 +50,10 @@ jobs:
     # 5.1.2 matches the Blender installed on the workbench PC; 5.2.2 is the selected LTS.
     # Both are run because 5.2 changed boolean material slots (see tools/blender/bkit/ops.py).
     # The full pre-release tier runs here: pre-commit steps, Blender templates with Cycles CPU
-    # previews, the round trip and the fixture previews (which need the Lune-built manifests).
+    # previews, the round trip, kit/1 and glTF checks, the fixture previews (which need the
+    # Lune-built manifests), luau-lsp analysis against its baseline and the full starter smoke.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -81,6 +82,9 @@ jobs:
         run: selene generate-roblox-std
       - name: Install bpy
         run: python3 -m pip install "bpy==${{ matrix.bpy }}"
+      - name: Fetch the pinned Luau definitions (luau-defs.lock.json)
+        # luau-lsp-analyze in the pre-release tier needs them; the fetch verifies each sha256.
+        run: python3 tools/luau_defs.py
       - name: Pre-release gate (strict)
         run: python3 tools/check.py --tier pre-release --strict
       - uses: actions/upload-artifact@v4
@@ -93,3 +97,5 @@ jobs:
             build/blender/templates-summary.json
             build/roundtrip/*.json
             build/previews/*.png
+            build/kit/*.json
+            build/luau-lsp/*.json

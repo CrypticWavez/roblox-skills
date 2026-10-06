@@ -83,7 +83,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [Q07](#q07) | Production lab | Gameplay-system library | PARTIAL | P3 | R01 suites pass in the gate. |
 | [Q08](#q08) | Production lab | Analytics | MISSING | P3 | None. |
 
-## Steps that need Ethan's machine or decision
+## Steps that need the owner's machine or decision
 
 **T02 Skills discoverable by Codex** (VERIFIED_ACCEPTABLE)
 

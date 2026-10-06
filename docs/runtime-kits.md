@@ -1,6 +1,6 @@
-# Runtime kits: frozen contract
+# Runtime kits: contract
 
-Status: frozen at Stage 0 (2026-10-06). Every group building the runtime kits reads this file first. Only the coordinator edits it; a group that needs a change describes it under COORDINATOR_CHANGES in its handback. Module names listed here exist before their code does, so playbooks, skills and the starter can cite them.
+Status: frozen at Stage 0 (2026-10-06) for the parallel build, then updated when all ten groups merged (same day). Every module in section 11 now exists. Change it like any shared contract: in the same commit as the code, with the specs that pin the change. Module names listed here are what playbooks, skills and the starter cite (`tools/playbook_lint.py` checks them).
 
 The kits are SETUP_ONLY tooling: genre-neutral systems with no content, prices, economy numbers, themes or production UI. Function names (`primary_button`, `currency_a`, `enemy_basic`), never flavour.
 
@@ -16,7 +16,7 @@ The kits are SETUP_ONLY tooling: genre-neutral systems with no content, prices, 
 
 Leaves the kits may also require (they stay require-free): `ProcGen/Rng`, `ProcGen/Grid`, `ProcGen/Graph`, `SceneKit/Vec`, `SceneKit/Lighting`. Authoring packages (`SceneKit`, `ProcGen`, `Pipeline`) and the inherited first pass (`Runtime`, `Creator`, `Diagnostics`) are not kits.
 
-Places: [fixtures/kits.project.json](../fixtures/kits.project.json) maps every package under `ReplicatedStorage.Workbench` plus the kit fixtures ([fixtures/kits/README.md](../fixtures/kits/README.md)); `factory`, `creator` and `diagnostic` projects map the five kits too, so moved-module shims and probes resolve there. Rojo builds a kit folder that holds only its README as an empty Folder.
+Places: [fixtures/kits.project.json](../fixtures/kits.project.json) maps every package under `ReplicatedStorage.Workbench` plus the kit fixtures ([fixtures/kits/README.md](../fixtures/kits/README.md)); `factory`, `creator` and `diagnostic` projects map the five kits too, so moved-module shims and probes resolve there. Use guides per kit: [gamekit-platform](gamekit-platform.md) (G1), [gamekit-action](gamekit-action.md) (G2), [gamekit-economy](gamekit-economy.md) (G3), [uikit](uikit.md) (G4, with Cinematics and InputMap), [presentation](presentation.md) (G5), [blender](blender.md) (G6), [scene-authoring](scene-authoring.md) (G7 courses and kit swaps).
 
 ## 2. Pure core plus adapter
 
@@ -115,6 +115,8 @@ A T3 module is proven by a probe that runs in Studio, in a play session on the u
 
   `ENGINE_CHECK` fields: `probe`, `check`, `ok`, `detail` (omitted when nil). `ENGINE_DONE` fields: `probes` (names run, sorted), `checks`, `passed`, `failed`, `errors` (probes that raised; their `error` check also counts as failed), `ok` (at least one check, none failed, none raised). A run without `ENGINE_DONE` failed.
 - **Runners.** `tests/engine/<probe>.luau` is a Studio RunScript entry that loads the registry and calls `Probe.runAll(registry, { env = EnvRoblox.studio(), kit = loader, only = { name } })`; [tests/engine/foundation_env_studio.luau](../tests/engine/foundation_env_studio.luau) is the template. G9b owns `tools/studio_run.py` (Studio CLI, refuses `--placeId`, BLOCKED_EXTERNAL where Studio is absent) and `Pipeline/KitSmoke` (discovers every `*_probes` registry and runs them in one place).
+- **Staging.** A probe that needs a world builds it at a high y offset (G2 uses 800, a convention), cleans up even when it raises, and refuses a published place (`Env.check`). Level probes (G7) get Workspace through `ctx.env`; in Lune their specs pass a stand-in table `{ instance = <Lune Workspace>, Gravity, Raycast }` plus a RaycastParams shim, because Lune has neither, and the registry's `stage()` accepts either form.
+- **Play-session fixtures.** Probes that need Play run from the kits place when the Workspace attribute `SETUP_ONLY_KitFixture` names a fixture key (`kitsmoke`, `authority`, `ui-gallery`, ...; list in [fixtures/kits/README.md](../fixtures/kits/README.md)); `tools/studio_run.py --from-output` turns the saved Output into `reports/engine/<probe>.json`. Server Authority probes also need `Workspace.AuthorityMode = Server`, which only the owner can set in Studio.
 - **Proof here.** Each group runs its registry in a Lune spec with FakeEnv and a path loader, so it loads and its logic holds against fakes. That is not Studio evidence: the probe stays pending and the module stays T3 until the owner's run produces the lines.
 
 ## 8. Require allowlist
@@ -264,14 +266,30 @@ Rules: no price-like key anywhere (`price`, `PriceInRobux`, `robux...`, `cost`):
 
 | Format | Owner | Where |
 |---|---|---|
-| cinematics/1 | G4 | `packages/Cinematics`, docs/uikit.md |
+| fsm/1 string | Stage 0 | `Fsm:serialize()` |
+| kit-event-report/1 | G1 | `tools/analytics_report.py` (offline report over kit-event/1 lines) |
+| se/1 | G2 | `GameKit/StatusEffects` serialisation |
+| dialogue/1, dialogue-session/1 | G3 | `GameKit/Dialogue` |
+| wallet/1, inventory/1, progression/1, objectives/1, streaks/1, unlocks/1, season/1, generators/1, crafting/1, outfit/1, onboarding/1, economy-sim/1 | G3 | save snapshots and reports of the matching `GameKit` modules ([gamekit-economy](gamekit-economy.md)) |
+| cinematics/1, cinematics-bake/1 | G4 | `packages/Cinematics`, [uikit](uikit.md) |
+| inputmap/1, inputmap-overrides/1 | G4 | `GameKit/InputMap` |
+| uikit-tokens/1, uikit-stylesheet/1, ui-audit/1 | G4 | `UIKit/Tokens`, `UIKit/Style`, `UIKit/Audit` |
 | vfx/1 | G5 | `packages/AVKit` |
 | audio-graph/1 | G5 | `packages/AVKit` (buses match settings/1 `volume.*`) |
-| dialogue/1 | G3 | `GameKit/Dialogue` |
-| game-brief/1 | G8 | `templates/starter` production brief |
-| release-check/1 | G8 | the starter's `release/report.json` |
-| asset-sources/1 | G9b | `assets/sources.json` |
-| fsm/1 string | Stage 0 | `Fsm:serialize()` |
+| gltf-validate/1 | G6 | `tools/gltf_validate.py` |
+| course/1 | G7 | `ProcGen/Course` manifests, checked by `ProcGen/CourseValidate` |
+| placement/1 | G7 | `GameKit/PlacementGrid` |
+| genre-taxonomy/1 | G7 | `.agents/skills/roblox-genre-systems/references/taxonomy.json` |
+| starter/2, starter-deps/1 | G8 | the game repo's `starter.json`, `deps.json` |
+| game-brief/1, production-pipeline/1 | G8 | the starter's `production/brief.json`, `production/pipeline.json` |
+| release-check/1, release-meta/1, release-owner/1 | G8 | the starter's `release/` folder (`release/owner-*.json` is owner-written; the guards refuse agent writes) |
+| boot-report/1 | G8 | the starter's boot skeleton (release item S07) |
+| asset-sources/1, asset-cache/1 | G9b | `assets/sources.json`; the CC0 cache lives in `build/asset-cache` (never committed) |
+| engine-report/1 | G9b | `reports/engine/<probe>.json` from `tools/studio_run.py` |
+| kit-tiers/1 | G9b | `reports/kit-tiers.json` from `tools/kit_tiers.py` (gate step `kit-tiers`) |
+| capture-manifest/1, capture-staleness/1 | G9b | `Pipeline/CaptureSet`, `tools/capture_staleness.py` |
+| luau-defs-lock/1, luau-lsp-baseline/1 | G9b | `luau-defs.lock.json`, `tests/golden/luau-lsp-baseline.json` |
+| pc-doctor/1, factory-skill-stamp/1 | G9b | `tools/pc_doctor.py`, `tools/user_skills.py` |
 
 ## 10. Interfaces passed in by callers
 
@@ -290,24 +308,24 @@ Across groups, depend on these shapes, not on each other's modules. The coordina
 
 ## 11. Module ownership list
 
-Names are `Package/Module` and exist once their group merges. `playbook_lint` (G7) and the starter (G8) cite only names from this list.
+Names are `Package/Module`; all of them exist since the merge. `playbook_lint` (G7) and the starter (G8) cite only names from this list.
 
 | Owner | Modules |
 |---|---|
 | Stage 0 | `GameKit/Check`, `GameKit/Json`, `GameKit/Env`, `GameKit/EnvRoblox`, `GameKit/Signal`, `GameKit/Scope`, `GameKit/Fsm`, `GameKit/Retry`, `GameKit/Events`, `GameKit/Settings`, `GameKit/Catalog`, `GameKit/Probe` |
-| G1 platform services | `GameKit/RateLimit`, `GameKit/Schema`, `GameKit/RemoteGuard`, `GameKit/RemoteGuardRoblox`, `GameKit/PlayerData`, `GameKit/PlayerDataRoblox` (real ProfileStore sessions T4), `GameKit/Telemetry`, `GameKit/TelemetryRoblox`, `GameKit/Config`, `GameKit/ConfigRoblox` (T4), `GameKit/PolicyGate`, `GameKit/PolicyGateRoblox`, `GameKit/TextFilter`, `GameKit/TextFilterRoblox` (T4), `GameKit/SettingsStore`, `GameKit/CommerceRoblox`, `GameKit/Moderation`, `GameKit/ModerationRoblox` (T4), `GameKit/Queue`, `GameKit/MemoryQueueRoblox` (T4), `GameKit/TeleportRoblox` (T4), `GameKit/PartyRoblox` |
-| G2 action | `GameKit/RoundLoop`, `GameKit/RoundLoopRoblox`, `GameKit/Vitals`, `GameKit/Cooldowns`, `GameKit/Hitbox`, `GameKit/HitboxRoblox`, `GameKit/Projectile`, `GameKit/Zones`, `GameKit/ZonesRoblox`, `GameKit/Abilities`, `GameKit/Vehicles`, `GameKit/VehicleRigRoblox`, `GameKit/Interact`, `GameKit/InteractRoblox`, `GameKit/AnimSet`, `GameKit/AnimSetRoblox`, `GameKit/Movement`, `GameKit/MovementRoblox`, `GameKit/StatusEffects`, `GameKit/Knockback` |
+| G1 platform services | `GameKit/RateLimit`, `GameKit/Schema`, `GameKit/RemoteGuard`, `GameKit/RemoteGuardRoblox`, `GameKit/PlayerData`, `GameKit/PlayerDataRoblox` (real ProfileStore sessions T4), `GameKit/Telemetry`, `GameKit/TelemetryRoblox`, `GameKit/Config`, `GameKit/ConfigRoblox` (T4), `GameKit/PolicyGate`, `GameKit/PolicyGateRoblox`, `GameKit/TextFilter`, `GameKit/TextFilterRoblox` (T4), `GameKit/SettingsStore`, `GameKit/Commerce`, `GameKit/CommerceRoblox` (T4), `GameKit/Moderation`, `GameKit/ModerationRoblox` (T4), `GameKit/Queue`, `GameKit/MemoryQueueRoblox` (T4), `GameKit/TeleportRoblox` (T4), `GameKit/PartyRoblox` (T3, probe `platform_party_simulator`) |
+| G2 action | `GameKit/RoundLoop`, `GameKit/RoundLoopRoblox`, `GameKit/Vitals`, `GameKit/Cooldowns`, `GameKit/Hitbox`, `GameKit/HitboxRoblox`, `GameKit/Projectile`, `GameKit/Zones`, `GameKit/ZonesRoblox`, `GameKit/Abilities`, `GameKit/Vehicles`, `GameKit/VehicleRigRoblox`, `GameKit/Interact`, `GameKit/InteractRoblox`, `GameKit/AnimSet`, `GameKit/AnimSetRoblox`, `GameKit/Movement`, `GameKit/MovementRoblox`, `GameKit/StatusEffects`, `GameKit/Knockback`, `GameKit/AuthorityRoblox` (shared Server Authority plumbing, probe `authority_simulation_bind`) |
 | G3 economy | `GameKit/Wallet`, `GameKit/EconomySim`, `GameKit/ItemDefs`, `GameKit/Inventory`, `GameKit/Progression`, `GameKit/Objectives`, `GameKit/Streaks`, `GameKit/OddsTable`, `GameKit/Followers`, `GameKit/FollowersRoblox`, `GameKit/Trade`, `GameKit/Plots`, `GameKit/Generators`, `GameKit/Crafting`, `GameKit/LiveOps`, `GameKit/Outfits`, `GameKit/OutfitsRoblox`, `GameKit/Dialogue`, `GameKit/Onboarding`, `GameKit/UnlockGraph`, `GameKit/SeasonTrack`, `GameKit/VotingRound` |
-| G4 UI kit and cinematics | `GameKit/InputMap`, `GameKit/InputMapRoblox`, `UIKit/UIKit`, `UIKit/Tokens`, `UIKit/Style`, `UIKit/Breakpoints`, `UIKit/State`, `UIKit/Ease`, `UIKit/Transitions`, `UIKit/Nav`, `UIKit/Localize`, `UIKit/Audit`, `UIKit/AuditRoblox`, `UIKit/Components/Button`, `UIKit/Components/IconButton`, `UIKit/Components/Toggle`, `UIKit/Components/Slider`, `UIKit/Components/Tabs`, `UIKit/Components/VirtualList`, `UIKit/Components/Grid`, `UIKit/Components/Modal`, `UIKit/Components/ConfirmDialog`, `UIKit/Components/Toast`, `UIKit/Components/Tooltip`, `UIKit/Components/ProgressBar`, `UIKit/Components/RollingCounter`, `UIKit/Components/Badge`, `UIKit/Components/Card`, `UIKit/Components/ShopCard`, `UIKit/Components/DialogueBox`, `UIKit/Components/SettingsPanel`, `UIKit/Components/LoadingScreen`, `UIKit/Components/TeleportTransition`, `UIKit/Components/StatBar`, `UIKit/Components/Timer`, `UIKit/Components/Countdown`, `UIKit/Components/LeaderboardPanel`, `UIKit/Components/KeybindPrompt`, `UIKit/Components/InventoryGrid`, `UIKit/Components/TouchActionButton`, `UIKit/Gallery/Stories`, `Cinematics/Cinematics`, `Cinematics/Spline`, `Cinematics/CinematicsRoblox` |
-| G5 look, sound and feel | `GameKit/WorldCycle`, `AVKit/Vfx`, `AVKit/VfxLibrary`, `AVKit/Pool`, `AVKit/VfxPoolRoblox`, `AVKit/AudioMixer`, `AVKit/AudioDirector`, `AVKit/AudioGraph`, `AVKit/AudioGraphRoblox`, `AVKit/AudioCues`, `Feel/Spring`, `Feel/Shake`, `Feel/HitStop`, `Feel/Popups`, `Feel/Screen`, `Feel/Haptics`, `Feel/Cues`, `Feel/FeelRoblox` |
+| G4 UI kit and cinematics | `GameKit/InputMap`, `GameKit/InputMapRoblox`, `UIKit/UIKit`, `UIKit/Tokens`, `UIKit/Style`, `UIKit/StyleRoblox`, `UIKit/Build`, `UIKit/Breakpoints`, `UIKit/State`, `UIKit/Ease`, `UIKit/Transitions`, `UIKit/Nav`, `UIKit/Localize`, `UIKit/Audit`, `UIKit/AuditRoblox`, `UIKit/Components/Button`, `UIKit/Components/IconButton`, `UIKit/Components/Toggle`, `UIKit/Components/Slider`, `UIKit/Components/Tabs`, `UIKit/Components/VirtualList`, `UIKit/Components/Grid`, `UIKit/Components/Modal`, `UIKit/Components/ConfirmDialog`, `UIKit/Components/Toast`, `UIKit/Components/Tooltip`, `UIKit/Components/ProgressBar`, `UIKit/Components/RollingCounter`, `UIKit/Components/Badge`, `UIKit/Components/Card`, `UIKit/Components/ShopCard`, `UIKit/Components/DialogueBox`, `UIKit/Components/SettingsPanel`, `UIKit/Components/LoadingScreen`, `UIKit/Components/TeleportTransition`, `UIKit/Components/StatBar`, `UIKit/Components/Timer`, `UIKit/Components/Countdown`, `UIKit/Components/LeaderboardPanel`, `UIKit/Components/KeybindPrompt`, `UIKit/Components/InventoryGrid`, `UIKit/Components/TouchActionButton`, `UIKit/Gallery/Stories`, `UIKit/Gallery/Browser`, `Cinematics/Cinematics`, `Cinematics/Spline`, `Cinematics/CinematicsRoblox` |
+| G5 look, sound and feel | `GameKit/WorldCycle`, `AVKit/Vfx`, `AVKit/VfxLibrary`, `AVKit/Pool`, `AVKit/VfxPoolRoblox`, `AVKit/AudioMixer`, `AVKit/AudioDirector`, `AVKit/AudioGraph`, `AVKit/AudioGraphRoblox`, `AVKit/AudioCues`, `AVKit/Music`, `Feel/Spring`, `Feel/Shake`, `Feel/HitStop`, `Feel/Popups`, `Feel/Screen`, `Feel/Haptics`, `Feel/Cues`, `Feel/FeelRoblox` |
 | G7 level, AI and playbooks | `GameKit/Checkpoints`, `GameKit/WaveDirector`, `GameKit/NavAgent`, `GameKit/NavAgentRoblox`, `GameKit/Perception`, `GameKit/BehaviorTree`, `GameKit/PlacementGrid`, `GameKit/Leaderboard`, `GameKit/LeaderboardRoblox` (T4), `GameKit/LiveBoard`, `GameKit/LiveBoardRoblox` (T4), `GameKit/TeamBalance` |
 | G9b harness | `GameKit/DebugCommands` |
 
-Non-kit modules the groups also own (cited by skills, not by kits): G5 `SceneKit/Lighting`, `SceneKit/Budgets`, `SceneKit/Materials`, `SceneKit/Validate`; G6 `Pipeline/ImportInspector`; G7 `SceneKit/Kit`, `SceneKit/Apply`, `ProcGen/Course`; G9b `Pipeline/KitSmoke`, `Pipeline/CaptureSet`, `Diagnostics/PerfProbe`, `Diagnostics/PerfProbeRoblox`. A group may add a module its group file does not list only by reporting it to the coordinator; folder layout inside a group's own package (for example `UIKit/Components/`) is the group's choice, flat file names excepted.
+Non-kit modules the groups also own (cited by skills, not by kits): G5 `SceneKit/Lighting`, `SceneKit/Budgets`, `SceneKit/Materials`, `SceneKit/Validate`; G6 `Pipeline/ImportInspector`; G7 `SceneKit/Kit`, `SceneKit/Apply`, `SceneKit/Measure`, `ProcGen/Course`, `ProcGen/CourseValidate`, `ProcGen/CourseScene`; G9b `Pipeline/KitSmoke`, `Pipeline/CaptureSet`, `Diagnostics/PerfProbe`, `Diagnostics/PerfProbeRoblox`. A group may add a module its group file does not list only by reporting it to the coordinator; folder layout inside a group's own package (for example `UIKit/Components/`) is the group's choice, flat file names excepted.
 
 ## 12. Determinism and goldens
 
-- Randomness comes from `ProcGen/Rng` (through `env.rng(seed)`); same seed, same output. Digests use canonical JSON (`GameKit/Json`) and FNV-1a (`Golden.digest`, the `Manifest.hash` family).
+- Randomness comes from `ProcGen/Rng` (through `env.rng(seed)`); same seed, same output. Rng stays byte-stable so every recorded hash keeps meaning; its xorshift32 core gives adjacent numeric seeds (1, 2, 3) near-identical first draws, so derive per-entity or per-round seeds from strings (`Rng.new("round:" .. n)`) or from forks of a string-seeded parent, not from consecutive integers. Digests use canonical JSON (`GameKit/Json`) and FNV-1a (`Golden.digest`, the `Manifest.hash` family).
 - [tests/lib/Golden.luau](../tests/lib/Golden.luau): `Golden.assert(name, value)` compares with `tests/golden/<name>.json` and names the first differing path. It rewrites only when `FACTORY_UPDATE_GOLDEN` is `1` or a comma list naming the golden. The names `fixture-hashes` and `studio-smoke` are reserved for the gate and raise in a spec. Name spec goldens after your area (`gamekit_fsm`, `uikit_layout`) so groups never share one.
 - `python3 tools/check.py --update-golden=<name>[,<name>]` rewrites only those: `fixture-hashes` (G7 only, adding entries), `studio-smoke` (G9b), or spec goldens (passed to the specs as `FACTORY_UPDATE_GOLDEN`). Bare `--update-golden` rewrites everything and is the coordinator's. The `golden-update` step lists what was added or rewritten and FAILs when a named spec golden was not written by any spec (a typo cannot pass). `--tier fast` with the flag FAILs, because the fast tier runs no golden step. Without the flag the gate clears `FACTORY_UPDATE_GOLDEN` for every step, so a stray shell variable cannot rewrite a golden. Each group writes only the goldens its group file lists.
 

@@ -25,6 +25,18 @@ Every file starts with its owner's prefix. A group creates files only under its 
 | `level_` | G7 level, AI and playbooks |
 | `kitsmoke_` | G9b verification harness |
 
+## What is here
+
+| Fixture key (`SETUP_ONLY_KitFixture`) | Files | What runs |
+|---|---|---|
+| none (registries only) | `shared/foundation_probes`, `server/platform_probes`, `server/action_probes`, `shared/authority_probes`, `server/economy_probes`, `shared/ui_probes` (also `inputmap_contexts`), `shared/cin_probes`, `shared/lookdev_probes`, `server/level_probes`, `server/kitsmoke_probes`, `client/kitsmoke_client_probes` | probe registries; `tests/engine/<probe>.luau` runs one through Studio's RunScript, `Pipeline/KitSmoke` merges them all |
+| `authority` | `shared/authority_Arena`, `server/authority_Sim.server`, `client/authority_Input.client` | Server Authority arena: one `BindToSimulation` step, Input Action System input, rewound claim validation (needs `Workspace.AuthorityMode = Server`) |
+| `ui-gallery` | `client/ui_Gallery.client` | the UIKit story browser (themes, reduced motion, pseudo-localisation, device switches) |
+| `lookdev` | `server/lookdev_Swatches.server`, `client/lookdev_Cycle.client` | material swatches and a lighting preset cycle for captures |
+| `kitsmoke` | `server/kitsmoke_Runner.server`, `client/kitsmoke_Runner.client` | every registry on its side in one play session; save the Output and run `python3 tools/studio_run.py --probe kitsmoke_all --from-output <file>` |
+
+`shared/cin_setup_only_orbit` is the neutral cinematics/1 orbit the `cin_` probes play.
+
 ## Rules
 
 - **Opt-in by attribute.** A fixture script does nothing unless `Workspace:GetAttribute("SETUP_ONLY_KitFixture")` equals its fixture key; the project sets it to `none`. Keys in use: `authority` (G2), `ui-gallery` (G4), `lookdev` (G5), `kitsmoke` (G9b). A new key goes to the coordinator (COORDINATOR_CHANGES) for this table.
