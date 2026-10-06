@@ -2,13 +2,23 @@
 -- Scene-level validation: part budget, door/ceiling/stair clearances from authoring
 -- metadata, stair headroom, stairs/ramps cut by other structure, props intersecting structure
 -- and unsupported props; scenes with lights or signs also get light_placement and sign_text.
+-- A check may carry `warnings` (convention budgets exceeded, never a failure); checks without
+-- warnings have no such field, so reports of scenes inside every budget are unchanged.
+local Budgets = require("./Budgets")
 local Measure = require("./Measure")
 local Scene = require("./Scene")
 local Vec = require("./Vec")
 
 local Validate = {}
 type Scene = Scene.Scene
-export type Check = { name: string, pass: boolean, value: any, limit: any?, detail: string? }
+export type Check = {
+	name: string,
+	pass: boolean,
+	value: any,
+	limit: any?,
+	detail: string?,
+	warnings: { string }?,
+}
 
 local EPS = 1e-3
 
@@ -369,28 +379,49 @@ function Validate.scene(scene: Scene, options: { maxParts: number?, groundY: num
 end
 
 local LIGHT_CLASSES = { PointLight = true, SpotLight = true, SurfaceLight = true }
-local MAX_LIGHT_RANGE = 60 -- engine cap for PointLight/SpotLight/SurfaceLight Range
+-- Engine clamp for PointLight/SpotLight/SurfaceLight Range: 120 studs since 2025-09-23 (60 before).
+Validate.MAX_LIGHT_RANGE = Budgets.DOCUMENTED.light_range_max
+-- Convention budget: ranges above it pass but warn ("fewer lights mean better performance").
+Validate.LIGHT_RANGE_BUDGET = Budgets.CONVENTIONS.light_range_budget
 
 -- Appends light_placement (valid class, range within the engine cap, and every fixture recorded
 -- for a room inside that room's box) and sign_text (non-empty text) when the scene has any light
--- or sign; scenes without them get neither check, so their reports are unchanged.
+-- or sign; scenes without them get neither check, so their reports are unchanged. Convention
+-- budgets go in light_placement.warnings: range above 60, more than 4 lights or more than one
+-- shadow-casting light in one room (SceneKit/Budgets).
 function Validate.dressing(scene: Scene, checks: { Check }): { Check }
 	local byId, lights, signs = {}, 0, 0
-	local badLights, badSigns = {}, {}
+	local badLights, badSigns, warnings = {}, {}, {}
 	for _, spec in scene.specs do
 		byId[spec.id :: string] = spec
 		local light = spec.light
 		if light then
 			lights += 1
+			local range = light.range or 16
 			if not LIGHT_CLASSES[light.class] then
 				table.insert(
 					badLights,
 					string.format("%s class %s", tostring(spec.id), tostring(light.class))
 				)
-			elseif (light.range or 16) <= 0 or (light.range or 16) > MAX_LIGHT_RANGE then
+			elseif
+				type(range) ~= "number"
+				or range ~= range
+				or range <= 0
+				or range > Validate.MAX_LIGHT_RANGE
+			then
 				table.insert(
 					badLights,
 					string.format("%s range %s", tostring(spec.id), tostring(light.range))
+				)
+			elseif range > Validate.LIGHT_RANGE_BUDGET then
+				table.insert(
+					warnings,
+					string.format(
+						"%s range %s over the %d-stud budget (convention)",
+						tostring(spec.id),
+						tostring(range),
+						Validate.LIGHT_RANGE_BUDGET
+					)
 				)
 			end
 		end
@@ -403,11 +434,19 @@ function Validate.dressing(scene: Scene, checks: { Check }): { Check }
 		end
 	end
 	local records = (scene.meta :: any).lights or {}
+	local perRoom: { [string]: { lights: number, shadowed: number } } = {}
 	for _, record in records do
 		local spec = byId[record.id]
 		if spec == nil then
 			table.insert(badLights, record.id .. " missing")
 		else
+			local room = tostring(record.room)
+			local tally = perRoom[room] or { lights = 0, shadowed = 0 }
+			perRoom[room] = tally
+			tally.lights += 1
+			if spec.light and spec.light.shadows == true then
+				tally.shadowed += 1
+			end
 			-- Fixture corners in the room's frame (u along `dir`, v up from the floor, w across).
 			local dir = record.dir
 			local across = { x = -dir.z, y = 0, z = dir.x }
@@ -435,14 +474,48 @@ function Validate.dressing(scene: Scene, checks: { Check }): { Check }
 			end
 		end
 	end
+	local rooms = {}
+	for room in perRoom do
+		table.insert(rooms, room)
+	end
+	table.sort(rooms)
+	for _, room in rooms do
+		local tally = perRoom[room]
+		if tally.lights > Budgets.CONVENTIONS.lights_per_room then
+			table.insert(
+				warnings,
+				string.format(
+					"%s has %d lights (budget %d, convention)",
+					room,
+					tally.lights,
+					Budgets.CONVENTIONS.lights_per_room
+				)
+			)
+		end
+		if tally.shadowed > Budgets.CONVENTIONS.shadowed_lights_per_room then
+			table.insert(
+				warnings,
+				string.format(
+					"%s has %d shadow-casting lights (budget %d, convention)",
+					room,
+					tally.shadowed,
+					Budgets.CONVENTIONS.shadowed_lights_per_room
+				)
+			)
+		end
+	end
 	if lights > 0 or #records > 0 then
-		table.insert(checks, {
+		local check: Check = {
 			name = "light_placement",
 			pass = #badLights == 0,
 			value = #badLights,
 			limit = 0,
 			detail = table.concat(badLights, "; ", 1, math.min(#badLights, 5)),
-		})
+		}
+		if #warnings > 0 then
+			check.warnings = warnings
+		end
+		table.insert(checks, check)
 	end
 	if signs > 0 then
 		table.insert(checks, {

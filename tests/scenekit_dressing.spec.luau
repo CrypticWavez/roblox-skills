@@ -288,10 +288,48 @@ test("Validate: light outside its room, bad light settings and empty sign text f
 	local high = base()
 	SK.Props.light(high, { pos = { x = 5, y = 10.5, z = 5 }, room = room("V/R1", 0, 0, 10, 10) })
 	t.ok(not checkNamed(high, "light_placement").pass, "fixture above the ceiling fails")
-	-- Range over the engine cap and an unknown class.
+	-- Range over the engine cap (120 since 2025-09-23) and an unknown class.
 	local bright = base()
-	SK.Props.light(bright, { pos = { x = 5, y = 10, z = 5 }, range = 120 })
-	t.ok(not checkNamed(bright, "light_placement").pass, "range 120 fails")
+	SK.Props.light(bright, { pos = { x = 5, y = 10, z = 5 }, range = 121 })
+	local over = checkNamed(bright, "light_placement")
+	t.ok(not over.pass, "range 121 fails")
+	t.ok(string.find(over.detail, "range 121", 1, true), over.detail)
+	-- At the cap it passes; above the 60-stud convention budget it warns instead of failing.
+	local capped = base()
+	SK.Props.light(capped, { pos = { x = 5, y = 10, z = 5 }, range = 120 })
+	local atCap = checkNamed(capped, "light_placement")
+	t.ok(atCap.pass, "range 120 passes (engine cap)")
+	t.ok(atCap.warnings and #atCap.warnings == 1, "range 120 warns once")
+	t.ok(string.find(atCap.warnings[1], "60-stud budget", 1, true), atCap.warnings[1])
+	local wide = base()
+	SK.Props.light(wide, { pos = { x = 5, y = 10, z = 5 }, range = 61 })
+	t.ok(
+		checkNamed(wide, "light_placement").pass and checkNamed(wide, "light_placement").warnings,
+		"61 warns"
+	)
+	local budget = base()
+	SK.Props.light(budget, { pos = { x = 5, y = 10, z = 5 }, range = 60 })
+	t.eq(checkNamed(budget, "light_placement").warnings, nil, "60 is inside the budget: no warnings field")
+	for _, bad in { 0, -4, 0 / 0 } do
+		local broken = base()
+		local spec = SK.Props.light(broken, { pos = { x = 5, y = 10, z = 5 } })
+		spec.light.range = bad
+		t.ok(not checkNamed(broken, "light_placement").pass, "range " .. tostring(bad) .. " fails")
+	end
+	-- Per-room convention budgets (SceneKit/Budgets): 4 lights, 1 shadow-casting light.
+	local crowded = base()
+	for index = 1, 5 do
+		SK.Props.light(crowded, {
+			pos = { x = index + 2, y = 10, z = 5 },
+			room = room("V/R1", 0, 0, 10, 10),
+			shadows = index <= 2,
+		})
+	end
+	local busy = checkNamed(crowded, "light_placement")
+	t.ok(busy.pass, "budgets warn, never fail")
+	t.eq(#busy.warnings, 2, table.concat(busy.warnings or {}, "; "))
+	t.ok(string.find(busy.warnings[1], "V/R1 has 5 lights", 1, true), busy.warnings[1])
+	t.ok(string.find(busy.warnings[2], "2 shadow-casting lights", 1, true), busy.warnings[2])
 	local unknown = base()
 	local spec = SK.Props.light(unknown, { pos = { x = 5, y = 10, z = 5 } })
 	spec.light.class = "LaserLight" :: any

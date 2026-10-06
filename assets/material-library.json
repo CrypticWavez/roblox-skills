@@ -1,0 +1,335 @@
+{
+  "schema": "material-library/1",
+  "materials": [
+    {
+      "name": "ground_soil_a",
+      "base_material": "Ground",
+      "studs_per_tile": 12,
+      "pattern": "Organic",
+      "maps": {
+        "color": "build:materials/ground_soil_a/color.png",
+        "normal": "build:materials/ground_soil_a/normal.png",
+        "roughness": "build:materials/ground_soil_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": true,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "grass_a",
+      "base_material": "Grass",
+      "studs_per_tile": 12,
+      "pattern": "Organic",
+      "maps": {
+        "color": "build:materials/grass_a/color.png",
+        "normal": "build:materials/grass_a/normal.png",
+        "roughness": "build:materials/grass_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": true,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "rock_a",
+      "base_material": "Rock",
+      "studs_per_tile": 10,
+      "pattern": "Organic",
+      "maps": {
+        "color": "build:materials/rock_a/color.png",
+        "normal": "build:materials/rock_a/normal.png",
+        "roughness": "build:materials/rock_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": true,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "sand_a",
+      "base_material": "Sand",
+      "studs_per_tile": 10,
+      "pattern": "Organic",
+      "maps": {
+        "color": "build:materials/sand_a/color.png",
+        "normal": "build:materials/sand_a/normal.png",
+        "roughness": "build:materials/sand_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": true,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "concrete_a",
+      "base_material": "Concrete",
+      "studs_per_tile": 8,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/concrete_a/color.png",
+        "normal": "build:materials/concrete_a/normal.png",
+        "roughness": "build:materials/concrete_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "plaster_a",
+      "base_material": "Plaster",
+      "studs_per_tile": 8,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/plaster_a/color.png",
+        "normal": "build:materials/plaster_a/normal.png",
+        "roughness": "build:materials/plaster_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "brick_a",
+      "base_material": "Brick",
+      "studs_per_tile": 8,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/brick_a/color.png",
+        "normal": "build:materials/brick_a/normal.png",
+        "roughness": "build:materials/brick_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "wood_planks_a",
+      "base_material": "WoodPlanks",
+      "studs_per_tile": 8,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/wood_planks_a/color.png",
+        "normal": "build:materials/wood_planks_a/normal.png",
+        "roughness": "build:materials/wood_planks_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "wood_a",
+      "base_material": "Wood",
+      "studs_per_tile": 6,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/wood_a/color.png",
+        "normal": "build:materials/wood_a/normal.png",
+        "roughness": "build:materials/wood_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "metal_plate_a",
+      "base_material": "Metal",
+      "studs_per_tile": 6,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/metal_plate_a/color.png",
+        "normal": "build:materials/metal_plate_a/normal.png",
+        "roughness": "build:materials/metal_plate_a/roughness.png",
+        "metalness": "build:materials/metal_plate_a/metalness.png",
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "metal_painted_a",
+      "base_material": "CorrodedMetal",
+      "studs_per_tile": 6,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/metal_painted_a/color.png",
+        "normal": "build:materials/metal_painted_a/normal.png",
+        "roughness": "build:materials/metal_painted_a/roughness.png",
+        "metalness": "build:materials/metal_painted_a/metalness.png",
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "tile_floor_a",
+      "base_material": "CeramicTiles",
+      "studs_per_tile": 8,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/tile_floor_a/color.png",
+        "normal": "build:materials/tile_floor_a/normal.png",
+        "roughness": "build:materials/tile_floor_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "fabric_a",
+      "base_material": "Fabric",
+      "studs_per_tile": 4,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/fabric_a/color.png",
+        "normal": "build:materials/fabric_a/normal.png",
+        "roughness": "build:materials/fabric_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 512,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "asphalt_a",
+      "base_material": "Asphalt",
+      "studs_per_tile": 12,
+      "pattern": "Organic",
+      "maps": {
+        "color": "build:materials/asphalt_a/color.png",
+        "normal": "build:materials/asphalt_a/normal.png",
+        "roughness": "build:materials/asphalt_a/roughness.png",
+        "metalness": null,
+        "emissive": null
+      },
+      "resolution": 1024,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    },
+    {
+      "name": "emissive_panel_a",
+      "base_material": "SmoothPlastic",
+      "studs_per_tile": 4,
+      "pattern": "Regular",
+      "maps": {
+        "color": "build:materials/emissive_panel_a/color.png",
+        "normal": null,
+        "roughness": "build:materials/emissive_panel_a/roughness.png",
+        "metalness": null,
+        "emissive": "build:materials/emissive_panel_a/emissive.png"
+      },
+      "resolution": 512,
+      "override_base": false,
+      "provenance": "local",
+      "roblox": {
+        "color": 0,
+        "normal": 0,
+        "roughness": 0,
+        "metalness": 0
+      }
+    }
+  ]
+}
