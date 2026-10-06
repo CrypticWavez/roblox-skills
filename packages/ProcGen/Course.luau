@@ -680,8 +680,9 @@ function Course.linear(params: any): Course
 end
 
 -- Tower: pads spiral around a core, rising floorHeight per full turn, with a checkpoint pad at
--- the end of every floor but the top one (the finish). Options: floors (default 5), floorHeight (default: jump height +
--- character height + pad + 2, rounded up), coreRadius (default 8), margin, jitter.
+-- the end of every floor but the top one (the finish). Options: floors (default 5),
+-- floorHeight (default: jump height + character height + pad + 2, rounded up), coreRadius
+-- (default 8), margin, jitter.
 function Course.tower(params: any): Course
 	local profile, kinds, problems = begin("tower", params)
 	local floors = positiveInteger(params, "floors", 5, 1, 60, problems)

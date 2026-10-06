@@ -1,6 +1,11 @@
 {
   "arena": "20898139",
   "cave": "a9fa3357",
+  "course_lanes": "36fa47cc",
+  "course_linear": "bb228047",
+  "course_micro_arena": "099c41e1",
+  "course_race_loop": "c8f08c8a",
+  "course_tower": "d77b60ca",
   "dungeon": "06ace82c",
   "forest": "3d7d7cb5",
   "modular_building": "dec2fd84",
