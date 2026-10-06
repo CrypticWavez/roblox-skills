@@ -9,7 +9,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local UI = require(game:GetService("ReplicatedStorage").Workbench.Creator.UI)
 local stable, deadline = 0, os.clock() + 20
 while stable < 4 and os.clock() < deadline do
-	RunService.RenderStepped:Wait()
+	RunService.PreRender:Wait()
 	local camera = workspace.CurrentCamera
 	stable = if camera
 			and camera.ViewportSize.X >= 240
@@ -51,7 +51,7 @@ local function check(name, passed)
 end
 local function capture(name)
 	for _ = 1, 4 do
-		RunService.RenderStepped:Wait()
+		RunService.PreRender:Wait()
 	end
 	local report = api:audit()
 	report.name = name
@@ -70,7 +70,16 @@ api:setInventory("ready", {
 })
 capture("inventory_ready_long_text")
 check("inventory available without gameplay", api.view == "inventory")
-api:setShop("ready", { { id = "unconfigured_offer", labelKey = "offer", kind = "pass", enabled = false } })
+api:setShop("ready", {
+	{
+		key = "unconfigured_offer",
+		kind = "gamepass",
+		id = 0,
+		enabled = false,
+		ownershipVerified = false,
+		display = { nameKey = "offer" },
+	},
+})
 api:show("shop")
 capture("shop_unavailable")
 check("missing identities query no prices", priceCalls == 0)

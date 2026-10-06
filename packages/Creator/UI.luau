@@ -1,5 +1,14 @@
 --!strict
 -- Neutral native UI primitives. No purchase prompting, game loop or asset dependency.
+-- Inherited first-pass module (fixtures/creator/UI.client.luau); new UI uses packages/UIKit,
+-- which carries the validators, localisation, guard and audit forward. String requires; shop
+-- entries are catalog/1 products (GameKit/Catalog: kind devproduct | gamepass | subscription,
+-- legacy kinds normalised, the product id in entry.id); text uses FontFace; UI.new cleans up
+-- through a GameKit/Scope and waits for layout on RunService.PreRender.
+local Catalog = require("../GameKit/Catalog")
+local NativeUI = require("../Runtime/NativeUI")
+local Scope = require("../GameKit/Scope")
+
 local UI = {}
 UI.defaults = table.freeze({
 	title = "UI component inspection",
@@ -154,6 +163,11 @@ function UI.guard(onDestroy)
 	return api
 end
 
+-- Preview text for one catalog/1 product: only a disabled, ownership-verified product with a
+-- real id (entry.id: an integer > 0, or an EXP- id other than the EXP-0 placeholder for
+-- subscriptions) in a published universe asks provider(kind, id) for a current price, and the
+-- result is never purchasable. kind is normalised (pass -> gamepass, developer_product ->
+-- devproduct). An entry.universeId, when present (pre-catalog/1 data), must match.
 function UI.shopDisplay(entry, universeId, provider)
 	local unavailable = { state = "unavailable", purchasable = false, reason = "unconfigured" }
 	if
@@ -161,22 +175,25 @@ function UI.shopDisplay(entry, universeId, provider)
 		or not finite(universeId)
 		or universeId <= 0
 		or universeId % 1 ~= 0
-		or entry.universeId ~= universeId
+		or (entry.universeId ~= nil and entry.universeId ~= universeId)
 		or entry.ownershipVerified ~= true
 		or entry.enabled ~= false
+		or type(entry.kind) ~= "string"
 	then
 		return unavailable
 	end
-	if entry.kind ~= "pass" and entry.kind ~= "developer_product" and entry.kind ~= "subscription" then
+	local kind = Catalog.normalizeKind(entry.kind)
+	if kind ~= "gamepass" and kind ~= "devproduct" and kind ~= "subscription" then
 		return unavailable
 	end
-	local validId = if entry.kind == "subscription"
-		then text(entry.productId, 64) and entry.productId:match("^EXP%-") ~= nil
-		else finite(entry.productId) and entry.productId > 0 and entry.productId % 1 == 0
+	local id = entry.id
+	local validId = if kind == "subscription"
+		then text(id, 64) and id:match("^EXP%-") ~= nil and id ~= "EXP-0"
+		else finite(id) and id > 0 and id % 1 == 0
 	if not validId or type(provider) ~= "function" then
 		return unavailable
 	end
-	local ok, info = pcall(provider, entry.kind, entry.productId)
+	local ok, info = pcall(provider, kind, id)
 	if not ok or type(info) ~= "table" or info.available ~= true or not text(info.formattedPrice, 128) then
 		return { state = "unavailable", purchasable = false, reason = "current_price_unavailable" }
 	end
@@ -190,9 +207,14 @@ function UI.new(parent, options)
 	for _, key in { "localeProvider", "currentPriceProvider", "onSettingsChanged", "onRetry" } do
 		assert(options[key] == nil or type(options[key]) == "function", key .. " must be a function")
 	end
-	local NativeUI = require(script.Parent.Parent.Runtime.NativeUI)
-	local Lifetime = require(script.Parent.Parent.Runtime.Lifetime)
-	local theme = assert(NativeUI.themes[options.theme or "slate"], "unknown theme")
+	local themeName = options.theme or "slate"
+	assert(NativeUI.themes[themeName], "unknown theme")
+	local theme = {}
+	for slot in NativeUI.themes[themeName] do
+		theme[slot] = NativeUI.color(themeName, slot)
+	end
+	local regular = Font.new(NativeUI.FONT_FAMILY, Enum.FontWeight.Regular)
+	local bold = Font.new(NativeUI.FONT_FAMILY, Enum.FontWeight.Bold)
 	local touchTarget = NativeUI.tokens.touchTarget
 	local keys = {}
 	for key in UI.defaults do
@@ -221,7 +243,8 @@ function UI.new(parent, options)
 	local connections, contentConnections = {}, {}
 	local controller = UI.guard()
 	local settingsController = UI.guard()
-	local lifetime = Lifetime.new(1)
+	local scope = Scope.new()
+	local destroying = false
 	local guiService = game:GetService("GuiService")
 	local inputService = game:GetService("UserInputService")
 	local runService = game:GetService("RunService")
@@ -247,7 +270,7 @@ function UI.new(parent, options)
 		BackgroundColor3 = theme.background,
 		TextColor3 = theme.text,
 		TextSize = 18,
-		Font = Enum.Font.Gotham,
+		FontFace = regular,
 		TextWrapped = true,
 		RichText = false,
 	}, root)
@@ -258,7 +281,7 @@ function UI.new(parent, options)
 			TextColor3 = theme.text,
 			BackgroundColor3 = theme.surface,
 			TextSize = 17,
-			Font = Enum.Font.Gotham,
+			FontFace = regular,
 			TextWrapped = true,
 			RichText = false,
 			BorderSizePixel = 0,
@@ -289,7 +312,7 @@ function UI.new(parent, options)
 		Text = tr("title"),
 		TextColor3 = theme.text,
 		TextSize = 20,
-		Font = Enum.Font.GothamBold,
+		FontFace = bold,
 		TextWrapped = true,
 		RichText = false,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -354,7 +377,7 @@ function UI.new(parent, options)
 			BackgroundTransparency = 1,
 			TextColor3 = theme.text,
 			TextSize = 18,
-			Font = Enum.Font.Gotham,
+			FontFace = regular,
 			TextWrapped = true,
 			RichText = false,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -364,7 +387,7 @@ function UI.new(parent, options)
 	end
 	local function focus(target)
 		task.defer(function()
-			runService.RenderStepped:Wait()
+			runService.PreRender:Wait()
 			if not controller.closed and api.opened and target.Parent and target.AbsoluteSize.X > 0 then
 				guiService.SelectedObject = target
 			end
@@ -561,15 +584,27 @@ function UI.new(parent, options)
 			state == "loading" or state == "empty" or state == "error" or state == "ready",
 			"invalid shop state"
 		)
-		local valid, reason = UI.validateItems(entries)
+		-- catalog/1 products: the card is the product key and its display.nameKey.
+		assert(type(entries) == "table", "shop entries must be catalog/1 products")
+		local cards = {}
+		for _, entry in entries do
+			assert(
+				type(entry) == "table" and type(entry.display) == "table",
+				"shop entries must be catalog/1 products"
+			)
+			table.insert(cards, { id = entry.key, labelKey = entry.display.nameKey })
+		end
+		local valid, reason = UI.validateItems(cards)
 		assert(valid, reason)
 		generation += 1
 		local current = generation
 		local copy, displays = {}, {}
-		for _, entry in entries do
-			local cloned = table.clone(entry)
-			table.insert(copy, cloned)
-			table.insert(displays, UI.shopDisplay(cloned, options.universeId, options.currentPriceProvider))
+		for index, entry in entries do
+			table.insert(copy, cards[index])
+			table.insert(
+				displays,
+				UI.shopDisplay(table.clone(entry), options.universeId, options.currentPriceProvider)
+			)
 			if controller.closed or generation ~= current then
 				return false, "superseded"
 			end
@@ -729,7 +764,7 @@ function UI.new(parent, options)
 			purchasable = false,
 		}
 	end
-	lifetime:add(300, 10, function()
+	scope:Add(function()
 		controller:destroy()
 		settingsController:destroy()
 		clear()
@@ -744,7 +779,12 @@ function UI.new(parent, options)
 		api.closed = true
 	end)
 	function api:destroy()
-		lifetime:destroy()
+		-- Once only; root.Destroying calls back in here while the scope is cleaning.
+		if destroying then
+			return
+		end
+		destroying = true
+		scope:Destroy()
 	end
 	connect(root.Destroying, function()
 		api:destroy()

@@ -80,19 +80,61 @@ test("missing, cross-universe and enabled shop entries never query prices", func
 	for _, entry in
 		{
 			{},
-			{ universeId = 2, productId = 3 },
-			{ universeId = 1, ownershipVerified = true, enabled = true, kind = "pass", productId = 3 },
+			{ universeId = 2, id = 3 },
+			{ universeId = 2, ownershipVerified = true, enabled = false, kind = "gamepass", id = 3 },
+			{ ownershipVerified = true, enabled = true, kind = "gamepass", id = 3 },
+			-- catalog/1 placeholders and the pre-catalog/1 productId field never reach the provider.
+			{ ownershipVerified = true, enabled = false, kind = "devproduct", id = 0 },
+			{ ownershipVerified = true, enabled = false, kind = "subscription", id = "EXP-0" },
+			{ ownershipVerified = true, enabled = false, kind = "gamepass", productId = 3 },
+			{ ownershipVerified = true, enabled = false, kind = "bundle", id = 3 },
+			{ ownershipVerified = false, enabled = false, kind = "gamepass", id = 3 },
 		}
 	do
 		local display = UI.shopDisplay(entry, 1, provider)
 		expect(display.state == "unavailable" and display.purchasable == false)
 	end
+	local setup = { ownershipVerified = true, enabled = false, kind = "gamepass", id = 3 }
+	expect(UI.shopDisplay(setup, 0, provider).state == "unavailable", "universe 0 (unpublished) never quotes")
 	expect(calls == 0)
 end)
+test("catalog/1 entries are read by entry.id with normalised kinds", function()
+	local seen = {}
+	local provider = function(kind, id)
+		table.insert(seen, kind .. ":" .. tostring(id))
+		return { available = true, formattedPrice = "quote" }
+	end
+	for _, entry in
+		{
+			{ key = "pass_a", kind = "gamepass", id = 11, enabled = false, ownershipVerified = true },
+			{ key = "legacy_pass", kind = "pass", id = 12, enabled = false, ownershipVerified = true },
+			{
+				key = "legacy_product",
+				kind = "developer_product",
+				id = 13,
+				enabled = false,
+				ownershipVerified = true,
+			},
+			{
+				key = "sub_a",
+				kind = "subscription",
+				id = "EXP-14",
+				enabled = false,
+				ownershipVerified = true,
+			},
+		}
+	do
+		expect(UI.shopDisplay(entry, 1, provider).state == "preview_only")
+	end
+	expect(
+		table.concat(seen, ",") == "gamepass:11,gamepass:12,devproduct:13,subscription:EXP-14",
+		table.concat(seen, ",")
+	)
+end)
 test("current quotes remain preview-only and provider failure unavailable", function()
-	local entry = { universeId = 1, ownershipVerified = true, enabled = false, kind = "pass", productId = 3 }
+	local entry = { universeId = 1, ownershipVerified = true, enabled = false, kind = "pass", id = 3 }
 	local display = UI.shopDisplay(entry, 1, function(kind, id)
-		expect(kind == "pass" and id == 3)
+		expect(kind == "gamepass" and id == 3)
 		return { available = true, formattedPrice = "quote supplied now" }
 	end)
 	expect(display.price == "quote supplied now" and display.purchasable == false)
