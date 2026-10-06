@@ -1,0 +1,124 @@
+{
+  "schema": "asset-sources/1",
+  "policy": "Candidate CC0 sources for external files (textures, HDRIs, models, audio). None is pinned: an item is pinned only by `python3 tools/fetch_assets.py --source <key> --item <id> --pin`, the owner's per-item approval, which downloads into build/asset-cache/ (never into git), verifies the CC0 legal code text against licence_texts, records sha256 and bytes, and appends an entry to the files list of assets/provenance.json. Only CC0-1.0 sources are allowed, at most 12, every one fetch-only. The Poly Haven API host is never used (the checker refuses any mention of it). Choosing which items a game uses is game-repo work. Checked by python3 tools/asset_sources.py --check. Research: docs/research/visual-audio-assets-2026-10.md section 6.5.",
+  "fields": {
+    "key": "lower-case label; kit/1 pieces cite an item as cc0:<key>:<item>",
+    "name": "display name of the source",
+    "kinds": "what the source offers: texture-set, hdri, model, audio, ui",
+    "homepage": "https URL of the source",
+    "licence": "SPDX id; only CC0-1.0",
+    "licence_url": "the source's own page stating the licence (human evidence; not hashed, pages change)",
+    "licence_text_sha256": "sha256 of the licence's legal code text (licence_texts); fetch_assets re-fetches the text and refuses a mismatch",
+    "attribution": "none (CC0 needs none)",
+    "redistributable": "true for CC0",
+    "commit": "fetch-only: files live in build/asset-cache/, never in git",
+    "retrieval": "method https-get (host + path with {item}; optional redirect_hosts) or manual (the owner downloads from page and pins with --from-file); item_pattern limits item ids",
+    "allowed_types": "file types a download may be, checked by content (zip, png, jpg, hdr, exr, ogg, wav, glb)",
+    "member_types": "file extensions extracted from an archive; other members are skipped and listed",
+    "max_bytes": "largest download accepted",
+    "api_terms": "API or site terms read during research",
+    "notes": "what is still UNVERIFIED"
+  },
+  "licence_texts": {
+    "CC0-1.0": {
+      "url": "https://raw.githubusercontent.com/creativecommons/cc-legal-tools-data/a0dac18d1a773b4cdb7d8dd5d9bf4efab7901030/docs/publicdomain/zero/1.0/legalcode.txt",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "bytes": 7048,
+      "retrieved": "2026-10-06"
+    }
+  },
+  "sources": [
+    {
+      "key": "ambientcg",
+      "name": "ambientCG",
+      "kinds": ["texture-set", "hdri"],
+      "homepage": "https://ambientcg.com/",
+      "licence": "CC0-1.0",
+      "licence_url": "https://docs.ambientcg.com/license/",
+      "licence_text_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "attribution": "none",
+      "redistributable": true,
+      "commit": "fetch-only",
+      "retrieval": {
+        "method": "https-get",
+        "host": "ambientcg.com",
+        "path": "/get?file={item}.zip",
+        "item_pattern": "^[A-Za-z]+[0-9]{3}[A-Z]?_[1-8]K-(JPG|PNG)$",
+        "redirect_hosts": []
+      },
+      "allowed_types": ["zip"],
+      "member_types": [".png", ".jpg", ".jpeg", ".exr", ".usda", ".mtlx"],
+      "max_bytes": 268435456,
+      "api_terms": "API v2 full_json is documented with no usage terms stated; the fetch uses the direct file URL only",
+      "notes": "The /get redirect target and the per-map names inside the zip (for example _NormalGL) are UNVERIFIED; add the redirect host to redirect_hosts after the first approved fetch shows it. Normal maps must be the OpenGL variant."
+    },
+    {
+      "key": "polyhaven",
+      "name": "Poly Haven (website downloads)",
+      "kinds": ["hdri", "texture-set", "model"],
+      "homepage": "https://polyhaven.com/",
+      "licence": "CC0-1.0",
+      "licence_url": "https://polyhaven.com/license",
+      "licence_text_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "attribution": "none",
+      "redistributable": true,
+      "commit": "fetch-only",
+      "retrieval": {
+        "method": "https-get",
+        "host": "dl.polyhaven.org",
+        "path": "/file/ph-assets/{item}",
+        "item_pattern": "^(HDRIs|Textures|Models)/[A-Za-z0-9_/-]+\\.(hdr|exr|png|jpg|zip)$",
+        "redirect_hosts": []
+      },
+      "allowed_types": ["hdr", "exr", "png", "jpg", "zip"],
+      "member_types": [".png", ".jpg", ".jpeg", ".exr", ".hdr", ".gltf", ".bin"],
+      "max_bytes": 268435456,
+      "api_terms": "The API is never used: its terms forbid use for the purpose of commercial profit and require attribution and a unique User-Agent. The site forbids scraping, so one owner-requested file at a time.",
+      "notes": "The dl.polyhaven.org path layout is UNVERIFIED: record the item as the path after /file/ph-assets/ of the file URL the website's download button gives. Assets are CC0; the website, logos and renders are not."
+    },
+    {
+      "key": "kenney",
+      "name": "Kenney",
+      "kinds": ["audio", "ui", "model", "texture-set"],
+      "homepage": "https://kenney.nl/assets",
+      "licence": "CC0-1.0",
+      "licence_url": "https://kenney.nl/support",
+      "licence_text_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "attribution": "none",
+      "redistributable": true,
+      "commit": "fetch-only",
+      "retrieval": {
+        "method": "manual",
+        "page": "https://kenney.nl/assets",
+        "item_pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "allowed_types": ["zip"],
+      "member_types": [".png", ".svg", ".ogg", ".wav", ".glb", ".gltf", ".bin", ".fbx", ".obj", ".mtl", ".txt"],
+      "max_bytes": 268435456,
+      "api_terms": "none (no API); asset pages state Creative Commons CC0; the Kenney logo is reserved",
+      "notes": "The direct pack zip URL pattern is UNVERIFIED, so the owner downloads the pack from its asset page and pins it with --from-file; the item is the pack's page slug."
+    },
+    {
+      "key": "quaternius",
+      "name": "Quaternius",
+      "kinds": ["model"],
+      "homepage": "https://quaternius.com/",
+      "licence": "CC0-1.0",
+      "licence_url": "https://quaternius.com/faq.html",
+      "licence_text_sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499",
+      "attribution": "none",
+      "redistributable": true,
+      "commit": "fetch-only",
+      "retrieval": {
+        "method": "manual",
+        "page": "https://quaternius.com/",
+        "item_pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      },
+      "allowed_types": ["zip"],
+      "member_types": [".blend", ".fbx", ".obj", ".mtl", ".gltf", ".glb", ".bin", ".png"],
+      "max_bytes": 536870912,
+      "api_terms": "none (no API); the FAQ states all models are CC0",
+      "notes": "The download host is UNVERIFIED, so retrieval is manual with --from-file. Run python3 tools/blender/factory.py qa on a model before use; .blend files are opened with scripts disabled."
+    }
+  ]
+}

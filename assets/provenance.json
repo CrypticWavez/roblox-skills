@@ -13,8 +13,25 @@
     "script_review": "script and security review findings (required for approved)",
     "date": "date of the decision, YYYY-MM-DD",
     "purpose": "why the id is in the repo and where it is cited",
-    "origin": "intake (reviewed in this repo) or inherited_unverified (copied in, never reviewed here)"
+    "origin": "intake (reviewed in this repo) or inherited_unverified (copied in, never reviewed here)",
+    "source_key": "optional: the assets/sources.json key the uploaded file came from (its pinned file is in files with the same source_key)"
   },
+  "files_policy": "files lists external files pinned by python3 tools/fetch_assets.py --pin (the owner's per-item approval). The files themselves live in build/asset-cache/ and are never committed; an entry records where the file came from, its sha256 and bytes, and the licence evidence. Checked by python3 tools/asset_sources.py --check.",
+  "files_fields": {
+    "source_key": "assets/sources.json key",
+    "item": "item id within the source (kit/1 cites it as cc0:<source_key>:<item>)",
+    "url": "https URL it was downloaded from, or manual:<page> for a manual download pinned with --from-file",
+    "sha256": "sha256 of the downloaded file",
+    "bytes": "size of the downloaded file",
+    "type": "file type detected from its content",
+    "licence": "CC0-1.0",
+    "licence_url": "the source's licence page",
+    "licence_text_sha256": "sha256 of the legal code text verified at pin time",
+    "date": "pin date, YYYY-MM-DD",
+    "purpose": "why it was fetched",
+    "approval": "pinned"
+  },
+  "files": [],
   "assets": [
     {
       "id": 4725618216,
