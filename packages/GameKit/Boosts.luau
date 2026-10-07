@@ -218,7 +218,7 @@ local function settle(self: any, now: number)
 	end
 end
 
-local function remainingOf(self: any, def: BoostDef, item: any, now: number): number
+local function remainingOf(def: BoostDef, item: any, now: number): number
 	if def.clock == "playtime" then
 		return item.remaining
 	end
@@ -231,7 +231,7 @@ local function prune(self: any, now: number)
 		local def = self.defs[key]
 		local kept = {}
 		for _, item in list do
-			if remainingOf(self, def, item, now) > 0 then
+			if remainingOf(def, item, now) > 0 then
 				table.insert(kept, item)
 			end
 		end
@@ -275,13 +275,13 @@ function Boosts.add(self: any, key: string, now: number, count: number?): number
 		local seconds = if stack == "refresh" then def.duration else def.duration * times
 		list = { make(math.min(seconds, cap)) }
 	else
-		local current = remainingOf(self, def, list[1], now)
+		local current = remainingOf(def, list[1], now)
 		list = { make(math.min(current + def.duration * times, cap)) }
 	end
 	self.instances[key] = list
 	local longest = 0
 	for _, item in list do
-		longest = math.max(longest, remainingOf(self, def, item, now))
+		longest = math.max(longest, remainingOf(def, item, now))
 	end
 	return longest
 end
@@ -297,7 +297,7 @@ function Boosts.active(self: any, now: number): { Active }
 			table.insert(out, {
 				key = key,
 				stat = def.stat,
-				remaining = remainingOf(self, def, item, now),
+				remaining = remainingOf(def, item, now),
 				endsAt = if def.clock == "playtime" then nil else item.endsAt,
 			})
 		end
