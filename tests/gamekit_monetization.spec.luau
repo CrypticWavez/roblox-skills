@@ -236,6 +236,40 @@ test("boosts: extend up to the cap, refresh, stack and combine", function(t)
 	end)
 end)
 
+test("offers: a level audience needs a known level, both bounds", function(t)
+	local data = Offers.define({
+		schema = "offers/1",
+		offers = {
+			{ key = "low", productKey = "starter_pack", trigger = "level_up", audience = { maxLevel = 5 } },
+			{
+				key = "high",
+				productKey = "starter_pack",
+				trigger = "round_end",
+				audience = { minLevel = 10 },
+			},
+		},
+	}, CATALOG)
+	local state = Offers.newState()
+	state.sessions = 3
+	local session = Offers.session(data, state, T0)
+	local _, why = session:evaluate("level_up", { now = T0 })
+	t.eq(why, "none_eligible", "maxLevel with no level is not eligible")
+	local offer = session:evaluate("level_up", { now = T0, level = 3 })
+	t.eq(offer and offer.key, "low")
+	_, why = session:evaluate("round_end", { now = T0 })
+	t.eq(why, "none_eligible", "minLevel with no level is not eligible")
+end)
+
+test("boosts: a stack boost at the instance cap keeps every paid activation", function(t)
+	local tracker = Boosts.new(BOOSTS, nil, T0)
+	tracker:add("speed_potion", T0, Boosts.MAX_INSTANCES)
+	t.eq(#tracker:active(T0), Boosts.MAX_INSTANCES)
+	local longest = tracker:add("speed_potion", T0)
+	t.eq(#tracker:active(T0), Boosts.MAX_INSTANCES, "the count is capped")
+	t.eq(longest, 600, "the extra activation extended an instance instead of being dropped")
+	t.eq(#tracker:active(T0 + 301), 1, "the extended instance outlives the rest")
+end)
+
 test("boosts: playtime pauses offline and saves round-trip", function(t)
 	local tracker = Boosts.new(BOOSTS, nil, T0)
 	tracker:resume(T0)

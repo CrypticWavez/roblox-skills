@@ -250,7 +250,8 @@ function Boosts.resume(self: any, now: number)
 end
 
 -- Adds count activations of boost key at now (a granted developer product). Returns the
--- remaining seconds of that boost afterwards (the longest instance for stack).
+-- remaining seconds of that boost afterwards (the longest instance for stack). A stack boost at
+-- MAX_INSTANCES extends its shortest instance instead, so a granted activation is never lost.
 function Boosts.add(self: any, key: string, now: number, count: number?): number
 	local def: BoostDef? = self.defs[key]
 	assert(def ~= nil, "Boosts.add: unknown boost " .. tostring(key))
@@ -266,10 +267,20 @@ function Boosts.add(self: any, key: string, now: number, count: number?): number
 	end
 	if stack == "stack" then
 		for _ = 1, times do
-			if #list >= Boosts.MAX_INSTANCES then
-				break
+			if #list < Boosts.MAX_INSTANCES then
+				table.insert(list, make(math.min(def.duration, cap)))
+			else
+				-- At the instance cap a paid activation is never dropped: it extends the instance
+				-- that ends first (the time is kept; only the simultaneous count is capped).
+				local shortest, shortestLeft = 1, math.huge
+				for index, item in list do
+					local left = remainingOf(def, item, now)
+					if left < shortestLeft then
+						shortest, shortestLeft = index, left
+					end
+				end
+				list[shortest] = make(shortestLeft + def.duration)
 			end
-			table.insert(list, make(math.min(def.duration, cap)))
 		end
 	elseif stack == "refresh" or #list == 0 then
 		local seconds = if stack == "refresh" then def.duration else def.duration * times

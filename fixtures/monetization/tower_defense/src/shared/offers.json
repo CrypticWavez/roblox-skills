@@ -12,6 +12,7 @@
       "productKey": "starter_pack",
       "trigger": "join",
       "priority": 100,
+      "untilBought": true,
       "duration": 86400,
       "audience": {
         "payer": "non_payer",
@@ -31,7 +32,8 @@
       "productKey": "currency_medium",
       "trigger": "low_currency",
       "priority": 20,
-      "cooldown": 600
+      "cooldown": 600,
+      "untilBought": false
     }
   ]
 }

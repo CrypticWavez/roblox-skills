@@ -113,6 +113,13 @@ class Planner(Temp):
                     self.assertEqual((dest / rel).read_text(encoding="utf-8"), (FIXTURES / name / rel).read_text(encoding="utf-8"),
                                      f"{name}/{rel} is stale: see fixtures/README.md (monetization/)")
 
+    def test_developer_product_offers_come_back_after_purchase(self):
+        quiet(monetize.main, plan_args("Obby & Platformer", "Classic Obby", self.tmp))
+        offers = {o["key"]: o for o in json.loads((self.tmp / "src/shared/offers.json").read_text())["offers"]}
+        self.assertIs(offers["skip_stage_offer"]["untilBought"], False)
+        self.assertIs(offers["low_currency_pack"]["untilBought"], False)
+        self.assertIs(offers["starter_pack_offer"]["untilBought"], True, "the starter pack stays one-time")
+
     def test_pvp_genres_drop_power_unless_allowed(self):
         keys, pvp, _, notes = monetize.select("Survival", None)
         self.assertTrue(pvp)
@@ -157,6 +164,14 @@ class Planner(Temp):
         for needle in ("no section shows currency_large", "at least 3", "prices are runtime reads", "boosts.json does not define", "HUD"):
             self.assertIn(needle, errors)
         self.assertIn("missing", "\n".join(monetize.check_docs({}, None)["errors"]) + "missing")
+        docs, plan = monetize.read_docs(self.tmp)
+        docs["offers"]["schema"] = "offers/999"
+        del docs["offers"]["offers"][0]["trigger"]
+        docs["boosts"]["boosts"][0]["duration"] = 0
+        docs["perks"]["perks"][0]["effects"] = []
+        errors = "\n".join(monetize.check_docs(docs, plan)["errors"])
+        for needle in ("schema must be offers/1", "trigger is required", "duration must be a number > 0", "effects must be a non-empty list"):
+            self.assertIn(needle, errors, "fields GameKit refuses at load fail the check too")
         self.assertEqual(quiet(monetize.main, ["check", "--root", str(self.tmp / "empty")])[0], 1)
 
     def test_set_id_records_creator_hub_ids_and_refuses_bad_ones(self):

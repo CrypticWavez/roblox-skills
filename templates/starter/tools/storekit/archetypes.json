@@ -525,6 +525,7 @@
       "offer": {
         "trigger": "join",
         "priority": 100,
+        "untilBought": true,
         "duration": 86400,
         "audience": {
           "payer": "non_payer",

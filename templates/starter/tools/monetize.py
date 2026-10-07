@@ -170,6 +170,10 @@ def build(keys, currency, tier, genre, subgenre, pvp, notes):
         if "offer" in arch:
             offer = {"key": f"{key}_offer", "productKey": key}
             offer.update(json.loads(json.dumps(arch["offer"])))
+            if kind == "devproduct":
+                # Developer products are bought again (revive, skip): the offer returns after its
+                # cooldown unless the archetype marks it one-time (the starter pack).
+                offer.setdefault("untilBought", False)
             if arch.get("ribbon"):
                 offer["ribbon"] = arch["ribbon"]
             offers.append(offer)
@@ -212,7 +216,7 @@ def build(keys, currency, tier, genre, subgenre, pvp, notes):
         offers.append({"key": "featured_pass", "productKey": featured_pass, "trigger": "shop_open", "priority": 10})
     best_currency = next((k for k in ("currency_medium", "currency_small", "currency_large") if k in keys), None)
     if best_currency:
-        offers.append({"key": "low_currency_pack", "productKey": best_currency, "trigger": "low_currency", "priority": 20, "cooldown": 600})
+        offers.append({"key": "low_currency_pack", "productKey": best_currency, "trigger": "low_currency", "priority": 20, "cooldown": 600, "untilBought": False})
     sections = []
     for section in SECTION_ORDER:
         if section in tags_used:
@@ -353,9 +357,79 @@ def doc(docs, name):
     return value if isinstance(value, dict) else {}
 
 
+SCHEMAS = {"catalog": "catalog/1", "offers": "offers/1", "boosts": "boosts/1", "perks": "perks/1", "shop": "shop/1"}
+BOOST_STACKS, BOOST_CLOCKS = ("extend", "refresh", "stack"), ("realtime", "playtime")
+
+
+def number(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def text(value):
+    return isinstance(value, str) and value != ""
+
+
+def shape_errors(docs):
+    """The fields the GameKit validators (Offers, Boosts, Perks, ShopLayout .define) require, so a
+    hand-edited file that the game would refuse at load also fails here (release check A18)."""
+    errors = []
+    for name, schema in SCHEMAS.items():
+        if doc(docs, name).get("schema") != schema:
+            errors.append(f"{name}: schema must be {schema}")
+    def entries(name, field):
+        raw = doc(docs, name).get(field)
+        if not isinstance(raw, list):
+            errors.append(f"{name}.{field} must be a list")
+            return []
+        seen = set()
+        for i, entry in enumerate(raw):
+            if not isinstance(entry, dict):
+                errors.append(f"{name}.{field}[{i + 1}] must be an object")
+                continue
+            key = entry.get("key", entry.get("id"))
+            if key in seen:
+                errors.append(f"{name}.{field}: {key} repeated")
+            seen.add(key)
+        return [e for e in raw if isinstance(e, dict)]
+    for o in entries("offers", "offers"):
+        for field in ("key", "productKey", "trigger"):
+            if not text(o.get(field)):
+                errors.append(f"offers {o.get('key')}: {field} is required")
+        for field in ("priority", "cooldown", "maxShows", "maxShowsPerSession", "duration"):
+            if field in o and not (number(o[field]) and o[field] >= 0):
+                errors.append(f"offers {o.get('key')}: {field} must be a number >= 0")
+        if "untilBought" in o and not isinstance(o["untilBought"], bool):
+            errors.append(f"offers {o.get('key')}: untilBought must be true or false")
+    for b in entries("boosts", "boosts"):
+        if not (text(b.get("key")) and text(b.get("stat"))):
+            errors.append(f"boosts {b.get('key')}: key and stat are required")
+        if not (number(b.get("duration")) and b["duration"] > 0):
+            errors.append(f"boosts {b.get('key')}: duration must be a number > 0")
+        if ("multiplier" in b) == ("add" in b):
+            errors.append(f"boosts {b.get('key')}: exactly one of multiplier or add")
+        if b.get("stack", "extend") not in BOOST_STACKS or b.get("clock", "realtime") not in BOOST_CLOCKS:
+            errors.append(f"boosts {b.get('key')}: stack is one of {', '.join(BOOST_STACKS)}; clock one of {', '.join(BOOST_CLOCKS)}")
+    for perk in entries("perks", "perks"):
+        source = perk.get("source")
+        if not text(perk.get("key")) or not isinstance(source, dict) or not (text(source.get("productKey")) or text(source.get("entitlement"))):
+            errors.append(f"perks {perk.get('key')}: key and a source with productKey or entitlement are required")
+        effects = perk.get("effects")
+        if not isinstance(effects, list) or not effects:
+            errors.append(f"perks {perk.get('key')}: effects must be a non-empty list")
+            continue
+        for e in effects:
+            ok = isinstance(e, dict) and (text(e.get("flag")) or (text(e.get("stat")) and (number(e.get("multiplier")) != number(e.get("add")))))
+            if not ok:
+                errors.append(f"perks {perk.get('key')}: each effect is {{stat, multiplier | add}} or {{flag}}")
+    for section in entries("shop", "sections"):
+        if not (text(section.get("id")) and text(section.get("titleKey"))):
+            errors.append(f"shop section {section.get('id')}: id and titleKey are required")
+    return errors
+
+
 def check_docs(docs, plan=None):
     """{errors, warnings} for a set of generated or edited documents."""
-    errors, warnings = [], []
+    errors, warnings = shape_errors(docs), []
     catalog = doc(docs, "catalog")
     products = dicts(catalog.get("products"))  # malformed entries are release check A03's
     by_key = {p.get("key"): p for p in products if isinstance(p, dict)}

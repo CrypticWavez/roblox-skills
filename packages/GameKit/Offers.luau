@@ -357,7 +357,7 @@ local function audienceOk(offer: Offer, state: State, level: number?): boolean
 	if audience.minLevel ~= nil and (level == nil or level < audience.minLevel) then
 		return false
 	end
-	if audience.maxLevel ~= nil and level ~= nil and level > audience.maxLevel then
+	if audience.maxLevel ~= nil and (level == nil or level > audience.maxLevel) then
 		return false
 	end
 	return true
