@@ -1,0 +1,312 @@
+{
+  "schema": "monetization-plan/1",
+  "genre": {
+    "primary": "Simulation",
+    "subgenre": "Tycoon"
+  },
+  "pvp": false,
+  "currency": "cash",
+  "tier": "mid",
+  "note": "Suggested prices are starting points for Creator Hub; Roblox reads prices at runtime, regional pricing and price optimization change them. Change products by editing this plan's inputs and re-running plan --force, or edit the generated files and re-run check.",
+  "notes": [],
+  "products": [
+    {
+      "key": "vip",
+      "kind": "gamepass",
+      "name": "VIP",
+      "description": "VIP tag, VIP-only area and +25% Cash forever.",
+      "suggested": {
+        "robux": 399
+      },
+      "ladder": [
+        249,
+        399,
+        799
+      ],
+      "ribbon": "most_popular",
+      "tags": [
+        "passes",
+        "featured"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "crown or gold star badge on the game's mascot, gold rim",
+      "why": "Status plus a modest boost; the most common pass in top games and an easy first purchase."
+    },
+    {
+      "key": "starter_pack",
+      "kind": "devproduct",
+      "name": "Starter Pack",
+      "description": "A one-time bundle for new players: Cash, a boost and an exclusive item.",
+      "suggested": {
+        "robux": 59
+      },
+      "ladder": [
+        49,
+        59,
+        99
+      ],
+      "ribbon": "starter",
+      "tags": [
+        "bundles",
+        "featured"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "gift box with the exclusive item peeking out, 'STARTER' banner",
+      "why": "First purchase converts non-payers; once a player pays once they pay again. Show early, once a session, with a personal 24 h timer."
+    },
+    {
+      "key": "currency_small",
+      "kind": "devproduct",
+      "name": "Pouch of Cash",
+      "description": "Cash to spend on upgrades.",
+      "suggested": {
+        "robux": 75
+      },
+      "ladder": [
+        49,
+        75,
+        99
+      ],
+      "ribbon": null,
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "a pouch of coins",
+      "why": "Ladder step 2; bonus grows with each step (amount_base already includes it)."
+    },
+    {
+      "key": "currency_medium",
+      "kind": "devproduct",
+      "name": "Chest of Cash",
+      "description": "A big chest of Cash.",
+      "suggested": {
+        "robux": 199
+      },
+      "ladder": [
+        149,
+        199,
+        249
+      ],
+      "ribbon": "most_popular",
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "an open chest of coins",
+      "why": "The middle pack is the most bought when it carries the 'most popular' ribbon (decoy against the extremes)."
+    },
+    {
+      "key": "currency_large",
+      "kind": "devproduct",
+      "name": "Vault of Cash",
+      "description": "A vault of Cash: the best value.",
+      "suggested": {
+        "robux": 499
+      },
+      "ladder": [
+        399,
+        499,
+        799
+      ],
+      "ribbon": "best_value",
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "a vault door bursting with coins",
+      "why": "Best value per Robux; where most currency revenue comes from in top games (whales)."
+    },
+    {
+      "key": "gift_vip",
+      "kind": "devproduct",
+      "name": "Gift VIP",
+      "description": "Buy VIP for a friend in this server.",
+      "suggested": {
+        "robux": 399
+      },
+      "ladder": [
+        249,
+        399,
+        799
+      ],
+      "ribbon": null,
+      "tags": [
+        "gifts"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "VIP crown in a gift box",
+      "why": "Passes cannot be bought for others, so top games sell a developer product that grants the same entitlement to a chosen player."
+    },
+    {
+      "key": "double_currency",
+      "kind": "gamepass",
+      "name": "2x Cash",
+      "description": "Earn double Cash from everything, forever.",
+      "suggested": {
+        "robux": 299
+      },
+      "ladder": [
+        199,
+        299,
+        449
+      ],
+      "ribbon": "best_value",
+      "tags": [
+        "passes"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "big '2x' over a pile of the game's currency",
+      "why": "The single best-selling pass shape in simulators, tycoons and idle games; value is obvious."
+    },
+    {
+      "key": "auto_collect",
+      "kind": "gamepass",
+      "name": "Auto Collect",
+      "description": "Automatically collect Cash and drops near you.",
+      "suggested": {
+        "robux": 199
+      },
+      "ladder": [
+        99,
+        199,
+        299
+      ],
+      "ribbon": null,
+      "tags": [
+        "passes"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "magnet pulling coins",
+      "why": "Removes the most repetitive action in tycoons and simulators; strong conversion."
+    },
+    {
+      "key": "plot_upgrade",
+      "kind": "gamepass",
+      "name": "Premium Plot",
+      "description": "A bigger plot or house with extra build space.",
+      "suggested": {
+        "robux": 299
+      },
+      "ladder": [
+        149,
+        299,
+        499
+      ],
+      "ribbon": null,
+      "tags": [
+        "passes"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "a bigger glowing house or plot outline",
+      "why": "Tycoons and life sims sell space and status; visible to other players, so it advertises itself."
+    },
+    {
+      "key": "speed_boost",
+      "kind": "gamepass",
+      "name": "Speed Boost",
+      "description": "Move 30% faster everywhere.",
+      "suggested": {
+        "robux": 99
+      },
+      "ladder": [
+        49,
+        99,
+        149
+      ],
+      "ribbon": null,
+      "tags": [
+        "passes"
+      ],
+      "pvp": "avoid",
+      "random": false,
+      "icon_brief": "running shoe with motion lines",
+      "why": "Cheap entry pass for obbies and big maps; in PvP it is a fight advantage, so it is off there."
+    },
+    {
+      "key": "time_skip",
+      "kind": "devproduct",
+      "name": "Time Skip (1 h)",
+      "description": "Instantly get one hour of idle earnings.",
+      "suggested": {
+        "robux": 49
+      },
+      "ladder": [
+        25,
+        49,
+        99
+      ],
+      "ribbon": null,
+      "tags": [
+        "boosts"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "hourglass spinning with coins",
+      "why": "Idle and tycoon games sell time; value scales with progress, so late players keep buying."
+    },
+    {
+      "key": "boost_currency",
+      "kind": "devproduct",
+      "name": "2x Cash (30 min)",
+      "description": "Double Cash for 30 minutes of play.",
+      "suggested": {
+        "robux": 49
+      },
+      "ladder": [
+        25,
+        49,
+        75
+      ],
+      "ribbon": null,
+      "tags": [
+        "boosts"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "'2x' coin with a stopwatch",
+      "why": "Repeatable timed boosts are the main repeat-purchase product of simulators; stack with the pass."
+    },
+    {
+      "key": "currency_huge",
+      "kind": "devproduct",
+      "name": "Mountain of Cash",
+      "description": "The biggest Cash pack.",
+      "suggested": {
+        "robux": 1999
+      },
+      "ladder": [
+        999,
+        1999,
+        7999
+      ],
+      "ribbon": null,
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "a mountain of coins with a crown",
+      "why": "Price anchor at the top of the ladder (top games list a 1,999-7,999 'whale anchor'); a few players buy it and it makes the rest look cheap."
+    }
+  ],
+  "outputs": {
+    "catalog": "src/shared/catalog.json",
+    "offers": "src/shared/offers.json",
+    "boosts": "src/shared/boosts.json",
+    "perks": "src/shared/perks.json",
+    "shop": "src/shared/shop.json",
+    "strings": "src/localization/store.csv",
+    "plan": "monetization/plan.json",
+    "sheet": "docs/design/monetization.md"
+  }
+}

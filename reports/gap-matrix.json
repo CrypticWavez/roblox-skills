@@ -1354,6 +1354,21 @@
       "status": "VERIFIED_ACCEPTABLE"
     },
     {
+      "id": "K22",
+      "area": "Runtime kits",
+      "capability": "Shop runtime: offers, boosts, perks, shop layout and the offer popup",
+      "previous_claim": "None.",
+      "actual_state": "`GameKit/Offers` (offers/1: contextual triggers, personal timers, calendar windows, audiences, and anti-spam rules for grace, spacing, session cap and quiet time after a purchase), `Boosts` (boosts/1: timed multipliers that extend, refresh or stack, realtime or playtime clocks, multiply, add or max with caps), `Perks` (perks/1: pass and entitlement effects as data) and `ShopLayout` (shop/1: sections, featured product, ribbons, merchandising lint) are T0 and never prompt. UIKit `ShopCard` gained ribbons and `Components/OfferPopup` (T1) shows an offer that is always dismissable and reports `onSelect` only. Guide `docs/monetization.md`.",
+      "evidence": "`tests/gamekit_monetization.spec.luau` (12) and `tests/gamekit_monetization_plans.spec.luau` (9, every generated genre fixture through the validators and a session) pass; `uikit_components` covers ribbons and the popup's dismiss, select and expire paths.",
+      "defect": "Never wired into a live game; conversion of the default offer rules is unmeasured.",
+      "root_cause": "Setup-only: no game exists.",
+      "impact": "Rule defaults (3 popups a session, 180 s apart) may need tuning from a game's analytics.",
+      "priority": "P3",
+      "fix": "Tune from the first game's funnel data.",
+      "verification": "Lune specs.",
+      "status": "VERIFIED_ACCEPTABLE"
+    },
+    {
       "id": "D01",
       "area": "Research",
       "capability": "Fresh tooling research with select/reject decisions",
@@ -1469,8 +1484,8 @@
       "area": "Production lab",
       "capability": "Release readiness checks",
       "previous_claim": "Release pass skill.",
-      "actual_state": "The starter ships `tools/release_check.py` (release-check/1) for game repos: A01 to A17 are automated static checks (hygiene and engine settings, RemoteGuard use, catalog/1 with owner-verified ids, one receipt handler, paid-random odds, text filtering, motion and flash settings, telemetry and onboarding funnel, perf/1 budgets, asset provenance, localisation keys, debug off, deprecated APIs, hard-coded prices, the persistence boundary, a publish tripwire, release metadata and store-art specs); S01 to S07, O01 to O15 and P01 to P03 always report OWNER_REQUIRED, and an owner record shows as `owner_record`, never PASS. A16 becomes WAIVED_BY_OWNER only when an owner exception covers every hit. `docs/release-runbook.md` is generated from the checklist, and the game gate's pre-release tier runs it.",
-      "evidence": "On the integrated branch `tests/test_release_check.py` (14) passes: the good fixture passes A01 to A17 with the S, O and P items OWNER_REQUIRED, each of the 17 bad fixtures fails exactly its item, owner records never produce PASS and the runbook is current. G8: a fresh scaffold's pre-release tier fails only A08, A09 and A17 (onboarding funnel, perf captures, release metadata and art) with 25 OWNER_REQUIRED, as intended.",
+      "actual_state": "The starter ships `tools/release_check.py` (release-check/1) for game repos: A01 to A18 are automated static checks (hygiene and engine settings, RemoteGuard use, catalog/1 with owner-verified ids, one receipt handler, paid-random odds, text filtering, motion and flash settings, telemetry and onboarding funnel, perf/1 budgets, asset provenance, localisation keys, debug off, deprecated APIs, hard-coded prices, the persistence boundary, a publish tripwire, release metadata and store-art specs, and the shop, offers and store page); S01 to S07, O01 to O15 and P01 to P03 always report OWNER_REQUIRED, and an owner record shows as `owner_record`, never PASS. A16 becomes WAIVED_BY_OWNER only when an owner exception covers every hit. `docs/release-runbook.md` is generated from the checklist, and the game gate's pre-release tier runs it.",
+      "evidence": "On the integrated branch `tests/test_release_check.py` (26) passes: the good fixture passes A01 to A18 with the S, O and P items OWNER_REQUIRED, each of the 18 bad fixtures fails exactly its item, owner records never produce PASS and the runbook is current. G8: a fresh scaffold's pre-release tier fails only A08, A09, A17 and A18 (onboarding funnel, perf captures, release metadata and art, shop plan) with 25 OWNER_REQUIRED, as intended.",
       "defect": "The checks are static source and data heuristics and have never run against a real game; owner items are manual by design.",
       "root_cause": "Release checks need a game, which this setup-only repo must not create.",
       "impact": "The first game's release pass may surface missing checks.",
@@ -1623,6 +1638,21 @@
       "owner_steps": [
         "On the PC (network allowed): `python3 tools/fetch_assets.py --list`, a dry run for one small CC0 item (`--source <key> --item <id>`), then the same with `--pin --purpose <reason>`; check the sha256 and the new `files` entry, and keep the download in `build/asset-cache`."
       ]
+    },
+    {
+      "id": "Q12",
+      "area": "Production lab",
+      "capability": "Monetization plan, store art, store page, ads plan and store setup for every game",
+      "previous_claim": "None.",
+      "actual_state": "The starter ships `tools/monetize.py` (31 product archetypes and 17 genre sets from the live passes of 34 top games: catalog in setup mode, offers, boosts, perks, shop, localization and the owner's Creator Hub sheet with suggested prices), `store_art.py` (specs, briefs, a Pillow compositor with icon, thumbnail, pass, product and badge templates, pinned OFL fonts, lint and contact-sheet previews), `store_page.py` (title, description and update log with copy rules) `ad_kit.py` (an ad-campaign/1 plan with `purchase` always false and an Ads Manager entry sheet) and `store_publish.py`. Once the owner approves store setup, store_publish creates passes and developer products with prices and icons, sets the place text and uploads the icon and thumbnails through Open Cloud. It has an allowlist of request paths, refuses payment or cost fields and refuses to run in the factory. Release check A18 requires the shop plan and a clean store page. Research: `docs/research/monetization-ads-store-2026-10.md`.",
+      "evidence": "`tests/test_monetize.py` (20, store_publish against a loopback fake of the API) passes, `fixtures/monetization/` holds plans for eight genres that a test keeps current, and a sample game ran end to end (plan, check, briefs, compose, page lint, ad plan and sheet, set-id).",
+      "defect": "Developer-product prices come from third-party guides; ad benchmarks partly community-reported; the art templates need a real subject render to look finished. store_publish has never sent a request to the real API: the language code for the icon and thumbnail endpoints and the BETA game-pass and developer-product endpoints are unverified.",
+      "root_cause": "Roblox publishes no developer-product list API; Ads Manager figures change.",
+      "impact": "Suggested prices and ad estimates are starting points, not tuned values.",
+      "priority": "P3",
+      "fix": "Re-check prices and benchmarks on each research pass; tune from a game's price-optimization results.",
+      "verification": "`tests/test_monetize.py` in the `python-unit` gate step; release check A18.",
+      "status": "PARTIAL"
     }
   ]
 }

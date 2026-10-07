@@ -1,0 +1,99 @@
+{
+  "schema": "perks/1",
+  "stats": {
+    "gold_gain": {
+      "combine": "multiply"
+    },
+    "xp_gain": {
+      "combine": "multiply"
+    },
+    "storage_slots": {
+      "combine": "add"
+    }
+  },
+  "perks": [
+    {
+      "key": "vip",
+      "source": {
+        "productKey": "vip"
+      },
+      "effects": [
+        {
+          "stat": "gold_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    },
+    {
+      "key": "double_xp",
+      "source": {
+        "productKey": "double_xp"
+      },
+      "effects": [
+        {
+          "stat": "xp_gain",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "double_currency",
+      "source": {
+        "productKey": "double_currency"
+      },
+      "effects": [
+        {
+          "stat": "gold_gain",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "extra_storage",
+      "source": {
+        "productKey": "extra_storage"
+      },
+      "effects": [
+        {
+          "stat": "storage_slots",
+          "add": 50
+        }
+      ]
+    },
+    {
+      "key": "premium_track",
+      "source": {
+        "productKey": "premium_track"
+      },
+      "effects": [
+        {
+          "flag": "season_premium"
+        }
+      ]
+    },
+    {
+      "key": "vip_gifted",
+      "source": {
+        "entitlement": "vip"
+      },
+      "effects": [
+        {
+          "stat": "gold_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    }
+  ]
+}

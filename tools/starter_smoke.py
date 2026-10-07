@@ -3,7 +3,7 @@
   python3 tools/starter_smoke.py [--keep DIR] [--strict]
 
 1. default packages: `rojo build`, `lune run tests/run.luau` (boot, layout and packages specs), the
-   game gate's fast tier, `tools/release_check.py` (only A08, A09 and A17 may fail, on release data a
+   game gate's fast tier, `tools/release_check.py` (only A08, A09, A17 and A18 may fail, on release data a
    fresh repo has not decided; every S/O/P item OWNER_REQUIRED), `tools/production.py status` and
    `tools/plan_issues.py` (drafts written, no API call);
 2. every package and every dependency bundle: `rojo build` and the Lune specs; the packages sit in
@@ -26,7 +26,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 NEW_PROJECT = [sys.executable, str(ROOT / "tools" / "new_project.py")]
-EXPECTED_FRESH_FAILURES = ["A08", "A09", "A17"]
+EXPECTED_FRESH_FAILURES = ["A08", "A09", "A17", "A18"]
 TOOLS = ("rojo", "lune", "stylua")
 SKIP_EXIT = 3  # tools/check.py passes skip_codes=(3,) for starter-smoke-full
 

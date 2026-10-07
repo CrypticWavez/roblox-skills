@@ -38,6 +38,7 @@ A SKIPPED step (tool missing) fails the run unless it is Selene, whose Roblox st
 | `packages/Runtime`, `Creator`, `Diagnostics` | modules inherited from the first pass |
 | `tools/blender` | `factory.py` CLI and the `bkit` library (templates, bakes, clips, kit/1, intake) |
 | `tools/new_project.py`, `templates/starter` | the game-repo starter with boot skeleton, release checker and production pipeline |
+| `templates/starter/tools/monetize.py`, `store_art.py`, `store_page.py`, `ad_kit.py`, `store_publish.py` | every game's shop plan, store art, store page text, Ads Manager plan (never bought) and owner-approved store setup through Open Cloud (never spends) ([docs/monetization.md](docs/monetization.md)) |
 | `tools/hooks`, `tools/check.py` | Claude Code hooks and the tiered gate |
 | `.agents/skills` (mirrored to `.claude/skills`) | 23 task skills |
 | `fixtures`, `tests` | Rojo projects, Lune specs, golden hashes |

@@ -1,0 +1,33 @@
+{
+  "schema": "shop/1",
+  "entry": {
+    "hud": "left",
+    "label": true,
+    "notify": true
+  },
+  "sections": [
+    {
+      "id": "passes",
+      "titleKey": "shop.section.passes",
+      "products": [
+        "pass_a",
+        "pass_b",
+        "pass_c",
+        "subscription_a"
+      ]
+    },
+    {
+      "id": "items",
+      "titleKey": "shop.section.items",
+      "products": [
+        "currency_pack_a",
+        "currency_pack_b",
+        "random_pack_a",
+        "boost_a"
+      ]
+    }
+  ],
+  "ribbons": {
+    "currency_pack_b": "best_value"
+  }
+}

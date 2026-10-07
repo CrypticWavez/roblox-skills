@@ -1,0 +1,249 @@
+{
+  "schema": "monetization-plan/1",
+  "genre": {
+    "primary": "Survival",
+    "subgenre": null
+  },
+  "pvp": true,
+  "currency": "coins",
+  "tier": "mid",
+  "note": "Suggested prices are starting points for Creator Hub; Roblox reads prices at runtime, regional pricing and price optimization change them. Change products by editing this plan's inputs and re-running plan --force, or edit the generated files and re-run check.",
+  "notes": [
+    "dropped revive: sells power over other players in a PvP game (--allow-power keeps it)"
+  ],
+  "products": [
+    {
+      "key": "vip",
+      "kind": "gamepass",
+      "name": "VIP",
+      "description": "VIP tag, VIP-only area and +25% Coins forever.",
+      "suggested": {
+        "robux": 399
+      },
+      "ladder": [
+        249,
+        399,
+        799
+      ],
+      "ribbon": "most_popular",
+      "tags": [
+        "passes",
+        "featured"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "crown or gold star badge on the game's mascot, gold rim",
+      "why": "Status plus a modest boost; the most common pass in top games and an easy first purchase."
+    },
+    {
+      "key": "starter_pack",
+      "kind": "devproduct",
+      "name": "Starter Pack",
+      "description": "A one-time bundle for new players: Coins, a boost and an exclusive item.",
+      "suggested": {
+        "robux": 59
+      },
+      "ladder": [
+        49,
+        59,
+        99
+      ],
+      "ribbon": "starter",
+      "tags": [
+        "bundles",
+        "featured"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "gift box with the exclusive item peeking out, 'STARTER' banner",
+      "why": "First purchase converts non-payers; once a player pays once they pay again. Show early, once a session, with a personal 24 h timer."
+    },
+    {
+      "key": "currency_small",
+      "kind": "devproduct",
+      "name": "Pouch of Coins",
+      "description": "Coins to spend on upgrades.",
+      "suggested": {
+        "robux": 75
+      },
+      "ladder": [
+        49,
+        75,
+        99
+      ],
+      "ribbon": null,
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "a pouch of coins",
+      "why": "Ladder step 2; bonus grows with each step (amount_base already includes it)."
+    },
+    {
+      "key": "currency_medium",
+      "kind": "devproduct",
+      "name": "Chest of Coins",
+      "description": "A big chest of Coins.",
+      "suggested": {
+        "robux": 199
+      },
+      "ladder": [
+        149,
+        199,
+        249
+      ],
+      "ribbon": "most_popular",
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "an open chest of coins",
+      "why": "The middle pack is the most bought when it carries the 'most popular' ribbon (decoy against the extremes)."
+    },
+    {
+      "key": "currency_large",
+      "kind": "devproduct",
+      "name": "Vault of Coins",
+      "description": "A vault of Coins: the best value.",
+      "suggested": {
+        "robux": 499
+      },
+      "ladder": [
+        399,
+        499,
+        799
+      ],
+      "ribbon": "best_value",
+      "tags": [
+        "currency"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "a vault door bursting with coins",
+      "why": "Best value per Robux; where most currency revenue comes from in top games (whales)."
+    },
+    {
+      "key": "gift_vip",
+      "kind": "devproduct",
+      "name": "Gift VIP",
+      "description": "Buy VIP for a friend in this server.",
+      "suggested": {
+        "robux": 399
+      },
+      "ladder": [
+        249,
+        399,
+        799
+      ],
+      "ribbon": null,
+      "tags": [
+        "gifts"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "VIP crown in a gift box",
+      "why": "Passes cannot be bought for others, so top games sell a developer product that grants the same entitlement to a chosen player."
+    },
+    {
+      "key": "double_currency",
+      "kind": "gamepass",
+      "name": "2x Coins",
+      "description": "Earn double Coins from everything, forever.",
+      "suggested": {
+        "robux": 299
+      },
+      "ladder": [
+        199,
+        299,
+        449
+      ],
+      "ribbon": "best_value",
+      "tags": [
+        "passes"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "big '2x' over a pile of the game's currency",
+      "why": "The single best-selling pass shape in simulators, tycoons and idle games; value is obvious."
+    },
+    {
+      "key": "extra_storage",
+      "kind": "gamepass",
+      "name": "+Storage",
+      "description": "More inventory slots for items, pets or units.",
+      "suggested": {
+        "robux": 149
+      },
+      "ladder": [
+        75,
+        149,
+        249
+      ],
+      "ribbon": null,
+      "tags": [
+        "passes"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "open backpack or chest overflowing",
+      "why": "Convenience that grows with play time; collectors hit the cap and buy."
+    },
+    {
+      "key": "cosmetic_trail",
+      "kind": "gamepass",
+      "name": "Rainbow Trail",
+      "description": "A glowing trail and name colour that everyone sees.",
+      "suggested": {
+        "robux": 49
+      },
+      "ladder": [
+        25,
+        49,
+        99
+      ],
+      "ribbon": null,
+      "tags": [
+        "passes",
+        "cosmetics"
+      ],
+      "pvp": "safe",
+      "random": false,
+      "icon_brief": "rainbow streak behind a running avatar",
+      "why": "Low-price, visible, fair in PvP; the safest first pass for competitive genres."
+    },
+    {
+      "key": "boost_currency",
+      "kind": "devproduct",
+      "name": "2x Coins (30 min)",
+      "description": "Double Coins for 30 minutes of play.",
+      "suggested": {
+        "robux": 49
+      },
+      "ladder": [
+        25,
+        49,
+        75
+      ],
+      "ribbon": null,
+      "tags": [
+        "boosts"
+      ],
+      "pvp": "caution",
+      "random": false,
+      "icon_brief": "'2x' coin with a stopwatch",
+      "why": "Repeatable timed boosts are the main repeat-purchase product of simulators; stack with the pass."
+    }
+  ],
+  "outputs": {
+    "catalog": "src/shared/catalog.json",
+    "offers": "src/shared/offers.json",
+    "boosts": "src/shared/boosts.json",
+    "perks": "src/shared/perks.json",
+    "shop": "src/shared/shop.json",
+    "strings": "src/localization/store.csv",
+    "plan": "monetization/plan.json",
+    "sheet": "docs/design/monetization.md"
+  }
+}

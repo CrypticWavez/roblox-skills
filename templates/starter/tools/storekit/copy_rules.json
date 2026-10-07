@@ -1,0 +1,30 @@
+{
+  "schema": "store-copy-rules/1",
+  "note": "Text rules for the store page (tools/store_page.py) and ad copy (tools/ad_kit.py), from Roblox's discovery guidance, Community Standards and Advertising Standards (fetched 2026-10-07; factory docs/research/monetization-ads-store-2026-10.md). 'verified': false marks community conventions.",
+  "limits": {
+    "title_max": {"value": 50, "verified": false, "note": "no official limit found; 50 is the commonly cited cap"},
+    "title_warn": {"value": 40, "verified": false},
+    "title_emoji_max": {"value": 3, "verified": false, "note": "Roblox: 1-2 emoji are fine, excessive decoration can be demoted"},
+    "title_tags_max": {"value": 1, "verified": false},
+    "description_max": {"value": 1000, "verified": true},
+    "hook_max": {"value": 160, "verified": true, "note": "the first ~160 characters show in search snippets"},
+    "update_text_max": {"value": 60, "verified": true, "note": "Events & Updates posts: 60 characters, once every 3 days"},
+    "pass_name_max": {"value": 50, "verified": false},
+    "badge_name_max": {"value": 50, "verified": false}
+  },
+  "banned": [
+    {"pattern": "free\\s*robux", "why": "Community Standards and Advertising Standards: Robux giveaway claims are scams"},
+    {"pattern": "robux\\s*(giveaway|generator|hack)", "why": "scam wording"},
+    {"pattern": "\\bgiveaway", "why": "Roblox discovery guidance: avoid giveaway-led titles and descriptions"},
+    {"pattern": "free\\s*admin", "why": "misleading reward claim"},
+    {"pattern": "\\d+\\s*%\\s*off|\\bdiscount\\b", "why": "fake or unverifiable discounts are deceptive (Roblox monetization guidance); prices change per region"},
+    {"pattern": "\\b(only|just)\\s*(r\\$|\\d+\\s*robux)", "why": "Advertising Standards: no 'only'/'just' before prices"},
+    {"pattern": "\\bbuy\\s+now\\b|\\bhurry\\b|\\blast\\s+chance\\b", "why": "high-pressure language aimed at minors (Roblox monetization guidance)"},
+    {"pattern": "#\\w+", "why": "Roblox advises against hashtags in descriptions"},
+    {"pattern": "\\b(discord|tiktok|youtube|twitter|instagram)\\.(gg|com)", "why": "off-platform links are not allowed in descriptions; use the store page's social links (16+ owner setting)"},
+    {"pattern": "\\bqr\\s*code\\b", "why": "Advertising Standards: no QR codes"},
+    {"pattern": "#1\\b|number\\s*one|best\\s+game\\s+on\\s+roblox", "why": "unverifiable superlatives read as misleading"}
+  ],
+  "url": {"pattern": "https?://\\S+", "allowed": "^https?://(www\\.)?roblox\\.com/(communities|groups|games)/"},
+  "caps_ratio_max": 0.6
+}

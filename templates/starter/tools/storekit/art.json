@@ -1,0 +1,50 @@
+{
+  "schema": "store-art/1",
+  "note": "Store-art specs and compositing templates for tools/store_art.py. Specs from Roblox's docs (experience-icons, thumbnails, passes, developer-products, badges; fetched 2026-10-07, factory docs/research/monetization-ads-store-2026-10.md); 'verified': false marks community heuristics. Template boxes are fractions of the canvas [x, y, w, h]. Fonts are fetched by `store_art.py fonts --fetch` (SIL OFL, pinned sha256) into assets/fonts/.",
+  "specs": {
+    "icon": {"width": 512, "height": 512, "exact": true, "formats": ["png", "jpg"], "max_bytes": null, "shown_at": [150, 64], "crop": "rounded_square", "safe_inset": 0.08, "max_words": 3, "source": "https://create.roblox.com/docs/production/publishing/experience-icons", "verified": true},
+    "thumbnail": {"width": 1920, "height": 1080, "aspect": [16, 9], "min_width": 1280, "formats": ["jpg", "png", "gif", "tga", "bmp"], "max_bytes": 3000000, "max_count": 10, "personalization": [2, 5], "bottom_no_text": 0.2, "side_margin": 0.05, "max_words": 6, "shown_at": [480, 270], "source": "https://create.roblox.com/docs/production/publishing/thumbnails", "verified": true},
+    "pass": {"width": 512, "height": 512, "max_size": true, "formats": ["png", "jpg", "bmp"], "crop": "circle", "circle_safe": 0.9, "max_words": 2, "source": "https://create.roblox.com/docs/production/monetization/passes", "verified": true},
+    "product": {"width": 512, "height": 512, "max_size": true, "formats": ["png", "jpg", "bmp"], "crop": "circle", "circle_safe": 0.9, "max_words": 2, "source": "https://create.roblox.com/docs/production/monetization/developer-products", "verified": true},
+    "badge": {"width": 512, "height": 512, "exact": true, "formats": ["png", "jpg"], "crop": "circle", "circle_safe": 0.9, "max_words": 2, "source": "https://create.roblox.com/docs/production/publishing/badges", "verified": true},
+    "ad": {"width": 1920, "height": 1080, "aspect": [16, 9], "min_width": 1280, "formats": ["jpg", "png", "gif", "tga", "bmp"], "max_bytes": 3000000, "bottom_no_text": 0.2, "side_margin": 0.05, "max_words": 6, "shown_at": [480, 270], "source": "https://create.roblox.com/docs/production/promotion/ads-manager", "verified": true}
+  },
+  "heuristics": {
+    "min_saturation": 0.35,
+    "min_luma_std": 0.18,
+    "max_edge_density": 0.25,
+    "max_outside_circle_energy": 0.05,
+    "note": "Community heuristics for small-size readability (bright, high-contrast, one focal point). Horror games may waive saturation (--genre-mood dark)."
+  },
+  "fonts": [
+    {"name": "Lilita One", "file": "LilitaOne-Regular.ttf", "license": "OFL-1.1", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/lilitaone/LilitaOne-Regular.ttf", "sha256": "f5b641c45c69d772ee4eda687bc9fda411d5cad6b0b45371491da4580cbc8d59", "use": "default title font: rounded, heavy, reads at 150 px"},
+    {"name": "Titan One", "file": "TitanOne-Regular.ttf", "license": "OFL-1.1", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/titanone/TitanOne-Regular.ttf", "sha256": "563ff6de179bbd44bcd7d2a6c448d6dc3bf935834237cf1250e506e65cd86ff1", "use": "chunky cartoon titles (simulators, tycoons, pets)"},
+    {"name": "Bangers", "file": "Bangers-Regular.ttf", "license": "OFL-1.1", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/bangers/Bangers-Regular.ttf", "sha256": "4160a7311de9342674cce9160cde9fcbb30f48190397d86ff1b70b455af65824", "use": "comic action (battlegrounds, anime, fighting)"},
+    {"name": "Russo One", "file": "RussoOne-Regular.ttf", "license": "OFL-1.1", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/russoone/RussoOne-Regular.ttf", "sha256": "bc0abcc660bd8b7ad3000ecb2898a27c58a29a50f7ec81652fa12e75148d09df", "use": "squared tech (shooters, racing, sci-fi)"}
+  ],
+  "palettes": {
+    "sunny": {"bg": ["#ffd84a", "#ff7a1a"], "title": "#ffffff", "stroke": "#3a1600", "ribbon": "#ff2e63", "ribbon_text": "#ffffff"},
+    "sky": {"bg": ["#7fd8ff", "#1f6dff"], "title": "#ffffff", "stroke": "#0b1f5c", "ribbon": "#ffcc00", "ribbon_text": "#2b1a00"},
+    "candy": {"bg": ["#ff9ad5", "#9b4dff"], "title": "#ffffff", "stroke": "#3b0a5c", "ribbon": "#26e07f", "ribbon_text": "#063b1f"},
+    "jungle": {"bg": ["#b7ff5a", "#1fa34a"], "title": "#ffffff", "stroke": "#0b3a12", "ribbon": "#ff4d2e", "ribbon_text": "#ffffff"},
+    "night": {"bg": ["#4a3cff", "#0b0526"], "title": "#ffe14a", "stroke": "#000000", "ribbon": "#ff2e63", "ribbon_text": "#ffffff"},
+    "horror": {"bg": ["#5a1a1a", "#050505"], "title": "#f2f2f2", "stroke": "#000000", "ribbon": "#b30000", "ribbon_text": "#ffffff"},
+    "gold": {"bg": ["#fff1a8", "#d48a00"], "title": "#ffffff", "stroke": "#4a2a00", "ribbon": "#1f6dff", "ribbon_text": "#ffffff"}
+  },
+  "templates": {
+    "icon_hero": {"kind": "icon", "rays": 16, "subject": {"box": [0.06, 0.12, 0.88, 0.88], "anchor": "bottom", "outline": 0.012, "shadow": 0.02}, "title": {"box": [0.06, 0.04, 0.88, 0.26], "size": 0.2, "stroke": 0.035, "upper": true, "rotate": -4}, "grade": {"saturation": 1.18, "contrast": 1.08, "vignette": 0.35}},
+    "icon_clean": {"kind": "icon", "rays": 0, "subject": {"box": [0.04, 0.04, 0.92, 0.92], "anchor": "center", "outline": 0.012, "shadow": 0.02}, "grade": {"saturation": 1.15, "contrast": 1.06, "vignette": 0.3}},
+    "thumbnail_hero": {"kind": "thumbnail", "rays": 20, "subject": {"box": [0.5, 0.06, 0.46, 0.94], "anchor": "bottom", "outline": 0.008, "shadow": 0.015}, "title": {"box": [0.05, 0.08, 0.48, 0.42], "size": 0.2, "stroke": 0.03, "upper": true, "rotate": -3}, "ribbon": {"box": [0.05, 0.56, 0.3, 0.11], "size": 0.07}, "grade": {"saturation": 1.15, "contrast": 1.06, "vignette": 0.3}},
+    "thumbnail_action": {"kind": "thumbnail", "rays": 0, "subject": {"box": [0.22, 0.04, 0.56, 0.76], "anchor": "center", "outline": 0.008, "shadow": 0.015}, "title": {"box": [0.05, 0.05, 0.9, 0.2], "size": 0.16, "stroke": 0.028, "upper": true, "rotate": 0}, "grade": {"saturation": 1.12, "contrast": 1.08, "vignette": 0.4}},
+    "pass_icon": {"kind": "pass", "rays": 0, "subject": {"box": [0.2, 0.2, 0.6, 0.6], "anchor": "center", "outline": 0.016, "shadow": 0.02}, "title": {"box": [0.22, 0.58, 0.56, 0.26], "size": 0.24, "stroke": 0.04, "upper": true, "rotate": -6}, "grade": {"saturation": 1.2, "contrast": 1.08, "vignette": 0.0}},
+    "product_icon": {"kind": "product", "rays": 0, "subject": {"box": [0.2, 0.2, 0.6, 0.6], "anchor": "center", "outline": 0.016, "shadow": 0.02}, "title": {"box": [0.22, 0.58, 0.56, 0.26], "size": 0.24, "stroke": 0.04, "upper": true, "rotate": -6}, "grade": {"saturation": 1.2, "contrast": 1.08, "vignette": 0.0}},
+    "badge_icon": {"kind": "badge", "rays": 0, "subject": {"box": [0.2, 0.2, 0.6, 0.6], "anchor": "center", "outline": 0.016, "shadow": 0.02}, "grade": {"saturation": 1.15, "contrast": 1.05, "vignette": 0.0}}
+  },
+  "thumbnail_concepts": [
+    {"id": "hero", "template": "thumbnail_hero", "concept": "The mascot or main character close up, big emotion (shock, joy, determination), looking at the biggest reward of the game; title on the left.", "why": "Faces with strong emotion and one focal point read first on a small tile."},
+    {"id": "core_action", "template": "thumbnail_action", "concept": "The core loop's most exciting moment in-game (the big hit, the rare drop, the boss), camera low and close, motion lines.", "why": "Shows what the player will do; accurate gameplay keeps first-play bounce low (a Home ranking signal)."},
+    {"id": "reward", "template": "thumbnail_hero", "concept": "The rarest item, pet or unit glowing on a pedestal with sparkles, the character reaching for it.", "why": "Aspiration: the thing players chase; strong in collection, RNG and simulator genres."},
+    {"id": "social", "template": "thumbnail_action", "concept": "Three or four avatars together mid-action (team win, party, roleplay scene), varied avatars, bright set.", "why": "Co-play is a ranking signal; shows the game is better with friends."},
+    {"id": "update", "template": "thumbnail_hero", "concept": "The newest update's feature (new world, boss, event) with a ribbon naming it.", "why": "Returning players click on visible newness; rotate it in with each update."}
+  ]
+}

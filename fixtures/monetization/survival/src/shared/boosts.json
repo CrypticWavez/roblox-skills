@@ -1,0 +1,20 @@
+{
+  "schema": "boosts/1",
+  "stats": {
+    "coins_gain": {
+      "combine": "multiply",
+      "cap": 16
+    }
+  },
+  "boosts": [
+    {
+      "key": "boost_currency",
+      "stat": "coins_gain",
+      "multiplier": 2,
+      "duration": 1800,
+      "stack": "extend",
+      "maxDuration": 14400,
+      "clock": "playtime"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "schema": "perks/1",
+  "stats": {
+    "gems_gain": {
+      "combine": "multiply"
+    },
+    "equip_slots": {
+      "combine": "add"
+    },
+    "luck": {
+      "combine": "multiply"
+    },
+    "open_speed": {
+      "combine": "multiply"
+    },
+    "open_count": {
+      "combine": "add"
+    }
+  },
+  "perks": [
+    {
+      "key": "vip",
+      "source": {
+        "productKey": "vip"
+      },
+      "effects": [
+        {
+          "stat": "gems_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    },
+    {
+      "key": "double_currency",
+      "source": {
+        "productKey": "double_currency"
+      },
+      "effects": [
+        {
+          "stat": "gems_gain",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "extra_equip",
+      "source": {
+        "productKey": "extra_equip"
+      },
+      "effects": [
+        {
+          "stat": "equip_slots",
+          "add": 2
+        }
+      ]
+    },
+    {
+      "key": "luck_pass",
+      "source": {
+        "productKey": "luck_pass"
+      },
+      "effects": [
+        {
+          "stat": "luck",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "fast_hatch",
+      "source": {
+        "productKey": "fast_hatch"
+      },
+      "effects": [
+        {
+          "stat": "open_speed",
+          "multiplier": 3
+        },
+        {
+          "stat": "open_count",
+          "add": 2
+        }
+      ]
+    },
+    {
+      "key": "premium_track",
+      "source": {
+        "productKey": "premium_track"
+      },
+      "effects": [
+        {
+          "flag": "season_premium"
+        }
+      ]
+    },
+    {
+      "key": "vip_gifted",
+      "source": {
+        "entitlement": "vip"
+      },
+      "effects": [
+        {
+          "stat": "gems_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    }
+  ]
+}

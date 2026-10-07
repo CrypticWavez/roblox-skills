@@ -12,6 +12,7 @@ Record scope `repo`: every path the record cites exists in this repository. Scop
 | [blender-animation-pipeline-2026-10.md](../docs/research/blender-animation-pipeline-2026-10.md) | Blender and animation pipeline to Roblox (verified 2026-10-06) |
 | [gameplay-libraries-2026-10.md](../docs/research/gameplay-libraries-2026-10.md) | Open-source Luau gameplay libraries and package managers (verified 2026-10-06) |
 | [genre-coverage-2026-10.md](../docs/research/genre-coverage-2026-10.md) | Genre coverage research: chart genres, systems, pipelines and factory gaps (verified 2026-10-06) |
+| [monetization-ads-store-2026-10.md](../docs/research/monetization-ads-store-2026-10.md) | Monetization, ads and store assets: top-game shops, Ads Manager and click-worthy thumbnails (verified 2026-10-07) |
 | [pipeline-audit-2026-10.md](../docs/research/pipeline-audit-2026-10.md) | Pipeline audit for production quality (verified 2026-10-06) |
 | [release-monetization-analytics-2026-10.md](../docs/research/release-monetization-analytics-2026-10.md) | Release, monetization and analytics research: from finished build to published candidate (verified 2026-10-06) |
 | [tooling-2026-10-addendum.md](../docs/research/tooling-2026-10-addendum.md) | Tooling research addendum (verified 2026-10-06) |
@@ -38,6 +39,7 @@ Record scope `repo`: every path the record cites exists in this repository. Scop
 | `failure-network-cold-start-deadline` | [failures.json](records/failures.json) | failure | partially_verified_on_workbench | workbench | Two Studio clients joined but sent no input before watchdog |
 | `kit-event-offline-report` | [kits-build-2026-10.json](records/kits-build-2026-10.json) | workflow | verified | repo | Offline kit-event/1 analytics report |
 | `lune-engine-gaps-2026-10` | [kits-build-2026-10.json](records/kits-build-2026-10.json) | failure | verified | repo | Lune 0.10.5 differs from the engine in ways that break kit specs |
+| `monetization-store-ads-pipeline` | [monetization-store-2026-10.json](records/monetization-store-2026-10.json) | workflow | verified | repo | Shop, store art, store page and ads plan for every game |
 | `workflow-blender-studio-import` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Blender-to-Studio import workflow: local preview and unverified native transfer |
 | `workflow-motion-contact-review` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Responsive melee anticipation and recovery: curves, markers and contact diagnostics |
 | `workflow-native-ui-state-review` | [production-tools.json](records/production-tools.json) | workflow | partially_verified_on_workbench | workbench | Readable mobile shop layouts and responsive native item cards |

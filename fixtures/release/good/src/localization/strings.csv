@@ -5,3 +5,9 @@ shop.random_pack_a.name,Random pack A,,,Paquete aleatorio A
 shop.random_pack_a.odds,"Odds: A {a}%, B {b}%, C {c}%",,,"Probabilidades: A {a}%, B {b}%, C {c}%"
 shop.pass_a.name,Pass A,,,Pase A
 shop.subscription_a.name,Subscription A,,,Suscripción A
+shop.pass_b.name,Pass B,,,Pass B es
+shop.pass_c.name,Pass C,,,Pass C es
+shop.boost_a.name,Boost A,,,Boost A es
+shop.currency_pack_b.name,Currency Pack B,,,Currency Pack B es
+shop.section.passes,Passes,,,Pases
+shop.section.items,Items,,,Objetos

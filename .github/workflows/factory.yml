@@ -38,6 +38,8 @@ jobs:
         run: |
           python3 tools/network_manifest.py
           for p in creator diagnostic factory network kits; do rojo build "fixtures/$p.project.json" -o "build/$p.rbxl"; done
+      - name: Install Pillow (store_art compose, lint and preview tests)
+        run: python3 -m pip install "pillow==12.3.0"
       - name: Pre-commit gate (strict)
         run: python3 tools/check.py --tier pre-commit --strict
       - uses: actions/upload-artifact@v4
@@ -81,7 +83,7 @@ jobs:
       - name: Generate the Selene Roblox std
         run: selene generate-roblox-std
       - name: Install bpy
-        run: python3 -m pip install "bpy==${{ matrix.bpy }}"
+        run: python3 -m pip install "bpy==${{ matrix.bpy }}" "pillow==12.3.0"
       - name: Fetch the pinned Luau definitions (luau-defs.lock.json)
         # luau-lsp-analyze in the pre-release tier needs them; the fetch verifies each sha256.
         run: python3 tools/luau_defs.py

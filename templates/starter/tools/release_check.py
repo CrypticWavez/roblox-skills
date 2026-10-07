@@ -27,7 +27,9 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import monetize  # noqa: E402  (tools/monetize.py: the shop files and their cross-checks)
 import production  # noqa: E402  (tools/production.py: genres, devices, brief helpers)
+import store_page  # noqa: E402  (tools/store_page.py: store text rules)
 
 SCHEMA = "release-check/1"
 META_SCHEMA = "release-meta/1"
@@ -118,6 +120,9 @@ ITEMS = [
     {"id": "A17", "tier": "A", "title": "Release metadata and store art specs",
      "spec": "release/release.json (release-meta/1) is complete: name, description, genre and subgenre from Roblox's 17 genres, devices, audience (maturity label, reach), maturity summary, players, private servers XOR paid access, locales and version notes, all matching production/brief.json. Store art in the repo meets the specs: icon 512x512 square; thumbnails 16:9 in jpg, gif, png, tga or bmp, under 3 MB, at most 10; badge images 512x512; pass icons at most 512x512 in jpg, png or bmp.",
      "source": DOCS + "production/publishing/experience-icons, thumbnails, badges; production/monetization/passes (2026-10-02)"},
+    {"id": "A18", "tier": "A", "title": "Shop, offers and store page",
+     "spec": "Every game ships a shop (tools/monetize.py): src/shared/catalog.json, offers.json, boosts.json, perks.json and shop.json pass `monetize.py check` together: at least 3 passes and 4 developer products, a shop button on the HUD, every product shown in a shop section, offers and perks that name catalog products, boost products backed by boosts.json. store/page.json (store-page/1) passes `store_page.py lint` with no TBD left: title and description limits, no free-Robux, giveaway, discount or pressure wording, no hashtags or off-platform links.",
+     "source": DOCS + "production/game-design/monetization-foundations; Roblox Advertising Standards (en.help.roblox.com)"},
     # Studio (S): the owner's PC, an unpublished place built from this repo.
     {"id": "S01", "tier": "S", "title": "Critical flows in Play Solo and Server & Clients",
      "spec": "Join, onboarding, the core loop, fail and retry, leave and rejoin (data persists), each in Play Solo and in Server & Clients with 2+ clients; console free of errors.",
@@ -1130,7 +1135,37 @@ def check_a17(ctx):
     return problems, [f"genre {primary or '?'}, devices {devices if isinstance(devices, list) else '?'}"]
 
 
-CHECKS = {f"A{n:02d}": globals()[f"check_a{n:02d}"] for n in range(1, 18)}
+def check_a18(ctx):
+    problems = []
+    docs, plan = monetize.read_docs(ctx.root)
+    missing = [monetize.OUTPUTS[n] for n in ("catalog", "offers", "boosts", "perks", "shop") if n not in docs]
+    if missing:
+        problems.append("missing " + ", ".join(missing) + " (python3 tools/monetize.py plan)")
+    result = monetize.check_docs(docs, plan)
+    problems += result["errors"]
+    page_path = ctx.root / store_page.PAGE
+    if not page_path.exists():
+        problems.append(f"{store_page.PAGE} is missing (python3 tools/store_page.py draft)")
+    else:
+        try:
+            page = json.loads(page_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as err:
+            problems.append(f"{store_page.PAGE}: {err}")
+            page = None
+        if page is not None:
+            errors, warnings = store_page.lint_page(page)
+            problems += [f"{store_page.PAGE}: {e}" for e in errors]
+            problems += [f"{store_page.PAGE}: {w}" for w in warnings if "TBD" in w]
+    counts = {}
+    listed = (docs.get("catalog") or {}).get("products")
+    for product in listed if isinstance(listed, list) else []:
+        if not isinstance(product, dict):
+            continue
+        counts[product.get("kind")] = counts.get(product.get("kind"), 0) + 1
+    return problems, [", ".join(f"{v} {k}" for k, v in sorted(counts.items(), key=lambda kv: str(kv[0]))) or "no products"]
+
+
+CHECKS = {f"A{n:02d}": globals()[f"check_a{n:02d}"] for n in range(1, 19)}
 
 
 # ---------------------------------------------------------------- report and runbook

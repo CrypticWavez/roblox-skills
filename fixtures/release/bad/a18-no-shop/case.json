@@ -1,0 +1,5 @@
+{
+  "expect": "A18",
+  "why": "the game has no shop layout, so passes and products are never shown to players",
+  "delete": ["src/shared/shop.json"]
+}

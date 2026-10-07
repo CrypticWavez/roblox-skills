@@ -1,0 +1,42 @@
+[
+  {
+    "id": "monetization-store-ads-pipeline",
+    "scope": "repo",
+    "scope_note": "Built and tested in this repository on 2026-10-07 from the research in docs/research/monetization-ads-store-2026-10.md; every cited path exists here.",
+    "type": "workflow",
+    "title": "Shop, store art, store page and ads plan for every game",
+    "summary": "monetize.py plans a genre's full shop (passes, developer products, a subscription, offers, boosts, perks and the shop layout) in setup mode with suggested prices only in the owner's sheet; GameKit Offers, Boosts, Perks and ShopLayout run it without prompting; store_art.py composes and lints icons, thumbnails and item icons; store_page.py drafts and lints the title and description; ad_kit.py writes an Ads Manager plan that never purchases. Release check A18 requires the shop plan and a clean store page. store_publish.py does the store setup through Open Cloud in a game repository once the owner approves it; it never spends.",
+    "status": "verified",
+    "tags": [
+      "monetization",
+      "store",
+      "ads",
+      "thumbnails",
+      "setup-only"
+    ],
+    "artifacts": [
+      "templates/starter/tools/monetize.py",
+      "templates/starter/tools/store_art.py",
+      "templates/starter/tools/store_page.py",
+      "templates/starter/tools/ad_kit.py",
+      "templates/starter/tools/store_publish.py",
+      "templates/starter/tools/storekit/archetypes.json",
+      "templates/starter/tools/storekit/genre_sets.json",
+      "packages/GameKit/Offers.luau",
+      "packages/GameKit/Boosts.luau",
+      "packages/GameKit/Perks.luau",
+      "packages/GameKit/ShopLayout.luau",
+      "packages/UIKit/Components/OfferPopup.luau",
+      "tests/test_monetize.py",
+      "tests/gamekit_monetization.spec.luau",
+      "fixtures/monetization",
+      "docs/monetization.md"
+    ],
+    "verification_command": "python3 -m unittest tests/test_monetize.py",
+    "limitations": [
+      "Developer-product prices come from third-party guides; game-pass prices were read live on 2026-10-07.",
+      "Some ad benchmarks (credit price in USD, CTR target, country tiers) are community reports.",
+      "Subscriptions, place publishing and any ad spend stay with the owner; store_publish has only run against a loopback fake of the API."
+    ]
+  }
+]

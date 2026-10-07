@@ -1,0 +1,47 @@
+{
+  "schema": "offers/1",
+  "rules": {
+    "maxPerSession": 3,
+    "minSpacing": 180,
+    "grace": 120,
+    "quietAfterPurchase": 300
+  },
+  "offers": [
+    {
+      "key": "starter_pack_offer",
+      "productKey": "starter_pack",
+      "trigger": "join",
+      "priority": 100,
+      "untilBought": true,
+      "duration": 86400,
+      "audience": {
+        "payer": "non_payer",
+        "maxSessions": 5
+      },
+      "maxShows": 3,
+      "ribbon": "starter"
+    },
+    {
+      "key": "skip_stage_offer",
+      "productKey": "skip_stage",
+      "trigger": "locked",
+      "priority": 50,
+      "cooldown": 120,
+      "untilBought": false
+    },
+    {
+      "key": "featured_pass",
+      "productKey": "vip",
+      "trigger": "shop_open",
+      "priority": 10
+    },
+    {
+      "key": "low_currency_pack",
+      "productKey": "currency_medium",
+      "trigger": "low_currency",
+      "priority": 20,
+      "cooldown": 600,
+      "untilBought": false
+    }
+  ]
+}

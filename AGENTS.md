@@ -19,6 +19,7 @@ This repo builds reusable tools, neutral fixtures and research. It does not star
 | Gameplay (rounds, combat, hit validation, projectiles, zones, abilities, movement, vehicles, interaction, AI, waves) | skill `roblox-gameplay-kit`, `docs/gamekit-action.md` |
 | Economy and progression (wallet, inventory, items, odds, trade, tycoon plots, crafting, seasons, dialogue, onboarding) | skill `roblox-gameplay-kit`, `docs/gamekit-economy.md` |
 | Platform (data, remotes, commerce, policy, text filter, telemetry, matchmaking, teleports) | skills `roblox-persistence-and-commerce`, `roblox-multiplayer-integrity`, `docs/gamekit-platform.md` |
+| Shop, passes, developer products, offers, boosts, store icon and thumbnails, store page text, ads plan (never bought) | skill `roblox-monetization-and-store`, `docs/monetization.md` |
 | UI, input map, transitions, cutscenes | skill `roblox-ui-ux-pass`, `docs/uikit.md` |
 | Lighting presets, materials, VFX, audio mix, game feel, budgets | skill `roblox-presentation-pass`, `docs/presentation.md` |
 | Genre playbooks (17 genres mapped to kits) | skill `roblox-genre-systems` (`references/taxonomy.json`, `tools/playbook_lint.py`) |

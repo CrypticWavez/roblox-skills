@@ -1,0 +1,97 @@
+{
+  "schema": "perks/1",
+  "stats": {
+    "credits_gain": {
+      "combine": "multiply"
+    },
+    "xp_gain": {
+      "combine": "multiply"
+    }
+  },
+  "perks": [
+    {
+      "key": "vip",
+      "source": {
+        "productKey": "vip"
+      },
+      "effects": [
+        {
+          "stat": "credits_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    },
+    {
+      "key": "double_xp",
+      "source": {
+        "productKey": "double_xp"
+      },
+      "effects": [
+        {
+          "stat": "xp_gain",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "cosmetic_trail",
+      "source": {
+        "productKey": "cosmetic_trail"
+      },
+      "effects": [
+        {
+          "flag": "trail"
+        },
+        {
+          "flag": "name_colour"
+        }
+      ]
+    },
+    {
+      "key": "emote_pack",
+      "source": {
+        "productKey": "emote_pack"
+      },
+      "effects": [
+        {
+          "flag": "emote_pack"
+        }
+      ]
+    },
+    {
+      "key": "premium_track",
+      "source": {
+        "productKey": "premium_track"
+      },
+      "effects": [
+        {
+          "flag": "season_premium"
+        }
+      ]
+    },
+    {
+      "key": "vip_gifted",
+      "source": {
+        "entitlement": "vip"
+      },
+      "effects": [
+        {
+          "stat": "credits_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    }
+  ]
+}

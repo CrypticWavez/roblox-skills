@@ -90,7 +90,8 @@ handle:destroy()                                           -- every Instance and
 | VirtualList, Grid | long lists with pooled rows; responsive grids |
 | Modal, ConfirmDialog, Toast, Tooltip | dialogs over a scrim (SelectionGroup with Stop edges), queued toasts (max visible, dedupe), tooltips placed inside the safe area |
 | ProgressBar, RollingCounter, Badge, Card, StatBar, Timer, Countdown | progress and value displays; counters roll on the runner |
-| ShopCard | one catalog/1 product by key; price comes from a runtime price provider; no purchase call (the spec scans the file); setup-mode watermark |
+| ShopCard | one catalog/1 product by key; price comes from a runtime price provider; no purchase call (the spec scans the file); setup-mode watermark; optional `ribbon` (best_value, most_popular, limited, new, sale, starter) |
+| OfferPopup | the offer GameKit/Offers picked, in a Modal: a ShopCard, an optional time-left Timer, "Get it" and "Not now"; always dismissable, closes with `expired` at 0; `onSelect(productKey)` only ([monetization](monetization.md)) |
 | DialogueBox | speaker, typewriter reveal (MaxVisibleGraphemes), choices |
 | SettingsPanel | generated from the settings/1 schema (Stage 0 `GameKit/Settings`); every change goes through `Settings.set`; never saves |
 | LoadingScreen, TeleportTransition | require-free covers for ReplicatedFirst (see below) |

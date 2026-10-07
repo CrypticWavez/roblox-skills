@@ -1,0 +1,87 @@
+{
+  "schema": "perks/1",
+  "stats": {
+    "coins_gain": {
+      "combine": "multiply"
+    },
+    "storage_slots": {
+      "combine": "add"
+    }
+  },
+  "perks": [
+    {
+      "key": "vip",
+      "source": {
+        "productKey": "vip"
+      },
+      "effects": [
+        {
+          "stat": "coins_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    },
+    {
+      "key": "double_currency",
+      "source": {
+        "productKey": "double_currency"
+      },
+      "effects": [
+        {
+          "stat": "coins_gain",
+          "multiplier": 2
+        }
+      ]
+    },
+    {
+      "key": "extra_storage",
+      "source": {
+        "productKey": "extra_storage"
+      },
+      "effects": [
+        {
+          "stat": "storage_slots",
+          "add": 50
+        }
+      ]
+    },
+    {
+      "key": "cosmetic_trail",
+      "source": {
+        "productKey": "cosmetic_trail"
+      },
+      "effects": [
+        {
+          "flag": "trail"
+        },
+        {
+          "flag": "name_colour"
+        }
+      ]
+    },
+    {
+      "key": "vip_gifted",
+      "source": {
+        "entitlement": "vip"
+      },
+      "effects": [
+        {
+          "stat": "coins_gain",
+          "multiplier": 1.25
+        },
+        {
+          "flag": "vip_tag"
+        },
+        {
+          "flag": "vip_area"
+        }
+      ]
+    }
+  ]
+}

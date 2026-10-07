@@ -1,0 +1,53 @@
+{
+  "schema": "shop/1",
+  "entry": {
+    "hud": "left",
+    "label": true,
+    "notify": true
+  },
+  "sections": [
+    {
+      "id": "featured",
+      "titleKey": "store.section.featured",
+      "tag": "featured",
+      "featured": "vip"
+    },
+    {
+      "id": "passes",
+      "titleKey": "store.section.passes",
+      "tag": "passes"
+    },
+    {
+      "id": "boosts",
+      "titleKey": "store.section.boosts",
+      "tag": "boosts"
+    },
+    {
+      "id": "currency",
+      "titleKey": "store.section.currency",
+      "tag": "currency"
+    },
+    {
+      "id": "bundles",
+      "titleKey": "store.section.bundles",
+      "tag": "bundles"
+    },
+    {
+      "id": "cosmetics",
+      "titleKey": "store.section.cosmetics",
+      "tag": "cosmetics"
+    },
+    {
+      "id": "gifts",
+      "titleKey": "store.section.gifts",
+      "tag": "gifts"
+    }
+  ],
+  "ribbons": {
+    "vip": "most_popular",
+    "starter_pack": "starter",
+    "currency_medium": "most_popular",
+    "currency_large": "best_value",
+    "double_currency": "best_value"
+  }
+}

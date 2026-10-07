@@ -99,7 +99,7 @@ test("mount lists every story and shows the initial one", function(t)
 	local f = fixture()
 	local browser = f.browser
 	t.eq(browser:names(), Stories.names(Build.context({ env = f.env })))
-	t.eq(#browser:names(), 27)
+	t.eq(#browser:names(), 28)
 	t.eq(browser:current(), "Button")
 	t.eq(f.selected, { "Button" })
 	local stage = browser:stage()

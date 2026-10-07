@@ -71,6 +71,7 @@ Studio: see the table in `.agents/skills/roblox-studio-testing/SKILL.md`. Rojo o
 - Codex rules: `.codex/rules/factory.rules` forbids the plain forms on the documented record `release/owner-exceptions.json` (`tee`, `rm`, `touch`, `truncate`, `shred`, `unlink`, `git checkout/restore`). Prefix rules cannot glob, so other names rely on the hook.
 - Copies below a `fixtures/` or `tests/` folder of the working directory are test data and pass (paths are resolved first, so `fixtures/../release/owner-x.json` is still a record).
 - Residual: a symlink that points a fixture path at a real release folder, scripts run from files, and paths built at run time.
+- Store setup in a game repo goes through `tools/store_publish.py`, a script file the Bash guard cannot read. It holds its own allowlist instead: only pass, developer product, place text, icon and thumbnail requests, no payment or cost fields, and it refuses to run in the factory, without the owner's recorded approval, without `--yes` and without the key in `ROBLOX_OPEN_CLOUD_KEY` ([monetization](monetization.md)).
 
 ## Codex
 Checked with codex-cli 0.160.1, 2026-10-06.

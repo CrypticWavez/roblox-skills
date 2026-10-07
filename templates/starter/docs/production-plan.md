@@ -9,9 +9,9 @@ How this repository goes from a game-build request to a release candidate. The s
 | concept | Decide what the game is | brief identity fields; [core loop](design/core-loop.md); owner approval |
 | greybox | Core loop playable in untextured geometry; kits wired into the boot phases | world, kits and engine settings decided; [UX flows](design/ux-flows.md); gate pre-commit; boot report ok in Studio (S07); internal playtest |
 | vertical-slice | One slice at target quality | characters, progression and the UI, [art](design/art-direction.md) and [audio](design/audio-direction.md) directions; release checks A07, A10, A11; playtest; owner approval |
-| alpha | Feature complete; every required brief field decided | [economy](design/economy.md); release checks A02-A06, A08, A15; Studio items S01, S02, S05; playtest |
+| alpha | Feature complete; every required brief field decided | [economy](design/economy.md), the monetization sheet `docs/design/monetization.md` from `tools/monetize.py plan`; release checks A02-A06, A08, A15, A18; Studio items S01, S02, S05; playtest |
 | beta | Content complete; polish, performance, localisation, devices | release checks A09, A11, A13, A14, A17; Studio items S03, S04, S06; Limited-audience playtest |
-| release-candidate | Everything automated passes; the owner does the owner items and publishes | gate pre-release; A01-A17; O01-O15; the owner publishes |
+| release-candidate | Everything automated passes; the owner does the owner items and publishes | gate pre-release; A01-A18; O01-O15; the owner publishes |
 
 Gate kinds: `brief` (fields decided), `file` (a design doc whose `Status:` is no longer TBD), `gate` (a `tools/check.py` tier passes), `release` (items of [the release runbook](release-runbook.md)), `playtest` and `owner` (only the owner records them, in `release/owner-*.json`).
 

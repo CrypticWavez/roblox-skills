@@ -1,0 +1,38 @@
+{
+  "schema": "ad-reference/1",
+  "note": "Roblox Ads Manager facts for tools/ad_kit.py (fetched 2026-10-07; factory docs/research/monetization-ads-store-2026-10.md section 'Ads'). Self-serve Ads Manager sponsors the game: a 16:9 thumbnail in the Home 'Sponsored' row and Search (merged Nov 2025). Video, billboard, portal and rewarded formats are bought by brands, not by the game. Values marked verified false are community reports.",
+  "creative": {"kind": "ad", "width": 1920, "height": 1080, "formats": ["jpg", "png", "gif", "tga", "bmp"], "max_bytes": 3000000, "per_campaign": {"docs": 10, "staff_post_2026_05": 25}, "language": "English only (self-serve)", "source": "https://create.roblox.com/docs/production/promotion/ads-manager"},
+  "goals": [
+    {"id": "plays", "label": "Plays", "use": "default: most plays per credit; launches and updates"},
+    {"id": "earnings", "label": "Earnings (limited)", "use": "reports ROAS; only once the shop is proven"},
+    {"id": "engagement", "label": "Engagement (beta)", "use": "highly engaged, age-checked players at a higher cost per play; community results are mixed"}
+  ],
+  "audiences": [
+    {"id": "all", "label": "All Players", "needs": null},
+    {"id": "new", "label": "New Players (never played or 180+ days)", "needs": null},
+    {"id": "recent", "label": "Recent Players (last 30 days)", "needs": "10K+ players"},
+    {"id": "lapsed", "label": "Lapsed Players (30-180 days)", "needs": "20K+ players"}
+  ],
+  "filters": {"countries": "chosen list (limit unpublished)", "age": "age groups (bands unpublished)", "gender": "available", "genre": "genres players enjoy", "device": ["desktop", "mobile", "console"], "not_available": ["language", "lookalikes", "frequency caps", "day-parting"]},
+  "country_tiers": {
+    "tier1": {"countries": ["United States", "United Kingdom", "Canada", "Australia"], "why": "highest spend per user (community reports up to ~20x); higher cost per play", "verified": false},
+    "tier2": {"countries": ["Germany", "France", "Netherlands", "Nordics", "New Zealand"], "why": "good spend, English ads still read", "verified": false},
+    "tier3": {"countries": ["Brazil", "Mexico", "Philippines", "Indonesia"], "why": "cheap plays and large audiences; regional pricing lifted spenders there 17-52%", "verified": false}
+  },
+  "benchmarks": {
+    "cost_per_play_usd": {"plays": 0.0073, "retention": 0.0113, "reactivate": 0.011, "new_users": 0.0187, "as_of": "2025-11-11", "verified": true, "source": "https://devforum.roblox.com/t/ads-manager-updates-home-search-combined-new-benchmarks-and-sunsetting-the-classic-flow/4084863"},
+    "credit_robux": {"value": 263, "since": "2025-09", "verified": true},
+    "credit_usd": {"value": 1.0, "verified": false, "note": "community estimate"},
+    "min_campaign_credits": {"value": 10, "verified": true},
+    "ctr_target": {"value": 0.02, "verified": false},
+    "personalization_lift": {"value": "+8.5% average qualified play-through, up to +50%", "verified": true},
+    "peak": {"value": "Saturday ~19:00 UTC; trough Tuesday ~08:00 UTC", "verified": false}
+  },
+  "rules": [
+    "Ads never change Home ranking: Roblox does not count the engagement, retention or spend of users first acquired from ads in Recommended for You. Ads buy a test audience; the game's own PTR and retention decide organic growth.",
+    "Copycat or non-unique games may get no delivery.",
+    "Creatives must show real gameplay and art; no Robux or monetary bait, no prices, no 'only'/'just' before prices, no urging under-18s to buy, no URLs or QR codes.",
+    "Test clearly different concepts (Hypershot ran 25 and paused the losers); do not restart a test within 7 days; refresh creatives with each update.",
+    "Give ad players a tailored arrival through launch data (Player:GetJoinData) if useful, never a paid advantage."
+  ]
+}
