@@ -107,7 +107,7 @@
     {
       "id": "alpha",
       "goal": "Feature complete: every system in, persistence, economy, commerce and telemetry wired. Every required brief field is decided from here on.",
-      "skills": ["roblox-persistence-and-commerce", "roblox-multiplayer-integrity", "roblox-luau-testing", "roblox-genre-systems"],
+      "skills": ["roblox-persistence-and-commerce", "roblox-monetization-and-store", "roblox-multiplayer-integrity", "roblox-luau-testing", "roblox-genre-systems"],
       "exit": [
         {
           "id": "alpha.brief",
@@ -124,8 +124,8 @@
         {
           "id": "alpha.release",
           "kind": "release",
-          "items": ["A02", "A03", "A04", "A05", "A06", "A08", "A15"],
-          "text": "Remotes guarded, catalog and receipts right, paid random items disclosed, text filtered, telemetry defined, persistence through the data kit"
+          "items": ["A02", "A03", "A04", "A05", "A06", "A08", "A15", "A18"],
+          "text": "Remotes guarded, catalog and receipts right, paid random items disclosed, text filtered, telemetry defined, persistence through the data kit, a full shop with offers and a clean store page (tools/monetize.py, tools/store_page.py)"
         },
         {
           "id": "alpha.studio",
@@ -167,7 +167,7 @@
     {
       "id": "release-candidate",
       "goal": "Everything the release checker automates passes; the owner completes the owner items and publishes. Agents never publish.",
-      "skills": ["roblox-release-pass", "roblox-production-pipeline"],
+      "skills": ["roblox-release-pass", "roblox-monetization-and-store", "roblox-production-pipeline"],
       "exit": [
         {
           "id": "release-candidate.gate",
@@ -178,7 +178,7 @@
         {
           "id": "release-candidate.automated",
           "kind": "release",
-          "items": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17"],
+          "items": ["A01", "A02", "A03", "A04", "A05", "A06", "A07", "A08", "A09", "A10", "A11", "A12", "A13", "A14", "A15", "A16", "A17", "A18"],
           "text": "Every automated release check passes"
         },
         {

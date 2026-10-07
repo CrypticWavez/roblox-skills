@@ -281,6 +281,26 @@ local COMPONENTS = {
 		"ShopCard: productKey missing_product is not in the catalog",
 	},
 	{
+		C.OfferPopup,
+		{
+			textKey = "uikit.offer.get",
+			catalog = SAMPLE_CATALOG,
+			productKey = "sample_product",
+			ribbon = "starter",
+			secondsLeft = 3600,
+		},
+		"Frame",
+		{
+			"Modal.Dialog.Content.Card:TextButton",
+			"Modal.Dialog.Content.Card.Ribbon.Text:TextLabel",
+			"Modal.Dialog.Content.TimeLeft:TextLabel",
+			"Modal.Dialog.Actions.Later:TextButton",
+			"Modal.Dialog.Actions.Get:TextButton",
+		},
+		{ textKey = "uikit.offer.get", catalog = SAMPLE_CATALOG, productKey = "missing_product" },
+		"OfferPopup: productKey missing_product is not in the catalog",
+	},
+	{
 		C.DialogueBox,
 		{ text = "Hello there.", speaker = "Speaker" },
 		"Frame",
@@ -368,7 +388,7 @@ test("the facade lists every component and every component has a row here", func
 		table.insert(names, name)
 	end
 	table.sort(names)
-	t.eq(#names, 27, table.concat(names, ", "))
+	t.eq(#names, 28, table.concat(names, ", "))
 	local covered = {}
 	for _, row in COMPONENTS do
 		covered[row[1].name] = true
@@ -978,6 +998,71 @@ test("ShopCard: binds to Catalog entries, setup watermark, selectable only when 
 	))
 end)
 
+test("ShopCard: ribbons from the Offers list, localised and tagged", function(t)
+	local Offers = require("../packages/GameKit/Offers")
+	t.eq(C.ShopCard.RIBBONS, Offers.RIBBONS, "UIKit keeps the same ribbon list as GameKit/Offers")
+	local f = fixture()
+	local card =
+		C.ShopCard.mount({ catalog = GAME_CATALOG, productKey = "sample_pass", ribbon = "best_value" }, f.ctx)
+	t.eq(card.root.Ribbon.Text.Text, "Best value")
+	t.ok(card.root.Ribbon:HasTag("ShopRibbon"))
+	t.eq(card.root:GetAttribute("Ribbon"), "best_value")
+	t.ok(
+		contains(
+			C.ShopCard.validate({ catalog = GAME_CATALOG, productKey = "sample_pass", ribbon = "huge" }),
+			"ribbon"
+		)
+	)
+	card:destroy()
+end)
+
+test("OfferPopup: always dismissable, selects only buyable products, expires", function(t)
+	local f = fixture()
+	local picks, dismissed = {}, {}
+	local popup = C.OfferPopup.mount({
+		textKey = "uikit.offer.get",
+		catalog = GAME_CATALOG,
+		productKey = "sample_pass",
+		price = { state = "pending" },
+		secondsLeft = 700,
+		onSelect = function(key)
+			table.insert(picks, key)
+		end,
+		onDismiss = function(reason)
+			table.insert(dismissed, reason)
+		end,
+	}, f.ctx, roblox.Instance.new("Frame"))
+	popup.state.open()
+	local get = popup.root.Dialog.Actions.Get
+	f.hub:fire(get, "Activated")
+	t.eq(picks, {}, "no price yet: Get does not act")
+	popup:update({ price = { state = "ok", text = "99" } })
+	t.eq(popup.root.Dialog.Content.Card.Price.Text, "99")
+	f.step(1)
+	f.hub:fire(get, "Activated")
+	t.eq(picks, { "sample_pass" }, "onSelect names the product; the game prompts")
+	f.hub:fire(get, "Activated")
+	t.eq(picks, { "sample_pass" }, "answers once per open")
+	popup.state.open()
+	f.step(1)
+	f.hub:fire(popup.root.Dialog.Actions.Later, "Activated")
+	t.eq(dismissed, { "later" })
+	popup.state.open()
+	popup:update({ secondsLeft = 599 })
+	t.ok(popup.root.Dialog.Content.TimeLeft:HasTag("Warning"))
+	popup:update({ secondsLeft = 0 })
+	t.eq(dismissed, { "later", "expired" })
+	t.eq(popup.root.Dialog.Content.TimeLeft.Text, "Ends in 0:00:00")
+	for name in C.OfferPopup.schema do
+		t.ok(name ~= "dismissable", "no prop turns dismissal off")
+		t.ok(not string.find(string.lower(name), "purchase", 1, true), "schema field " .. name)
+		t.ok(not string.find(string.lower(name), "buy", 1, true), "schema field " .. name)
+	end
+	local source = fs.readFile(ROOT .. "/packages/UIKit/Components/OfferPopup.luau")
+	t.ok(not string.find(source, "MarketplaceService", 1, true))
+	popup:destroy()
+end)
+
 test("ShopCard never takes a purchase hook and never calls a purchase API", function(t)
 	for _, prop in { "onPurchase", "purchase", "onBuy", "promptPurchase", "marketplace" } do
 		local props: any = { catalog = SAMPLE_CATALOG, productKey = "sample_product" }
@@ -1384,7 +1469,7 @@ test("every gallery story builds with the UI Labs (target) -> cleanup signature 
 	do
 		local f = fixture({ class = class })
 		local names = Stories.names(f.ctx)
-		t.eq(#names, 27)
+		t.eq(#names, 28)
 		t.eq(names[1], "Button")
 		for _, story in Stories.list(f.ctx) do
 			local target = roblox.Instance.new("Frame")

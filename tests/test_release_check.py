@@ -27,7 +27,7 @@ sys.path.insert(0, str(STARTER / "tools"))
 import release_check  # noqa: E402
 
 TOKENS = {"SYNTHETIC_ASSET_ID": "900000001", "UPLOAD_VERB": "upload"}
-AUTOMATED = [f"A{n:02d}" for n in range(1, 18)]
+AUTOMATED = [f"A{n:02d}" for n in range(1, 19)]
 _png_cache = {}
 
 
@@ -375,7 +375,7 @@ class FreshStarter(unittest.TestCase):
 
     def test_a_fresh_starter_fails_only_on_undecided_release_data(self):
         report = release_check.run_checks(STARTER)
-        self.assertEqual(failing(report), ["A08", "A09", "A17"], {i: problems_of(report, i)[:2] for i in failing(report)})
+        self.assertEqual(failing(report), ["A08", "A09", "A17", "A18"], {i: problems_of(report, i)[:2] for i in failing(report)})
         self.assertTrue(all(i["status"] == "OWNER_REQUIRED" for i in report["items"] if i["tier"] != "A"))
 
 

@@ -1,0 +1,21 @@
+{
+  "schema": "offers/1",
+  "rules": {
+    "maxPerSession": 3,
+    "minSpacing": 180,
+    "grace": 120,
+    "quietAfterPurchase": 300
+  },
+  "offers": [
+    {
+      "key": "first_offer",
+      "productKey": "currency_pack_a",
+      "trigger": "join",
+      "audience": {
+        "payer": "non_payer"
+      },
+      "duration": 86400,
+      "ribbon": "starter"
+    }
+  ]
+}

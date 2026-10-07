@@ -9,14 +9,18 @@
 -- price provider produced at runtime (state ok with text, pending or unavailable). A product
 -- that is disabled (every product in setup mode), already owned or unpriced cannot be selected.
 -- In setup mode (catalog.mode == "setup", the factory and new repos) a watermark marks the card
--- as a preview. Tree:
---   ShopCard (TextButton) > Corner, Stroke, Padding, Layout, Icon (ImageLabel | Frame), Name,
---   Description?, Price, Status, Watermark?, Scale, FocusRing
+-- as a preview. ribbon (GameKit/Offers.RIBBONS: best_value, most_popular, limited, new, sale,
+-- starter) adds a banner above the icon, text from uikit.shop.ribbon.<ribbon>, tagged
+-- "ShopRibbon" so a game can restyle it. Tree:
+--   ShopCard (TextButton) > Corner, Stroke, Padding, Layout, Ribbon?, Icon (ImageLabel | Frame),
+--   Name, Description?, Price, Status, Watermark?, Scale, FocusRing
 local Build = require("../Build")
 local Catalog = require("../../GameKit/Catalog")
 local Style = require("../Style")
 
 local ICON = 96 -- px, convention
+-- The same list as GameKit/Offers.RIBBONS (UIKit components require Stage 0 modules only).
+local RIBBONS = table.freeze({ "best_value", "most_popular", "limited", "new", "sale", "starter" })
 
 local function productOf(props: { [string]: any }): any
 	return Catalog.find(props.catalog, props.productKey)
@@ -71,6 +75,7 @@ local ShopCard = Build.component({
 		price = { kind = "table" },
 		owned = { kind = "boolean", default = false },
 		imageFor = { kind = "function" },
+		ribbon = { kind = "enum", choices = RIBBONS },
 		width = { kind = "number", min = 120, max = 1024, default = 220 },
 		onSelect = { kind = "function" },
 	}),
@@ -113,6 +118,29 @@ local ShopCard = Build.component({
 		Build.stroke(ctx, root, "border", "hairline")
 		Build.padding(ctx, root, "md")
 		Build.list(ctx, root, "Vertical", { gap = "xs", align = "Center" })
+		if props.ribbon ~= nil then
+			local ribbon = Build.surface(ctx, "Ribbon", "accent", {
+				Size = r.UDim2.fromScale(1, 0),
+				AutomaticSize = r.Enum.AutomaticSize.Y,
+				LayoutOrder = -1,
+			}, root)
+			Build.corner(ctx, ribbon, "sm")
+			Build.tag(ribbon, "ShopRibbon")
+			Build.label(
+				ctx,
+				"Text",
+				"caption",
+				ctx.text("uikit.shop.ribbon." .. props.ribbon),
+				"accentText",
+				{
+					Size = r.UDim2.fromScale(1, 0),
+					AutomaticSize = r.Enum.AutomaticSize.Y,
+					TextXAlignment = r.Enum.TextXAlignment.Center,
+				},
+				ribbon
+			)
+			root:SetAttribute("Ribbon", props.ribbon)
+		end
 		local image = if display.iconKey and props.imageFor then props.imageFor(display.iconKey) else nil
 		if type(image) == "string" and image ~= "" then
 			Build.make(ctx, "ImageLabel", {
@@ -183,8 +211,8 @@ local ShopCard = Build.component({
 		end, ctx)
 	end,
 	update = function(handle: Build.Handle, patch: { [string]: any }, ctx: Build.Context)
-		if patch.catalog ~= nil or patch.productKey ~= nil then
-			error("ShopCard: catalog and productKey cannot change after mount (build a new card)", 3)
+		if patch.catalog ~= nil or patch.productKey ~= nil or patch.ribbon ~= nil then
+			error("ShopCard: catalog, productKey and ribbon cannot change after mount (build a new card)", 3)
 		end
 		paint(handle.root, handle.props, ctx)
 	end,
@@ -194,5 +222,7 @@ local ShopCard = Build.component({
 function ShopCard.status(props: { [string]: any }): (string, string?, boolean)
 	return status(props, productOf(props))
 end
+
+ShopCard.RIBBONS = RIBBONS
 
 return ShopCard

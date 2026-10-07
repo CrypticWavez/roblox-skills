@@ -8,8 +8,16 @@
       "id": 900000101,
       "enabled": true,
       "ownershipVerified": true,
-      "grants": [{ "type": "currency", "currency": "currency_a", "amount": 100 }],
-      "display": { "nameKey": "shop.currency_pack_a.name" }
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "currency_a",
+          "amount": 100
+        }
+      ],
+      "display": {
+        "nameKey": "shop.currency_pack_a.name"
+      }
     },
     {
       "key": "random_pack_a",
@@ -17,9 +25,18 @@
       "id": 900000102,
       "enabled": true,
       "ownershipVerified": true,
-      "tags": ["paid_random_item"],
-      "grants": [{ "type": "custom", "handler": "roll_random_pack" }],
-      "display": { "nameKey": "shop.random_pack_a.name" }
+      "tags": [
+        "paid_random_item"
+      ],
+      "grants": [
+        {
+          "type": "custom",
+          "handler": "roll_random_pack"
+        }
+      ],
+      "display": {
+        "nameKey": "shop.random_pack_a.name"
+      }
     },
     {
       "key": "pass_a",
@@ -27,8 +44,15 @@
       "id": 900000103,
       "enabled": true,
       "ownershipVerified": true,
-      "grants": [{ "type": "entitlement", "entitlement": "entitlement_a" }],
-      "display": { "nameKey": "shop.pass_a.name" }
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "entitlement_a"
+        }
+      ],
+      "display": {
+        "nameKey": "shop.pass_a.name"
+      }
     },
     {
       "key": "subscription_a",
@@ -36,8 +60,83 @@
       "id": "EXP-900000104",
       "enabled": true,
       "ownershipVerified": true,
-      "grants": [{ "type": "entitlement", "entitlement": "entitlement_b" }],
-      "display": { "nameKey": "shop.subscription_a.name" }
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "entitlement_b"
+        }
+      ],
+      "display": {
+        "nameKey": "shop.subscription_a.name"
+      }
+    },
+    {
+      "key": "pass_b",
+      "kind": "gamepass",
+      "id": 900000105,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "entitlement_c"
+        }
+      ],
+      "display": {
+        "nameKey": "shop.pass_b.name"
+      }
+    },
+    {
+      "key": "pass_c",
+      "kind": "gamepass",
+      "id": 900000106,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "entitlement_d"
+        }
+      ],
+      "display": {
+        "nameKey": "shop.pass_c.name"
+      }
+    },
+    {
+      "key": "boost_a",
+      "kind": "devproduct",
+      "id": 900000107,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [
+        {
+          "type": "custom",
+          "handler": "boost",
+          "data": {
+            "boost": "boost_a"
+          }
+        }
+      ],
+      "display": {
+        "nameKey": "shop.boost_a.name"
+      }
+    },
+    {
+      "key": "currency_pack_b",
+      "kind": "devproduct",
+      "id": 900000108,
+      "enabled": true,
+      "ownershipVerified": true,
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "currency_a",
+          "amount": 500
+        }
+      ],
+      "display": {
+        "nameKey": "shop.currency_pack_b.name"
+      }
     }
   ]
 }

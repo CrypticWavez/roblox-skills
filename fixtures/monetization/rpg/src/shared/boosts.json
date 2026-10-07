@@ -1,0 +1,32 @@
+{
+  "schema": "boosts/1",
+  "stats": {
+    "gold_gain": {
+      "combine": "multiply",
+      "cap": 16
+    },
+    "luck": {
+      "combine": "multiply",
+      "cap": 16
+    }
+  },
+  "boosts": [
+    {
+      "key": "boost_currency",
+      "stat": "gold_gain",
+      "multiplier": 2,
+      "duration": 1800,
+      "stack": "extend",
+      "maxDuration": 14400,
+      "clock": "playtime"
+    },
+    {
+      "key": "boost_luck",
+      "stat": "luck",
+      "multiplier": 2,
+      "duration": 900,
+      "stack": "extend",
+      "maxDuration": 7200
+    }
+  ]
+}

@@ -36,6 +36,7 @@ local Components = {
 	LeaderboardPanel = require("./Components/LeaderboardPanel"),
 	LoadingScreen = require("./Components/LoadingScreen"),
 	Modal = require("./Components/Modal"),
+	OfferPopup = require("./Components/OfferPopup"),
 	ProgressBar = require("./Components/ProgressBar"),
 	RollingCounter = require("./Components/RollingCounter"),
 	SettingsPanel = require("./Components/SettingsPanel"),

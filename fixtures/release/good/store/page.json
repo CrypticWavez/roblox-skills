@@ -1,0 +1,19 @@
+{
+  "schema": "store-page/1",
+  "name": "ReleaseFixture",
+  "emoji": "",
+  "update_tag": null,
+  "description": {
+    "hook": "Synthetic release-checker fixture; not a game.",
+    "features": [
+      "Fixture feature one",
+      "Fixture feature two"
+    ],
+    "update": null,
+    "purchases": "Optional passes and items support the fixture.",
+    "footer": "Fixture footer."
+  },
+  "update_log": [],
+  "events_update": null,
+  "alt_text": {}
+}

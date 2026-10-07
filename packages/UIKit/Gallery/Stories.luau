@@ -26,6 +26,7 @@ local KeybindPrompt = require("../Components/KeybindPrompt")
 local LeaderboardPanel = require("../Components/LeaderboardPanel")
 local LoadingScreen = require("../Components/LoadingScreen")
 local Modal = require("../Components/Modal")
+local OfferPopup = require("../Components/OfferPopup")
 local ProgressBar = require("../Components/ProgressBar")
 local RollingCounter = require("../Components/RollingCounter")
 local SettingsPanel = require("../Components/SettingsPanel")
@@ -229,7 +230,28 @@ function Stories.list(ctx: Build.Context): { Story }
 				ShopCard,
 				{ catalog = Stories.CATALOG, productKey = "sample_product", price = { state = "pending" } },
 			},
+			{
+				ShopCard,
+				{
+					catalog = Stories.CATALOG,
+					productKey = "sample_product",
+					price = { state = "pending" },
+					ribbon = "best_value",
+				},
+			},
 		}),
+		custom(ctx, "OfferPopup", function(child, target)
+			OfferPopup.mount({
+				textKey = "uikit.shop.ribbon.starter",
+				bodyKey = "uikit.empty",
+				catalog = Stories.CATALOG,
+				productKey = "sample_product",
+				price = { state = "pending" },
+				ribbon = "starter",
+				secondsLeft = 86399,
+				open = true,
+			}, child, target)
+		end),
 		many(ctx, "DialogueBox", {
 			{
 				DialogueBox,

@@ -1,0 +1,287 @@
+{
+  "schema": "catalog/1",
+  "mode": "setup",
+  "products": [
+    {
+      "key": "vip",
+      "kind": "gamepass",
+      "id": 0,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "vip"
+        }
+      ],
+      "display": {
+        "nameKey": "store.vip.name",
+        "descriptionKey": "store.vip.description",
+        "iconKey": "store.vip.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "passes",
+        "featured"
+      ],
+      "order": 10
+    },
+    {
+      "key": "starter_pack",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "custom",
+          "handler": "bundle",
+          "data": {
+            "bundle": "starter_pack"
+          }
+        }
+      ],
+      "display": {
+        "nameKey": "store.starter_pack.name",
+        "descriptionKey": "store.starter_pack.description",
+        "iconKey": "store.starter_pack.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "bundles",
+        "featured"
+      ],
+      "order": 20
+    },
+    {
+      "key": "currency_small",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "cash",
+          "amount": 400
+        }
+      ],
+      "display": {
+        "nameKey": "store.currency_small.name",
+        "descriptionKey": "store.currency_small.description",
+        "iconKey": "store.currency_small.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "currency"
+      ],
+      "order": 30
+    },
+    {
+      "key": "currency_medium",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "cash",
+          "amount": 1300
+        }
+      ],
+      "display": {
+        "nameKey": "store.currency_medium.name",
+        "descriptionKey": "store.currency_medium.description",
+        "iconKey": "store.currency_medium.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "currency"
+      ],
+      "order": 40
+    },
+    {
+      "key": "currency_large",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "cash",
+          "amount": 4500
+        }
+      ],
+      "display": {
+        "nameKey": "store.currency_large.name",
+        "descriptionKey": "store.currency_large.description",
+        "iconKey": "store.currency_large.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "currency"
+      ],
+      "order": 50
+    },
+    {
+      "key": "gift_vip",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "custom",
+          "handler": "gift",
+          "data": {
+            "entitlement": "vip"
+          }
+        }
+      ],
+      "display": {
+        "nameKey": "store.gift_vip.name",
+        "descriptionKey": "store.gift_vip.description",
+        "iconKey": "store.gift_vip.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "gifts"
+      ],
+      "order": 60
+    },
+    {
+      "key": "plot_upgrade",
+      "kind": "gamepass",
+      "id": 0,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "plot_upgrade"
+        }
+      ],
+      "display": {
+        "nameKey": "store.plot_upgrade.name",
+        "descriptionKey": "store.plot_upgrade.description",
+        "iconKey": "store.plot_upgrade.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "passes"
+      ],
+      "order": 70
+    },
+    {
+      "key": "emote_pack",
+      "kind": "gamepass",
+      "id": 0,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "emote_pack"
+        }
+      ],
+      "display": {
+        "nameKey": "store.emote_pack.name",
+        "descriptionKey": "store.emote_pack.description",
+        "iconKey": "store.emote_pack.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "passes",
+        "cosmetics"
+      ],
+      "order": 80
+    },
+    {
+      "key": "radio",
+      "kind": "gamepass",
+      "id": 0,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "radio"
+        }
+      ],
+      "display": {
+        "nameKey": "store.radio.name",
+        "descriptionKey": "store.radio.description",
+        "iconKey": "store.radio.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "passes",
+        "cosmetics"
+      ],
+      "order": 90
+    },
+    {
+      "key": "speed_boost",
+      "kind": "gamepass",
+      "id": 0,
+      "grants": [
+        {
+          "type": "entitlement",
+          "entitlement": "speed_boost"
+        }
+      ],
+      "display": {
+        "nameKey": "store.speed_boost.name",
+        "descriptionKey": "store.speed_boost.description",
+        "iconKey": "store.speed_boost.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "passes"
+      ],
+      "order": 100
+    },
+    {
+      "key": "boost_currency",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "custom",
+          "handler": "boost",
+          "data": {
+            "boost": "boost_currency"
+          }
+        }
+      ],
+      "display": {
+        "nameKey": "store.boost_currency.name",
+        "descriptionKey": "store.boost_currency.description",
+        "iconKey": "store.boost_currency.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "boosts"
+      ],
+      "order": 110
+    },
+    {
+      "key": "currency_huge",
+      "kind": "devproduct",
+      "id": 0,
+      "grants": [
+        {
+          "type": "currency",
+          "currency": "cash",
+          "amount": 12000
+        }
+      ],
+      "display": {
+        "nameKey": "store.currency_huge.name",
+        "descriptionKey": "store.currency_huge.description",
+        "iconKey": "store.currency_huge.icon"
+      },
+      "enabled": false,
+      "ownershipVerified": false,
+      "tags": [
+        "currency"
+      ],
+      "order": 120
+    }
+  ]
+}

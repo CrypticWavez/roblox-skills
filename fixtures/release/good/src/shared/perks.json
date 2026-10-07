@@ -1,0 +1,17 @@
+{
+  "schema": "perks/1",
+  "stats": {},
+  "perks": [
+    {
+      "key": "perk_a",
+      "source": {
+        "productKey": "pass_a"
+      },
+      "effects": [
+        {
+          "flag": "flag_a"
+        }
+      ]
+    }
+  ]
+}

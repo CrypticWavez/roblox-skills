@@ -1,16 +1,16 @@
 {
   "counts": {
     "by_tier": {
-      "T0": 88,
-      "T1": 38,
+      "T0": 92,
+      "T1": 39,
       "T3": 27,
       "T4": 8
     },
     "evidence": {
       "PENDING": 31
     },
-    "kit_modules": 157,
-    "modules": 161,
+    "kit_modules": 162,
+    "modules": 166,
     "probes": 31,
     "t3_modules": 27,
     "t3_with_passing_probe": 0
@@ -176,6 +176,11 @@
     {
       "kit": true,
       "path": "packages/GameKit/BehaviorTree.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Boosts.luau",
       "tier": "T0"
     },
     {
@@ -416,6 +421,11 @@
     },
     {
       "kit": true,
+      "path": "packages/GameKit/Offers.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
       "path": "packages/GameKit/Onboarding.luau",
       "tier": "T0"
     },
@@ -443,6 +453,11 @@
     {
       "kit": true,
       "path": "packages/GameKit/Perception.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/Perks.luau",
       "tier": "T0"
     },
     {
@@ -560,6 +575,11 @@
     {
       "kit": true,
       "path": "packages/GameKit/SettingsStore.luau",
+      "tier": "T0"
+    },
+    {
+      "kit": true,
+      "path": "packages/GameKit/ShopLayout.luau",
       "tier": "T0"
     },
     {
@@ -776,6 +796,11 @@
     {
       "kit": true,
       "path": "packages/UIKit/Components/Modal.luau",
+      "tier": "T1"
+    },
+    {
+      "kit": true,
+      "path": "packages/UIKit/Components/OfferPopup.luau",
       "tier": "T1"
     },
     {

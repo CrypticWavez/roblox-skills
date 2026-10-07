@@ -33,6 +33,7 @@ A T3 or T4 adapter's wiring is still exercised in Lune against the fakes in `tes
 | | [CommerceRoblox](../packages/GameKit/CommerceRoblox.luau) | T4 | same spec |
 | | [Runtime/CommerceCatalog](../packages/Runtime/CommerceCatalog.luau), [Runtime/ReceiptLedger](../packages/Runtime/ReceiptLedger.luau) | T0 | commerce spec, `tests/runtime/run.luau`, `tests/inherited.spec.luau` |
 | | [Runtime/RobloxReceiptAdapter](../packages/Runtime/RobloxReceiptAdapter.luau) | T4 | commerce spec |
+| Shop and offers | [Offers](../packages/GameKit/Offers.luau), [Boosts](../packages/GameKit/Boosts.luau), [Perks](../packages/GameKit/Perks.luau), [ShopLayout](../packages/GameKit/ShopLayout.luau) | T0 | `tests/gamekit_monetization.spec.luau`, `tests/gamekit_monetization_plans.spec.luau`; guide [monetization.md](monetization.md) |
 | Matchmaking | [Queue](../packages/GameKit/Queue.luau) | T0 | `tests/gamekit_platform_queue.spec.luau`, golden `gamekit_platform_queue` |
 | | [MemoryQueueRoblox](../packages/GameKit/MemoryQueueRoblox.luau), [TeleportRoblox](../packages/GameKit/TeleportRoblox.luau) | T4 | queue spec |
 | | [PartyRoblox](../packages/GameKit/PartyRoblox.luau) | T3, probe `platform_party_simulator` | queue spec, probes spec |
