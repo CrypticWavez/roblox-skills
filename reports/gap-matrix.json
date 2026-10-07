@@ -1642,17 +1642,17 @@
     {
       "id": "Q12",
       "area": "Production lab",
-      "capability": "Monetization plan, store art, store page and ads plan for every game",
+      "capability": "Monetization plan, store art, store page, ads plan and store setup for every game",
       "previous_claim": "None.",
-      "actual_state": "The starter ships `tools/monetize.py` (31 product archetypes and 17 genre sets from the live passes of 34 top games: catalog in setup mode, offers, boosts, perks, shop, localization and the owner's Creator Hub sheet with suggested prices), `store_art.py` (specs, briefs, a Pillow compositor with icon, thumbnail, pass, product and badge templates, pinned OFL fonts, lint and contact-sheet previews), `store_page.py` (title, description and update log with copy rules) and `ad_kit.py` (an ad-campaign/1 plan with `purchase` always false and an Ads Manager entry sheet). Release check A18 requires the shop plan and a clean store page. Research: `docs/research/monetization-ads-store-2026-10.md`.",
-      "evidence": "`tests/test_monetize.py` (16) passes, `fixtures/monetization/` holds plans for eight genres that a test keeps current, and a sample game ran end to end (plan, check, briefs, compose, page lint, ad plan and sheet, set-id).",
-      "defect": "Developer-product prices come from third-party guides; ad benchmarks partly community-reported; the art templates need a real subject render to look finished.",
+      "actual_state": "The starter ships `tools/monetize.py` (31 product archetypes and 17 genre sets from the live passes of 34 top games: catalog in setup mode, offers, boosts, perks, shop, localization and the owner's Creator Hub sheet with suggested prices), `store_art.py` (specs, briefs, a Pillow compositor with icon, thumbnail, pass, product and badge templates, pinned OFL fonts, lint and contact-sheet previews), `store_page.py` (title, description and update log with copy rules) `ad_kit.py` (an ad-campaign/1 plan with `purchase` always false and an Ads Manager entry sheet) and `store_publish.py`. Once the owner approves store setup, store_publish creates passes and developer products with prices and icons, sets the place text and uploads the icon and thumbnails through Open Cloud. It has an allowlist of request paths, refuses payment or cost fields and refuses to run in the factory. Release check A18 requires the shop plan and a clean store page. Research: `docs/research/monetization-ads-store-2026-10.md`.",
+      "evidence": "`tests/test_monetize.py` (20, store_publish against a loopback fake of the API) passes, `fixtures/monetization/` holds plans for eight genres that a test keeps current, and a sample game ran end to end (plan, check, briefs, compose, page lint, ad plan and sheet, set-id).",
+      "defect": "Developer-product prices come from third-party guides; ad benchmarks partly community-reported; the art templates need a real subject render to look finished. store_publish has never sent a request to the real API: the language code for the icon and thumbnail endpoints and the BETA game-pass and developer-product endpoints are unverified.",
       "root_cause": "Roblox publishes no developer-product list API; Ads Manager figures change.",
       "impact": "Suggested prices and ad estimates are starting points, not tuned values.",
       "priority": "P3",
       "fix": "Re-check prices and benchmarks on each research pass; tune from a game's price-optimization results.",
       "verification": "`tests/test_monetize.py` in the `python-unit` gate step; release check A18.",
-      "status": "VERIFIED_ACCEPTABLE"
+      "status": "PARTIAL"
     }
   ]
 }

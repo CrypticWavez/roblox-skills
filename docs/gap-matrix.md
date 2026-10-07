@@ -9,9 +9,9 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | Status | Count |
 |---|---|
 | VERIFIED_STRONG | 12 |
-| VERIFIED_ACCEPTABLE | 28 |
+| VERIFIED_ACCEPTABLE | 27 |
 | WEAK | 3 |
-| PARTIAL | 41 |
+| PARTIAL | 42 |
 | MISSING | 2 |
 | OUTDATED | 1 |
 | REDUNDANT | 1 |
@@ -119,7 +119,7 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 | [Q09](#q09) | Production lab | Genre playbooks and taxonomy (29 playbooks, 17 genres, 43 subgenres) | VERIFIED_ACCEPTABLE | P3 | Lint and unit tests, in the container and strict CI. |
 | [Q10](#q10) | Production lab | Neutral production pipeline (brief, stages, issue drafts) | VERIFIED_ACCEPTABLE | P3 | Unit tests and starter smoke. |
 | [Q11](#q11) | Production lab | CC0 asset fetch with provenance | PARTIAL | P2 | One real item pinned with a matching sha256. |
-| [Q12](#q12) | Production lab | Monetization plan, store art, store page and ads plan for every game | VERIFIED_ACCEPTABLE | P3 | `tests/test_monetize.py` in the `python-unit` gate step; release check A18. |
+| [Q12](#q12) | Production lab | Monetization plan, store art, store page, ads plan and store setup for every game | PARTIAL | P3 | `tests/test_monetize.py` in the `python-unit` gate step; release check A18. |
 
 ## Steps that need the owner's machine or decision
 
@@ -1605,12 +1605,12 @@ Second-pass audit of the Roblox production factory (this repo plus a read-only a
 
 ### Q12
 
-**Monetization plan, store art, store page and ads plan for every game** · Production lab · VERIFIED_ACCEPTABLE · P3
+**Monetization plan, store art, store page, ads plan and store setup for every game** · Production lab · PARTIAL · P3
 
 - **PREVIOUS CLAIM:** None.
-- **ACTUAL STATE:** The starter ships `tools/monetize.py` (31 product archetypes and 17 genre sets from the live passes of 34 top games: catalog in setup mode, offers, boosts, perks, shop, localization and the owner's Creator Hub sheet with suggested prices), `store_art.py` (specs, briefs, a Pillow compositor with icon, thumbnail, pass, product and badge templates, pinned OFL fonts, lint and contact-sheet previews), `store_page.py` (title, description and update log with copy rules) and `ad_kit.py` (an ad-campaign/1 plan with `purchase` always false and an Ads Manager entry sheet). Release check A18 requires the shop plan and a clean store page. Research: `docs/research/monetization-ads-store-2026-10.md`.
-- **EVIDENCE:** `tests/test_monetize.py` (16) passes, `fixtures/monetization/` holds plans for eight genres that a test keeps current, and a sample game ran end to end (plan, check, briefs, compose, page lint, ad plan and sheet, set-id).
-- **DEFECT:** Developer-product prices come from third-party guides; ad benchmarks partly community-reported; the art templates need a real subject render to look finished.
+- **ACTUAL STATE:** The starter ships `tools/monetize.py` (31 product archetypes and 17 genre sets from the live passes of 34 top games: catalog in setup mode, offers, boosts, perks, shop, localization and the owner's Creator Hub sheet with suggested prices), `store_art.py` (specs, briefs, a Pillow compositor with icon, thumbnail, pass, product and badge templates, pinned OFL fonts, lint and contact-sheet previews), `store_page.py` (title, description and update log with copy rules) `ad_kit.py` (an ad-campaign/1 plan with `purchase` always false and an Ads Manager entry sheet) and `store_publish.py`. Once the owner approves store setup, store_publish creates passes and developer products with prices and icons, sets the place text and uploads the icon and thumbnails through Open Cloud. It has an allowlist of request paths, refuses payment or cost fields and refuses to run in the factory. Release check A18 requires the shop plan and a clean store page. Research: `docs/research/monetization-ads-store-2026-10.md`.
+- **EVIDENCE:** `tests/test_monetize.py` (20, store_publish against a loopback fake of the API) passes, `fixtures/monetization/` holds plans for eight genres that a test keeps current, and a sample game ran end to end (plan, check, briefs, compose, page lint, ad plan and sheet, set-id).
+- **DEFECT:** Developer-product prices come from third-party guides; ad benchmarks partly community-reported; the art templates need a real subject render to look finished. store_publish has never sent a request to the real API: the language code for the icon and thumbnail endpoints and the BETA game-pass and developer-product endpoints are unverified.
 - **ROOT CAUSE:** Roblox publishes no developer-product list API; Ads Manager figures change.
 - **IMPACT:** Suggested prices and ad estimates are starting points, not tuned values.
 - **FIX:** Re-check prices and benchmarks on each research pass; tune from a game's price-optimization results.

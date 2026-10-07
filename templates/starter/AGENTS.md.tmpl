@@ -6,6 +6,7 @@ Shared by Claude Code (via `CLAUDE.md`) and Codex. Keep this file short. This re
 - Production skills apply here: this is the game repository the build request asked for.
 - Game content follows the decisions below. A TBD field is not decided: ask the owner, and do not build content for it.
 - Never publish a place, upload assets, create or change live products (passes, developer products, subscriptions, prices), spend Robux, buy tools or assets, run ads, write production data stores, or run `wally install` (it downloads code) without the owner's explicit approval of that specific action. The owner publishes; agents never do.
+- Store setup is the one standing exception, once the owner has approved it for this game: `python3 tools/store_publish.py` (record the owner's words with its `approve` command) creates and updates passes and developer products, sets their prices and uploads the icon, thumbnails, item icons and store text through the owner's Open Cloud key. It never spends: no badges that cost Robux, no ads, no purchases, no place publishing.
 - Release items S, O and P (`docs/release-runbook.md`) are the owner's; only the owner writes `release/owner-*.json`.
 - Studio work targets an unpublished test place unless the owner names another place for the task.
 - No secrets, tokens, cookies or machine-specific paths in files, logs or commits.

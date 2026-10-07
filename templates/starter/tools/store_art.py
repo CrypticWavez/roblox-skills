@@ -542,7 +542,7 @@ def briefs(root):
         "blender": shot,
         "palette": palette,
     })
-    return {"schema": "store-art-briefs/1", "game": name, "note": "Generate subjects with /codex-image:generate (each costs one Codex turn: ask the owner first), render them in Blender, or capture them in Studio; then compose: python3 tools/store_art.py compose --template T --subject SUBJECT --title OVERLAY --out OUT; then lint and preview. The owner uploads in Creator Hub.", "tasks": tasks}
+    return {"schema": "store-art-briefs/1", "game": name, "note": "Generate subjects with /codex-image:generate (each costs one Codex turn from the owner's plan; confirm credit auto-reload is off before a large batch), render them in Blender, or capture them in Studio; then compose: python3 tools/store_art.py compose --template T --subject SUBJECT --title OVERLAY --out OUT; then lint and preview. Upload with python3 tools/store_publish.py once the owner has approved store setup.", "tasks": tasks}
 
 
 def cmd_briefs(args):

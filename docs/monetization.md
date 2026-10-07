@@ -2,7 +2,7 @@
 
 How a game made from the starter gets a complete shop (game passes, developer products, a subscription, offers and boosts), store art that gets clicks, store page text and an Ads Manager plan. The research behind every default is [monetization-ads-store-2026-10.md](research/monetization-ads-store-2026-10.md); the commerce API facts (prompts, receipts, policy) are in [gamekit-platform.md](gamekit-platform.md) and [release-monetization-analytics-2026-10.md](research/release-monetization-analytics-2026-10.md).
 
-**Boundary.** The tools plan, write data files, compose art and check text. They never create products, set prices, upload, publish or buy ads. The owner creates each product in Creator Hub, pastes its id back (`monetize.py set-id`), sets prices, uploads art and decides any ad spend in Ads Manager. Every catalog stays in setup mode (disabled, placeholder ids) until the owner does that.
+**Boundary.** Nothing here spends money: no ad credits, no badges that cost Robux, no purchases, no place publishing. In this factory the tools only plan, write data files, compose art and check text. In a game repository whose owner has approved store setup, `store_publish.py` (section 7) creates the passes and developer products, sets their prices and uploads the store art and text through the owner's Open Cloud key; without that approval the owner does those steps in Creator Hub and pastes each id back with `monetize.py set-id`. Subscriptions and any ad spend always stay in Creator Hub and Ads Manager.
 
 ## What top games teach (the short version)
 
@@ -23,7 +23,8 @@ production/brief.json (genre)
   -> python3 tools/store_page.py draft       store/page.json: title, hook, features, update log
   -> python3 tools/store_page.py lint        copy rules (release check A18)
   -> python3 tools/ad_kit.py plan / sheet    store/ads/campaign.json and the Ads Manager entry sheet
-owner: create products, set-id, set prices, upload art, paste text, decide ads
+  -> python3 tools/store_publish.py plan / run --yes   create products, set prices, upload art and text
+owner: approve store setup once, make the Open Cloud key, create subscriptions, decide any ads
 ```
 
 ### 1. Plan the shop: `monetize.py`
@@ -62,7 +63,7 @@ Triggers are labels the game fires: `join`, `death`, `locked`, `low_currency`, `
 
 ### 4. Store art: `store_art.py`
 
-`specs` prints the rules per kind from `tools/storekit/art.json` (icon 512x512 shown at 150 px; thumbnails 1920x1080 under 3 MB, up to 10; pass, product and badge icons with a circle crop; the ad creative is a 16:9 thumbnail). `briefs` writes `store/art/briefs.json`: the icon, five thumbnail concepts (hero, core action, reward, social, update) for thumbnail personalization, one icon per product and the ad creative, each with a codex-image prompt and a Blender shot. `compose --template T` builds an asset from a transparent subject render (templates `icon_hero`, `icon_clean`, `thumbnail_hero`, `thumbnail_action`, `pass_icon`, `product_icon`, `badge_icon`; seven palettes; fonts fetched by sha256 pin with `fonts --fetch`). `lint` checks the hard rules (errors) and readability at the shown size (warnings); `preview` writes a contact sheet at real display sizes. Compose, lint heuristics and preview need Pillow. Running codex-image costs the owner's Codex credits, so ask first.
+`specs` prints the rules per kind from `tools/storekit/art.json` (icon 512x512 shown at 150 px; thumbnails 1920x1080 under 3 MB, up to 10; pass, product and badge icons with a circle crop; the ad creative is a 16:9 thumbnail). `briefs` writes `store/art/briefs.json`: the icon, five thumbnail concepts (hero, core action, reward, social, update) for thumbnail personalization, one icon per product and the ad creative, each with a codex-image prompt and a Blender shot. `compose --template T` builds an asset from a transparent subject render (templates `icon_hero`, `icon_clean`, `thumbnail_hero`, `thumbnail_action`, `pass_icon`, `product_icon`, `badge_icon`; seven palettes; fonts fetched by sha256 pin with `fonts --fetch`). `lint` checks the hard rules (errors) and readability at the shown size (warnings); `preview` writes a contact sheet at real display sizes. Compose, lint heuristics and preview need Pillow. Each codex-image run costs one Codex turn from the owner's plan; before a large batch, confirm the owner's credit auto-reload is off so a run stops instead of buying credits.
 
 ### 5. Store page: `store_page.py`
 
@@ -71,6 +72,17 @@ Triggers are labels the game fires: `join`, `death`, `locked`, `low_currency`, `
 ### 6. Ads plan: `ad_kit.py`
 
 `plan` writes `store/ads/campaign.json` (ad-campaign/1): goal (Plays by default), the New Players audience, tier-1 countries, devices from the brief, three to five creatives from the thumbnail concepts, a test plan (pause a creative under 2% CTR after 20,000 impressions, no restart within 7 days) and budget scenarios estimated from Roblox's published cost per play. `purchase` is always `false`, and `lint` refuses a file that says otherwise or carries credential or payment fields. `sheet` prints the Ads Manager entries field by field; `estimate --credits N` shows plays for a budget. Remember that players acquired from ads do not count toward Recommended for You: ads buy a test audience, and the game's own play-through rate and retention decide organic growth.
+
+### 7. Store setup: `store_publish.py`
+
+In a game repository, after the owner approves store setup:
+
+1. `python3 tools/store_publish.py scopes` lists the four API key permissions (game passes, developer products, place text, legacy universe manage for the icon and thumbnails). The owner creates the key for this experience only and stores it in the `ROBLOX_OPEN_CLOUD_KEY` environment variable on their machine. Never paste it into chat or a file.
+2. `target --universe ID --place ID` records the experience. `approve --by NAME --quote "..."` records the owner's words in `store/publish.json` (store-publish/1).
+3. `plan` prints every request with its price and file, and sends nothing. `run --yes` sends them. It creates each pass and developer product that still has a placeholder id, writes the new id into the catalog (enabled, ownershipVerified), sets the place name and description from `store/page.json`, uploads the icon and up to ten thumbnails (hero first) and orders them. `--only products` and `--update` (patch what already exists, such as a new icon or price) narrow a run. A rerun skips what `store/publish.json` already records.
+4. Subscriptions have no Open Cloud API, so the tool lists them for Creator Hub. When every product has an id, set the catalog mode to `game`.
+
+The tool refuses any request outside its allowlist and any field that could spend (payment, cost, credit, budget, purchase). It also refuses to run in this factory.
 
 ## Release check
 

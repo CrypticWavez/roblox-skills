@@ -137,6 +137,7 @@ MANAGED_TEMPLATES = [
     "tools/store_art.py",
     "tools/store_page.py",
     "tools/ad_kit.py",
+    "tools/store_publish.py",
     "tools/storekit/archetypes.json",
     "tools/storekit/genre_sets.json",
     "tools/storekit/art.json",

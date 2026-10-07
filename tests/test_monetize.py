@@ -6,7 +6,10 @@ Every Roblox genre and subgenre gets a full shop that passes `monetize.py check`
 fixtures/monetization/<genre> trees are what `plan` writes today (regenerate them with the command in
 fixtures/README.md); PvP genres drop power products; overwrites, bad ids and broken files are refused.
 store_page and ad_kit enforce the copy rules, and ad_kit never plans a purchase. store_art reads image
-headers without Pillow and, with Pillow, composes assets that pass its own lint.
+headers without Pillow and, with Pillow, composes assets that pass its own lint. store_publish sends only
+allow-listed store-setup requests (against a loopback fake of the API here), records the ids it gets back,
+continues where it stopped, and refuses in the factory, without approval, --yes or the key, and any request
+that could spend money.
 """
 import contextlib
 import io
@@ -15,7 +18,9 @@ import shutil
 import struct
 import sys
 import tempfile
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import zlib
 from pathlib import Path
 
@@ -27,6 +32,7 @@ import monetize  # noqa: E402
 import production  # noqa: E402
 import store_art  # noqa: E402
 import store_page  # noqa: E402
+import store_publish  # noqa: E402
 
 FIXTURES = ROOT / "fixtures" / "monetization"
 # fixture folder -> (genre, subgenre); fixtures/README.md has the regeneration command.
@@ -300,3 +306,129 @@ class StoreArt(Temp):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FakeApi(BaseHTTPRequestHandler):
+    calls = []
+    next_id = [1000]
+
+    def log_message(self, *args):
+        pass
+
+    def _answer(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length)
+        FakeApi.calls.append((self.command, self.path, self.headers.get("x-api-key"), body))
+        FakeApi.next_id[0] += 1
+        if "/game-passes" in self.path and self.command == "POST":
+            out = {"gamePassId": FakeApi.next_id[0]}
+        elif "/developer-products" in self.path and self.command == "POST":
+            out = {"productId": FakeApi.next_id[0]}
+        elif self.path.endswith("/image"):
+            out = {"mediaAssetId": FakeApi.next_id[0]}
+        else:
+            out = {}
+        data = json.dumps(out).encode()
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    do_POST = do_PATCH = _answer
+
+
+class StorePublish(Temp):
+    def setUp(self):
+        super().setUp()
+        self.assertEqual(quiet(monetize.main, plan_args("Simulation", "Tycoon", self.tmp, "--add", "vip_subscription"))[0], 0)
+        page = {"schema": "store-page/1", "name": "Sample Game", "emoji": "", "update_tag": None,
+                "description": {"hook": "Build a tycoon in a sample world.", "features": ["One", "Two"], "update": None, "purchases": None, "footer": None},
+                "update_log": [], "events_update": None, "alt_text": {}}
+        store_publish.write_json(self.tmp / store_page.PAGE, page)
+        out = self.tmp / store_publish.ART
+        out.mkdir(parents=True)
+        (out / "icon.png").write_bytes(png(512, 512))
+        (out / "pass_vip.png").write_bytes(png(512, 512))
+        for name in ("reward", "hero"):
+            (out / f"thumbnail_{name}.png").write_bytes(png(1920, 1080))
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), FakeApi)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        FakeApi.calls.clear()
+        self.env = {"STORE_PUBLISH_BASE": f"http://127.0.0.1:{self.server.server_port}", "STORE_PUBLISH_WAIT": "0", store_publish.KEY_ENV: "test-key"}
+        self.saved = {k: store_publish.os.environ.get(k) for k in self.env}
+        store_publish.os.environ.update(self.env)
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        for k, v in self.saved.items():
+            if v is None:
+                store_publish.os.environ.pop(k, None)
+            else:
+                store_publish.os.environ[k] = v
+        super().tearDown()
+
+    def run_tool(self, *args):
+        return quiet(store_publish.main, [*args, "--root", str(self.tmp)] if args[0] != "scopes" else list(args))
+
+    def ready(self):
+        self.assertEqual(self.run_tool("target", "--universe", "111", "--place", "222")[0], 0)
+        self.assertEqual(self.run_tool("approve", "--by", "Owner", "--quote", "go ahead")[0], 0)
+
+    def test_dry_run_sends_nothing_and_shows_prices(self):
+        code, out = self.run_tool("plan")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(FakeApi.calls, [])
+        self.assertIn('"price": 399', out)
+        self.assertIn("subscriptions have no Open Cloud API", out)
+
+    def test_run_refusals(self):
+        self.assertEqual(self.run_tool("run", "--yes")[0], 2, "no approval yet")
+        self.ready()
+        self.assertEqual(self.run_tool("run")[0], 2, "no --yes")
+        store_publish.os.environ.pop(store_publish.KEY_ENV)
+        self.assertIn("ROBLOX_OPEN_CLOUD_KEY", self.run_tool("run", "--yes")[1])
+        store_publish.os.environ[store_publish.KEY_ENV] = "test-key"
+        store_publish.os.environ["STORE_PUBLISH_BASE"] = "https://example.com"
+        self.assertEqual(self.run_tool("run", "--yes")[0], 2, "only loopback overrides")
+        self.assertEqual(FakeApi.calls, [])
+        code, out = quiet(store_publish.main, ["run", "--yes", "--root", str(ROOT)])
+        self.assertEqual(code, 2)
+        self.assertIn("factory", out)
+
+    def test_only_store_setup_requests_and_no_money_fields(self):
+        for method, path, fields in [("POST", "/legacy-badges/v1/universes/1/badges", []), ("POST", "/v1/assets", []),
+                                     ("POST", "/game-passes/v1/universes/1/game-passes", ["expectedCost"]),
+                                     ("POST", "/developer-products/v2/universes/1/developer-products", ["paymentSourceType"])]:
+            with self.subTest(path=path, fields=fields):
+                with self.assertRaises(store_publish.Refused):
+                    store_publish.check_request(method, path, fields)
+        store_publish.check_request("POST", "/game-passes/v1/universes/1/game-passes", ["name", "price", "isForSale", "isRegionalPricingEnabled", "imageFile"])
+
+    def test_run_creates_products_records_ids_and_resumes(self):
+        self.ready()
+        code, out = self.run_tool("run", "--yes")
+        self.assertEqual(code, 0, out)
+        catalog = json.loads((self.tmp / store_publish.CATALOG).read_text())
+        sellable = [p for p in catalog["products"] if p["kind"] != "subscription"]
+        self.assertTrue(sellable and all(p["id"] > 1000 and p["enabled"] and p["ownershipVerified"] for p in sellable))
+        paths = [path for _, path, _, _ in FakeApi.calls]
+        self.assertTrue(all(key == "test-key" for _, _, key, _ in FakeApi.calls))
+        self.assertEqual(sum("/game-passes" in p or "/developer-products" in p for p in paths), len(sellable))
+        self.assertIn("/cloud/v2/universes/111/places/222?updateMask=displayName,description", paths)
+        self.assertTrue(any("/game-icon/games/111/" in p for p in paths))
+        images = [b for m, p, _, b in FakeApi.calls if p.endswith("/image")]
+        self.assertEqual(len(images), 2)
+        self.assertIn(b"thumbnail_hero.png", images[0], "hero goes first")
+        vip_call = next(b for m, p, _, b in FakeApi.calls if b"name=\"name\"\r\n\r\nVIP\r\n" in b)
+        self.assertIn(b"pass_vip.png", vip_call)
+        self.assertIn(b"\r\n399\r\n", vip_call)
+        state = json.loads((self.tmp / store_publish.STATE).read_text())
+        self.assertIn("products.vip", state["done"])
+        before = len(FakeApi.calls)
+        code, _ = self.run_tool("run", "--yes")
+        self.assertEqual(code, 0)
+        rerun = [p for _, p, _, _ in FakeApi.calls[before:]]
+        self.assertEqual([p for p in rerun if "/game-passes" in p or "/developer-products" in p or "/image" in p.split("?")[0][-6:]], [], "a rerun creates nothing twice")
+        code, _ = self.run_tool("run", "--yes", "--only", "products", "--update")
+        self.assertTrue(all(m == "PATCH" for m, p, _, _ in FakeApi.calls[before + len(rerun):]))
